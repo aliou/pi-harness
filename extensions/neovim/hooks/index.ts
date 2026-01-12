@@ -1,5 +1,8 @@
 import type { ExtensionAPI } from "@mariozechner/pi-coding-agent";
 import { Box, Text } from "@mariozechner/pi-tui";
+
+import { registerInjectNvimContextHook } from "./inject-nvim-context";
+import { registerInjectSystemPromptHook } from "./inject-system-prompt";
 import {
   type NvimConnectionState,
   registerNvimContextHook,
@@ -8,6 +11,8 @@ import {
 export type { NvimConnectionState } from "./nvim-context";
 
 export function setupNvimHooks(pi: ExtensionAPI, state: NvimConnectionState) {
+  registerInjectSystemPromptHook(pi);
+  registerInjectNvimContextHook(pi, state);
   registerNvimContextHook(pi, state);
 
   // Register custom message renderer for diagnostics - styled like a failed tool call

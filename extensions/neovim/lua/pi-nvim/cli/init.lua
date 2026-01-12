@@ -14,33 +14,6 @@ local function get_plugin_root()
   return vim.fn.fnamemodify(src, ':h:h:h:h')
 end
 
---- System prompt context for Neovim integration
-local NVIM_CONTEXT_PROMPT = [[
-# Neovim Integration
-
-You are running inside Neovim via the pi-nvim plugin.
-
-## Automatic Context
-
-On each prompt, you receive the current editor state:
-- All visible splits with file paths, filetypes, and visible line ranges
-- Which split has focus and cursor position
-
-## File Changes
-
-When you modify files with write/edit tools:
-- Neovim automatically reloads unchanged buffers
-- If LSP detects errors in modified files, you will receive them after your turn
-
-## Available Tool: nvim_context
-
-Query the editor for additional context using the `nvim_context` tool:
-- `context`: Focused file details including visual selection text
-- `splits`: All visible splits with metadata
-- `diagnostics`: LSP diagnostics for the current buffer
-- `current_function`: Treesitter info about the function/class at cursor
-]]
-
 --- Build Pi command with extension
 ---@return string[]
 function M.build_cmd()
@@ -52,10 +25,6 @@ function M.build_cmd()
   -- Load the nvim integration extension
   table.insert(cmd, '--extension')
   table.insert(cmd, root)
-
-  -- Add system prompt context for Neovim integration
-  table.insert(cmd, '--append-system-prompt')
-  table.insert(cmd, NVIM_CONTEXT_PROMPT)
 
   -- Optional CLI flags from config
   if cfg.models then

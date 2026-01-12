@@ -3,7 +3,6 @@
  *
  * Lifecycle events:
  * - session_start: auto-connects to Neovim instance
- * - before_agent_start: injects editor context (splits, cursor position)
  * - tool_result: reloads files in Neovim when write/edit tools complete
  * - turn_end: sends LSP errors for modified files
  */
@@ -21,15 +20,6 @@ import {
 // ============================================================================
 // Types
 // ============================================================================
-
-interface SplitInfo {
-  file: string;
-  filetype: string;
-  visible_range: { first: number; last: number };
-  cursor?: { line: number; col: number };
-  is_focused: boolean;
-  modified: boolean;
-}
 
 interface FileDiagnostic {
   line: number;
@@ -108,35 +98,6 @@ async function getInstanceInfo(
     instance,
     label: `[no file] PID ${instance.lockfile.pid}`,
   };
-}
-
-/**
- * Format splits info into a human-readable context string.
- */
-function formatSplitsContext(splits: SplitInfo[], cwd: string): string {
-  if (splits.length === 0) {
-    return "No files are currently open in the editor.";
-  }
-
-  const lines: string[] = ["Current editor state:"];
-
-  for (const split of splits) {
-    const filePath = formatPath(split.file, cwd);
-    const marker = split.is_focused ? " [focused]" : "";
-    const modified = split.modified ? " [modified]" : "";
-
-    let line = `- ${filePath}${marker}${modified}`;
-    line += ` (${split.filetype || "unknown"})`;
-    line += ` visible lines ${split.visible_range.first}-${split.visible_range.last}`;
-
-    if (split.is_focused && split.cursor) {
-      line += `, cursor at line ${split.cursor.line}:${split.cursor.col}`;
-    }
-
-    lines.push(line);
-  }
-
-  return lines.join("\n");
 }
 
 /**
@@ -233,36 +194,6 @@ export function registerNvimContextHook(
       });
     } catch {
       // Ignore notification failures
-    }
-  });
-
-  // -------------------------------------------------------------------------
-  // Before agent start: inject editor context
-  // -------------------------------------------------------------------------
-
-  pi.on("before_agent_start", async (_event, ctx) => {
-    // Reset modified files tracking for new prompt
-    state.modifiedFilesThisTurn = new Set();
-
-    if (!state.socket) return;
-
-    try {
-      const splits = (await queryNvim(pi.exec, state.socket, "splits", {
-        timeout: 2000,
-      })) as SplitInfo[] | null;
-
-      if (!splits || splits.length === 0) {
-        return;
-      }
-
-      const context = formatSplitsContext(splits, ctx.cwd);
-
-      return {
-        systemPrompt: context,
-      };
-    } catch {
-      // Query failed, continue without context
-      return;
     }
   });
 
