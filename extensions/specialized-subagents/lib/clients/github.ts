@@ -252,9 +252,9 @@ export class GitHubClient {
   private token: string;
 
   constructor() {
-    const token = process.env.GITHUB_TOKEN;
+    const token = process.env.SCOUT_GITHUB_TOKEN;
     if (!token) {
-      throw new Error("GITHUB_TOKEN environment variable is not set.");
+      throw new Error("SCOUT_GITHUB_TOKEN environment variable is not set.");
     }
     this.token = token;
   }
@@ -289,7 +289,9 @@ export class GitHubClient {
         throw new Error(`Rate limit exceeded or access denied: ${text}`);
       }
       if (response.status === 401) {
-        throw new Error("Authentication failed. Check GITHUB_TOKEN validity.");
+        throw new Error(
+          "Authentication failed. Check SCOUT_GITHUB_TOKEN validity.",
+        );
       }
       throw new Error(`GitHub API error (${response.status}): ${text}`);
     }
