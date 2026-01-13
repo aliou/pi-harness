@@ -48,6 +48,10 @@ export interface SubagentToolCall {
   status: "running" | "done" | "error";
   result?: unknown;
   error?: string;
+  /** Partial result from tool updates (for progress display) */
+  partialResult?: {
+    content: Array<{ type: string; text?: string }>;
+  };
 }
 
 /**

@@ -135,6 +135,12 @@ export async function executeSubagent(
       const existing = toolCalls.get(event.toolCallId);
       if (existing) {
         existing.args = event.args ?? existing.args;
+        // Capture partial result for progress display
+        if (event.partialResult) {
+          existing.partialResult = event.partialResult as {
+            content: Array<{ type: string; text?: string }>;
+          };
+        }
         onToolUpdate?.([...toolCalls.values()]);
       }
     }

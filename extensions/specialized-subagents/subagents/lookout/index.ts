@@ -1,8 +1,8 @@
 /**
- * Scout subagent - web research and URL fetching.
+ * Lookout subagent - local codebase search by functionality or concept.
  *
- * Takes a URL and/or query, optionally with a prompt, and returns
- * either raw content or a detailed answer based on fetched information.
+ * Uses osgrep for semantic search combined with Pi's built-in tools
+ * (grep, find, read, ls) for comprehensive code discovery.
  */
 
 import type {
@@ -12,7 +12,11 @@ import type {
   ToolDefinition,
   ToolRenderResultOptions,
 } from "@mariozechner/pi-coding-agent";
-import { getMarkdownTheme, type Theme } from "@mariozechner/pi-coding-agent";
+import {
+  createReadOnlyTools,
+  getMarkdownTheme,
+  type Theme,
+} from "@mariozechner/pi-coding-agent";
 import { Container, Markdown, Spacer, Text } from "@mariozechner/pi-tui";
 import { Type } from "@sinclair/typebox";
 import { executeSubagent, resolveModel } from "../../lib";
@@ -20,148 +24,71 @@ import type { SubagentToolCall } from "../../lib/types";
 import { getSpinnerFrame, INDICATOR } from "../../lib/ui/spinner";
 import { formatSubagentStats, pluralize } from "../../lib/ui/stats";
 import { MODEL } from "./config";
-import { SCOUT_SYSTEM_PROMPT } from "./system-prompt";
-import { formatScoutToolCall } from "./tool-formatter";
-import { createScoutTools } from "./tools";
-import type { ScoutDetails, ScoutInput } from "./types";
+import { LOOKOUT_SYSTEM_PROMPT } from "./system-prompt";
+import { formatLookoutToolCall } from "./tool-formatter";
+import { createLookoutTools } from "./tools";
+import type { LookoutDetails, LookoutInput } from "./types";
 
-/** System prompt guidance for scout tool usage */
-export const SCOUT_GUIDANCE = `
-## Scout
+/** System prompt guidance for lookout tool usage */
+export const LOOKOUT_GUIDANCE = `
+## Lookout - Local Code Search
 
-Use scout for web research and GitHub codebase exploration. It can fetch URLs, search the web, and deeply explore GitHub repositories.
+Use the \`lookout\` tool to find code by functionality or concept in the local codebase.
 
 **When to use:**
-- Fetching content from URLs (articles, documentation, webpages)
-- Searching the web for information
-- Exploring GitHub repositories (code, structure, commits, issues, PRs)
-- Understanding how open-source projects work
-- Finding implementations across codebases
-- Analyzing code evolution through commit history
+- Locate code by behavior: "Where do we validate JWT tokens?"
+- Find implementations: "Which module handles retry logic?"
+- Understand code flow: "How does the auth flow work?"
 
 **When NOT to use:**
-- Local codebase search (use lookout instead)
-- Testing API endpoints (use curl instead)
-- Making POST/PUT/DELETE requests
+- Known file path -> use \`read\` directly
+- Simple exact string search -> use \`grep\` directly
+- External/web research -> use \`scout\` instead
 
-**Inputs:**
-- \`url\`: Specific URL to fetch
-- \`query\`: Search query for web or GitHub research
-- \`repo\`: GitHub repository to focus on (owner/repo format)
-- \`prompt\`: Question to answer based on fetched content (omit for raw content)
-
-At least one of url, query, or repo is required.
-
-**Examples:**
-- Fetch a URL: \`{ url: "https://example.com/docs" }\`
-- Web search: \`{ query: "typescript best practices 2025" }\`
-- Explore repo: \`{ repo: "facebook/react", prompt: "how is useState implemented?" }\`
-- GitHub search: \`{ query: "useState implementation", repo: "facebook/react" }\`
-- Issue/PR: \`{ url: "https://github.com/owner/repo/issues/123" }\`
-
-**GitHub capabilities:**
-- Read files and list directories
-- Search code across repositories
-- Search commits by message, author, or path
-- View commit diffs
-- Fetch issues and PRs with comments
+**Example:**
+\`\`\`json
+{ "query": "Where is the database connection pool configured?" }
+\`\`\`
 `;
 
 const parameters = Type.Object({
-  url: Type.Optional(
-    Type.String({
-      description: "Specific URL to fetch content from",
-    }),
-  ),
-  query: Type.Optional(
-    Type.String({
-      description: "Search query for web or GitHub research",
-    }),
-  ),
-  repo: Type.Optional(
-    Type.String({
-      description: "GitHub repository to focus on (owner/repo format)",
-    }),
-  ),
-  prompt: Type.Optional(
-    Type.String({
-      description:
-        "What to analyze or answer based on the fetched content. If not provided, returns raw content.",
-    }),
-  ),
+  query: Type.String({
+    description: "Search query describing what to find in the codebase",
+  }),
 });
 
-/** Build the user message for the subagent based on inputs */
-function buildUserMessage(input: ScoutInput): string {
-  const parts: string[] = [];
-
-  if (input.url) {
-    parts.push(`URL to fetch: ${input.url}`);
-  }
-
-  if (input.query) {
-    parts.push(`Search query: ${input.query}`);
-  }
-
-  if (input.repo) {
-    parts.push(`GitHub repository to explore: ${input.repo}`);
-  }
-
-  if (input.prompt) {
-    parts.push(`\nQuestion/Task: ${input.prompt}`);
-  } else {
-    parts.push(
-      "\nReturn the fetched content as markdown. Do not add any analysis.",
-    );
-  }
-
-  return parts.join("\n");
-}
-
-/** Create the scout tool definition for use in extensions */
-export function createScoutTool(): ToolDefinition<
+/** Create the lookout tool definition for use in extensions */
+export function createLookoutTool(): ToolDefinition<
   typeof parameters,
-  ScoutDetails
+  LookoutDetails
 > {
   return {
-    name: "scout",
-    label: "Scout",
-    description: `Research assistant for web content and GitHub codebase exploration.
+    name: "lookout",
+    label: "Lookout",
+    description: `Local codebase search by functionality or concept.
 
-Inputs (at least one of url, query, or repo required):
-- url: Specific URL to fetch
-- query: Search query for web or GitHub research
-- repo: GitHub repository to focus on (owner/repo format)
-- prompt: Question to answer based on content (if omitted, returns raw content)
+Uses semantic search (osgrep) + grep/find for comprehensive code discovery.
+Returns relevant files with line ranges.
 
-Use cases:
-- Fetch a URL: { url: "https://..." }
-- Web search: { query: "how to..." }
-- Explore repo: { repo: "facebook/react", prompt: "how is useState implemented?" }
-- GitHub search: { query: "useState", repo: "facebook/react" }
-- Fetch issue/PR: { url: "https://github.com/owner/repo/issues/123" }`,
-
+Example: { "query": "where do we handle authentication" }`,
     parameters,
 
     async execute(
       _toolCallId: string,
-      args: ScoutInput,
-      onUpdate: AgentToolUpdateCallback<ScoutDetails> | undefined,
+      args: LookoutInput,
+      onUpdate: AgentToolUpdateCallback<LookoutDetails> | undefined,
       ctx: ExtensionContext,
       signal?: AbortSignal,
     ) {
-      const { url, query, repo, prompt } = args;
+      const { query } = args;
 
-      // Validate: at least one of url, query, or repo required
-      if (!url && !query && !repo) {
-        const error = "At least one of 'url', 'query', or 'repo' is required.";
+      // Validate: query is required
+      if (!query) {
+        const error = "Query is required.";
         return {
           content: [{ type: "text" as const, text: `Error: ${error}` }],
           details: {
-            url,
-            query,
-            repo,
-            prompt,
+            query: "",
             toolCalls: [],
             spinnerFrame: 0,
             error,
@@ -180,10 +107,7 @@ Use cases:
           onUpdate?.({
             content: [{ type: "text", text: "" }],
             details: {
-              url,
               query,
-              repo,
-              prompt,
               toolCalls: currentToolCalls,
               spinnerFrame,
             },
@@ -193,31 +117,31 @@ Use cases:
 
       try {
         const model = resolveModel(MODEL, ctx);
-        const userMessage = buildUserMessage(args);
+
+        // Replace {cwd} in system prompt
+        const systemPrompt = LOOKOUT_SYSTEM_PROMPT.replace("{cwd}", ctx.cwd);
 
         const result = await executeSubagent(
           {
-            name: "scout",
+            name: "lookout",
             model,
-            systemPrompt: SCOUT_SYSTEM_PROMPT,
-            customTools: createScoutTools(),
-            thinkingLevel: "off",
+            systemPrompt,
+            tools: createReadOnlyTools(ctx.cwd), // grep, find, read, ls
+            customTools: createLookoutTools(), // semantic_search
+            thinkingLevel: "low",
             logging: {
               enabled: true,
               debug: true,
             },
           },
-          userMessage,
+          query,
           ctx,
           // onTextUpdate
           (_delta, accumulated) => {
             onUpdate?.({
               content: [{ type: "text", text: accumulated }],
               details: {
-                url,
                 query,
-                repo,
-                prompt,
                 toolCalls: currentToolCalls,
                 spinnerFrame,
                 response: accumulated,
@@ -231,10 +155,7 @@ Use cases:
             onUpdate?.({
               content: [{ type: "text", text: "" }],
               details: {
-                url,
                 query,
-                repo,
-                prompt,
                 toolCalls: currentToolCalls,
                 spinnerFrame,
               },
@@ -246,10 +167,7 @@ Use cases:
           return {
             content: [{ type: "text" as const, text: "Aborted" }],
             details: {
-              url,
               query,
-              repo,
-              prompt,
               toolCalls: currentToolCalls,
               spinnerFrame,
               aborted: true,
@@ -264,10 +182,7 @@ Use cases:
               { type: "text" as const, text: `Error: ${result.error}` },
             ],
             details: {
-              url,
               query,
-              repo,
-              prompt,
               toolCalls: currentToolCalls,
               spinnerFrame,
               error: result.error,
@@ -288,10 +203,7 @@ Use cases:
           return {
             content: [{ type: "text" as const, text: `Error: ${error}` }],
             details: {
-              url,
               query,
-              repo,
-              prompt,
               toolCalls: currentToolCalls,
               spinnerFrame,
               error,
@@ -303,10 +215,7 @@ Use cases:
         return {
           content: [{ type: "text" as const, text: result.content }],
           details: {
-            url,
             query,
-            repo,
-            prompt,
             toolCalls: currentToolCalls,
             spinnerFrame,
             response: result.content,
@@ -322,41 +231,19 @@ Use cases:
       const container = new Container();
 
       // Title with model name
-      const modelName = MODEL;
       container.addChild(
         new Text(
-          theme.fg("toolTitle", theme.bold("Scout")) +
-            theme.fg("muted", ` (${modelName})`),
+          theme.fg("toolTitle", theme.bold("Lookout")) +
+            theme.fg("muted", ` (${MODEL})`),
           0,
           0,
         ),
       );
 
-      // URL (if provided)
-      if (args.url) {
-        container.addChild(
-          new Text(`  ${theme.fg("muted", "URL: ")}${args.url}`, 0, 0),
-        );
-      }
-
-      // Query (if provided)
+      // Query
       if (args.query) {
         container.addChild(
           new Text(`  ${theme.fg("muted", "Query: ")}${args.query}`, 0, 0),
-        );
-      }
-
-      // Repo (if provided)
-      if (args.repo) {
-        container.addChild(
-          new Text(`  ${theme.fg("muted", "Repo: ")}${args.repo}`, 0, 0),
-        );
-      }
-
-      // Prompt (if provided)
-      if (args.prompt) {
-        container.addChild(
-          new Text(`  ${theme.fg("muted", "Prompt: ")}${args.prompt}`, 0, 0),
         );
       }
 
@@ -364,7 +251,7 @@ Use cases:
     },
 
     renderResult(
-      result: AgentToolResult<ScoutDetails>,
+      result: AgentToolResult<LookoutDetails>,
       options: ToolRenderResultOptions,
       theme: Theme,
     ) {
@@ -419,12 +306,12 @@ Use cases:
         const currentTool = toolCalls.find((tc) => tc.status === "running");
         if (currentTool) {
           const spinner = getSpinnerFrame(spinnerFrame);
-          // Show partialResult text if available (e.g., progress updates)
+          // Show partialResult text if available (e.g., "Indexing...")
           const partialText = currentTool.partialResult?.content?.[0];
           if (partialText?.type === "text" && partialText.text) {
             return new Text(`${spinner} ${partialText.text}`, 0, 0);
           }
-          const { label, detail } = formatScoutToolCall(currentTool);
+          const { label, detail } = formatLookoutToolCall(currentTool);
           const text = detail ? `${label} ${detail}` : label;
           return new Text(`${spinner} ${text}`, 0, 0);
         }
@@ -473,7 +360,7 @@ Use cases:
             ) {
               text = partialText.text;
             } else {
-              const { label, detail } = formatScoutToolCall(tc);
+              const { label, detail } = formatLookoutToolCall(tc);
               text = detail
                 ? `${theme.bold(label)} ${detail}`
                 : theme.bold(label);
@@ -505,7 +392,7 @@ Use cases:
       // Done + expanded
       const container = new Container();
 
-      // Stats line - only show error indicator when ALL tools failed
+      // Stats line
       const allFailed = toolCalls.length > 0 && errorCount === toolCalls.length;
       const stats = formatSubagentStats(
         usage ?? { estimatedTokens: Math.round((response?.length ?? 0) / 4) },
@@ -523,7 +410,9 @@ Use cases:
 
       // Tool calls summary
       if (toolCalls.length > 0) {
-        const toolNames = toolCalls.map((tc) => formatScoutToolCall(tc).label);
+        const toolNames = toolCalls.map(
+          (tc) => formatLookoutToolCall(tc).label,
+        );
         const counts: Record<string, number> = {};
         for (const name of toolNames) {
           counts[name] = (counts[name] || 0) + 1;
@@ -546,7 +435,7 @@ Use cases:
         // Show failed tool calls with details
         const failedCalls = toolCalls.filter((tc) => tc.status === "error");
         for (const tc of failedCalls) {
-          const { label, detail } = formatScoutToolCall(tc);
+          const { label, detail } = formatLookoutToolCall(tc);
           const text = detail
             ? `${theme.bold(label)} ${detail}`
             : theme.bold(label);
@@ -578,13 +467,13 @@ Use cases:
   };
 }
 
-/** Execute the scout subagent directly (without tool wrapper) */
-export async function executeScout(
-  input: ScoutInput,
+/** Execute the lookout subagent directly (without tool wrapper) */
+export async function executeLookout(
+  input: LookoutInput,
   ctx: ExtensionContext,
-  onUpdate?: AgentToolUpdateCallback<ScoutDetails>,
+  onUpdate?: AgentToolUpdateCallback<LookoutDetails>,
   signal?: AbortSignal,
-): Promise<AgentToolResult<ScoutDetails>> {
-  const tool = createScoutTool();
+): Promise<AgentToolResult<LookoutDetails>> {
+  const tool = createLookoutTool();
   return tool.execute("direct", input, onUpdate, ctx, signal);
 }

@@ -25,6 +25,7 @@ The extension will fail to load if any required variables are missing.
 | Subagent | Description | Requirements |
 |----------|-------------|--------------|
 | Scout | Web research and GitHub codebase exploration. Fetches URLs, searches the web, explores repositories (code, commits, issues, PRs). | `EXA_API_KEY`, `GITHUB_TOKEN` |
+| Lookout | Local codebase search by functionality/concept. Uses osgrep for semantic search + grep/find for exact matches. | [osgrep](https://github.com/Ryandonofrio3/osgrep) |
 
 ## Creating New Subagents
 
