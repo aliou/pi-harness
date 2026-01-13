@@ -128,7 +128,7 @@ Example: { "query": "where do we handle authentication" }`,
             systemPrompt,
             tools: createReadOnlyTools(ctx.cwd), // grep, find, read, ls
             customTools: createLookoutTools(), // semantic_search
-            thinkingLevel: "low",
+            thinkingLevel: "off",
             logging: {
               enabled: true,
               debug: true,
