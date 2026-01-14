@@ -63,7 +63,9 @@ export function setupExecutePlanCommand(pi: ExtensionAPI) {
       const planContent = await readPlan(plan.path);
 
       // Send to agent
-      pi.sendUserMessage(EXECUTE_PLAN_PROMPT + planContent);
+      pi.sendUserMessage(
+        `${EXECUTE_PLAN_PROMPT}<plan>\n${planContent}\n</plan>\n\nPlan path: ${plan.path}`,
+      );
     },
   });
 }
