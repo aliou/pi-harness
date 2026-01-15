@@ -79,8 +79,9 @@ Exports:
 2. Set up spinner interval (80ms), clear in `finally`
 3. Call `executeSubagent()` with `onTextUpdate` and `onToolUpdate` callbacks
 4. Handle abort/error states
-5. Check if all tool calls failed → return error
-6. Return `usage` from result
+5. Use final tool calls from `result.toolCalls` for failure checks
+6. Check if all tool calls failed → return error
+7. Return `usage` from result
 
 ## renderResult States
 
@@ -130,6 +131,7 @@ Add your required keys to `checkApiKeys()` in `extensions/specialized-subagents/
 - **Extensions disabled**: Subagents don't run user extensions (`extensions: []`)
 - **Failed tools**: Show individually in done+expanded state
 - **All failed**: Show error indicator only when ALL tools failed (partial success = success indicator)
+- **Final tool calls**: Use `result.toolCalls` if present to decide failure state
 - **Mark tool as failed**: When all internal tools fail, return error so parent agent sees failure
 
 ## Reference
