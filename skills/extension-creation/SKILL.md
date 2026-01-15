@@ -26,6 +26,11 @@ extensions/<name>/
 └── utils.ts           # Optional: shared utilities
 ```
 
+## Documentation
+
+- Add a **Requirements** section in the extension README when tools depend on external binaries, permissions, system services, or environment setup.
+- Update the root `README.md` extensions table to reflect those requirements.
+
 ## Entry Point
 
 ```typescript
