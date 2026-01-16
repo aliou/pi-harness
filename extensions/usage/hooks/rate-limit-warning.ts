@@ -87,6 +87,9 @@ async function checkAndWarnRateLimits(
     const limits = await fetchProviderRateLimits(providerKey, authStorage);
     if (!limits) return;
 
+    // Verify model hasn't changed during the async check
+    if (ctx.model !== model) return;
+
     const highUsageWindows = findHighUsageWindows(limits);
     if (highUsageWindows.length === 0) return;
 
