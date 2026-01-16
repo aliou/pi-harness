@@ -15,6 +15,7 @@ Custom extensions for [Pi](https://github.com/mariozechner/pi-coding-agent), a c
 | [neovim](extensions/neovim/README.md) | Bidirectional Neovim integration (editor context, file reload, LSP diagnostics) | - |
 | [defaults](extensions/defaults/README.md) | Custom header, auto session naming | - |
 | [processes](extensions/processes/README.md) | Background process management | - |
+| [usage](extensions/usage/README.md) | Usage dashboard (rate limits and session stats) | anthropic and/or openai-codex auth |
 | [planning](extensions/planning/README.md) | Save and execute implementation plans | - |
 | [specialized-subagents](extensions/specialized-subagents/README.md) | Framework for spawning specialized subagents | [External services](extensions/specialized-subagents/README.md#requirements) |
 | [guardrails](extensions/guardrails/README.md) | Security hooks (brew block, env protection, dangerous command gate) | - |
