@@ -4,6 +4,15 @@ Sensible defaults and quality-of-life improvements for Pi.
 
 ## Features
 
+### Auto theme (macOS)
+
+Automatically syncs Pi's theme with macOS system appearance (dark/light mode).
+
+- Only runs on macOS and when UI is available
+- Checks system appearance every 2 seconds
+- Switches to `dark` or `light` theme automatically
+- Stops monitoring when session ends
+
 ### Custom header
 
 Pi logo with version number.
