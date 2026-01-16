@@ -2,6 +2,7 @@ import type { ExtensionAPI } from "@mariozechner/pi-coding-agent";
 
 interface AutoThemeState {
   intervalId: ReturnType<typeof setInterval> | null;
+  currentTheme: "dark" | "light" | null;
 }
 
 export function setupAutoThemeHook(pi: ExtensionAPI) {
@@ -12,6 +13,7 @@ export function setupAutoThemeHook(pi: ExtensionAPI) {
 
   const state: AutoThemeState = {
     intervalId: null,
+    currentTheme: null,
   };
 
   // macOS system appearance detection
@@ -34,19 +36,33 @@ export function setupAutoThemeHook(pi: ExtensionAPI) {
   async function applyTheme(ctx: any) {
     const dark = await isDarkMode();
     const theme = dark ? "dark" : "light";
-    ctx.ui.setTheme(theme);
+
+    // Only notify if theme actually changed
+    if (state.currentTheme !== theme) {
+      state.currentTheme = theme;
+      ctx.ui.setTheme(theme);
+      ctx.ui.notifyInfo(`Theme changed to ${theme} mode`);
+    }
   }
 
   // Start monitoring on session start
   pi.on("session_start", async (_event, ctx) => {
     if (!ctx.hasUI) return;
 
-    // Initial theme set
-    await applyTheme(ctx);
+    // Initial theme set - not awaited to avoid blocking session start
+    applyTheme(ctx).catch((error) => {
+      ctx.ui.notifyError(
+        `Failed to apply theme: ${error instanceof Error ? error.message : String(error)}`,
+      );
+    });
 
     // Poll every 2 seconds for system changes
-    state.intervalId = setInterval(async () => {
-      await applyTheme(ctx);
+    state.intervalId = setInterval(() => {
+      applyTheme(ctx).catch((error) => {
+        ctx.ui.notifyError(
+          `Failed to apply theme: ${error instanceof Error ? error.message : String(error)}`,
+        );
+      });
     }, 2000);
   });
 
@@ -61,6 +77,11 @@ export function setupAutoThemeHook(pi: ExtensionAPI) {
   // Also handle session switch
   pi.on("session_switch", async (_event, ctx) => {
     if (!ctx.hasUI) return;
-    await applyTheme(ctx);
+    // Not awaited to avoid blocking session switch
+    applyTheme(ctx).catch((error) => {
+      ctx.ui.notifyError(
+        `Failed to apply theme: ${error instanceof Error ? error.message : String(error)}`,
+      );
+    });
   });
 }
