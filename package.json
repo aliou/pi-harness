@@ -9,10 +9,10 @@
   },
   "devDependencies": {
     "@biomejs/biome": "^2.0.0",
-    "@mariozechner/pi-agent-core": "0.45.3",
-    "@mariozechner/pi-ai": "0.45.3",
-    "@mariozechner/pi-coding-agent": "0.45.3",
-    "@mariozechner/pi-tui": "0.45.3",
+    "@mariozechner/pi-agent-core": "0.48.0",
+    "@mariozechner/pi-ai": "0.48.0",
+    "@mariozechner/pi-coding-agent": "0.48.0",
+    "@mariozechner/pi-tui": "0.48.0",
     "@sinclair/typebox": "^0.34.41",
     "@types/node": "^22.0.0",
     "typescript": "^5.7.0"

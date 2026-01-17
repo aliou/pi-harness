@@ -1,4 +1,7 @@
-import type { ExtensionAPI } from "@mariozechner/pi-coding-agent";
+import type {
+  ExtensionAPI,
+  ExtensionContext,
+} from "@mariozechner/pi-coding-agent";
 
 interface AutoThemeState {
   intervalId: ReturnType<typeof setInterval> | null;
@@ -33,7 +36,7 @@ export function setupAutoThemeHook(pi: ExtensionAPI) {
   }
 
   // Apply theme based on system appearance
-  async function applyTheme(ctx: any) {
+  async function applyTheme(ctx: ExtensionContext) {
     const dark = await isDarkMode();
     const theme = dark ? "dark" : "light";
 
@@ -41,7 +44,7 @@ export function setupAutoThemeHook(pi: ExtensionAPI) {
     if (state.currentTheme !== theme) {
       state.currentTheme = theme;
       ctx.ui.setTheme(theme);
-      ctx.ui.notifyInfo(`Theme changed to ${theme} mode`);
+      ctx.ui.notify(`Theme changed to ${theme} mode`, "info");
     }
   }
 
@@ -51,16 +54,18 @@ export function setupAutoThemeHook(pi: ExtensionAPI) {
 
     // Initial theme set - not awaited to avoid blocking session start
     applyTheme(ctx).catch((error) => {
-      ctx.ui.notifyError(
+      ctx.ui.notify(
         `Failed to apply theme: ${error instanceof Error ? error.message : String(error)}`,
+        "error",
       );
     });
 
     // Poll every 2 seconds for system changes
     state.intervalId = setInterval(() => {
       applyTheme(ctx).catch((error) => {
-        ctx.ui.notifyError(
+        ctx.ui.notify(
           `Failed to apply theme: ${error instanceof Error ? error.message : String(error)}`,
+          "error",
         );
       });
     }, 2000);
@@ -79,8 +84,9 @@ export function setupAutoThemeHook(pi: ExtensionAPI) {
     if (!ctx.hasUI) return;
     // Not awaited to avoid blocking session switch
     applyTheme(ctx).catch((error) => {
-      ctx.ui.notifyError(
+      ctx.ui.notify(
         `Failed to apply theme: ${error instanceof Error ? error.message : String(error)}`,
+        "error",
       );
     });
   });
