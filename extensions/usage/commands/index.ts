@@ -220,6 +220,9 @@ class UsageComponent implements Component {
   private colors: AnsiTheme;
   private requestRender: () => void;
   private done: () => void;
+  private scrollOffset = 0;
+  private lastContentLines = 0;
+  private lastAvailableLines = 0;
 
   constructor(
     colors: AnsiTheme,
@@ -243,6 +246,7 @@ class UsageComponent implements Component {
       const idx = TAB_ORDER.indexOf(this.activeTab);
       const nextIndex = (idx + 1 + TAB_ORDER.length) % TAB_ORDER.length;
       this.activeTab = TAB_ORDER[nextIndex] ?? TAB_ORDER[0];
+      this.scrollOffset = 0;
       this.requestRender();
       return;
     }
@@ -251,11 +255,36 @@ class UsageComponent implements Component {
       const idx = TAB_ORDER.indexOf(this.activeTab);
       const prevIndex = (idx - 1 + TAB_ORDER.length) % TAB_ORDER.length;
       this.activeTab = TAB_ORDER[prevIndex] ?? TAB_ORDER[0];
+      this.scrollOffset = 0;
       this.requestRender();
+      return;
+    }
+
+    if (matchesKey(data, "down") || data === "j") {
+      const maxOffset = Math.max(
+        0,
+        this.lastContentLines - this.lastAvailableLines,
+      );
+      if (this.scrollOffset < maxOffset) {
+        this.scrollOffset += 1;
+        this.requestRender();
+      }
+      return;
+    }
+
+    if (matchesKey(data, "up") || data === "k") {
+      if (this.scrollOffset > 0) {
+        this.scrollOffset -= 1;
+        this.requestRender();
+      }
     }
   }
 
   render(width: number): string[] {
+    const FIXED_HEIGHT = 24;
+    const HEADER_LINES = 4;
+    const FOOTER_LINES = 3;
+
     const lines: string[] = [];
     const innerWidth = Math.max(0, width - 4);
     const border = (value: string) => this.colors.dim(value);
@@ -294,12 +323,33 @@ class UsageComponent implements Component {
         ? this.renderSessionTab(innerWidth)
         : this.renderStatsTab(this.getStatsForTab(this.activeTab), innerWidth);
 
-    for (const line of contentLines) {
+    const availableLines = Math.max(
+      0,
+      FIXED_HEIGHT - HEADER_LINES - FOOTER_LINES,
+    );
+    this.lastContentLines = contentLines.length;
+    this.lastAvailableLines = availableLines;
+    const maxOffset = Math.max(0, contentLines.length - availableLines);
+    this.scrollOffset = Math.min(this.scrollOffset, maxOffset);
+
+    const visibleLines = contentLines.slice(
+      this.scrollOffset,
+      this.scrollOffset + availableLines,
+    );
+
+    for (const line of visibleLines) {
       lines.push(padLine(boxLine(line)));
     }
 
+    let renderedLines = visibleLines.length;
+    while (renderedLines < availableLines) {
+      lines.push(padLine(boxLine("")));
+      renderedLines++;
+    }
+
+    const canScroll = contentLines.length > availableLines;
     lines.push(padLine(boxLine("")));
-    lines.push(padLine(boxLine(this.renderFooter(innerWidth))));
+    lines.push(padLine(boxLine(this.renderFooter(innerWidth, canScroll))));
     lines.push(padLine(border(` ╰${"─".repeat(Math.max(0, width - 3))}╯`)));
 
     return lines;
@@ -323,8 +373,10 @@ class UsageComponent implements Component {
     }).join("  ");
   }
 
-  private renderFooter(width: number): string {
-    const left = `${this.colors.dim("Tab/←/→")} switch`;
+  private renderFooter(width: number, canScroll: boolean): string {
+    const left = canScroll
+      ? `${this.colors.dim("Tab/←/→")} switch  ${this.colors.dim("↑/↓")} scroll`
+      : `${this.colors.dim("Tab/←/→")} switch`;
     const right = `${this.colors.dim("q")} close`;
     const gap = Math.max(2, width - visibleWidth(left) - visibleWidth(right));
     return left + " ".repeat(gap) + right;
@@ -640,14 +692,17 @@ export function setupUsageCommands(pi: ExtensionAPI): void {
       }
 
       const authStorage = cmdCtx.modelRegistry.authStorage;
-      await cmdCtx.ui.custom((tui, theme, _kb, done) => {
-        return new UsageContainer(
-          tui,
-          theme,
-          (signal) => loadUsageData(signal, authStorage),
-          () => done(undefined),
-        );
-      });
+      await cmdCtx.ui.custom(
+        (tui, theme, _kb, done) => {
+          return new UsageContainer(
+            tui,
+            theme,
+            (signal) => loadUsageData(signal, authStorage),
+            () => done(undefined),
+          );
+        },
+        { overlay: true },
+      );
     },
   });
 }
