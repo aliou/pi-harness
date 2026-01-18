@@ -50,7 +50,12 @@ function parseRepo(repo: string): { owner: string; repo: string } {
       if (parts.length < 2) {
         throw new Error(`Invalid GitHub URL: ${repo}`);
       }
-      return { owner: parts[0], repo: parts[1] };
+      const owner = parts[0];
+      const repoName = parts[1];
+      if (!owner || !repoName) {
+        throw new Error(`Invalid GitHub URL: ${repo}`);
+      }
+      return { owner, repo: repoName };
     } catch (error) {
       if (error instanceof Error && error.message.includes("GitHub")) {
         throw error;

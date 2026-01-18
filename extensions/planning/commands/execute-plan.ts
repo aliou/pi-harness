@@ -58,6 +58,9 @@ export function setupExecutePlanCommand(pi: ExtensionAPI) {
       // Find the selected plan
       const selectedIndex = options.indexOf(selected);
       const plan = plans[selectedIndex];
+      if (!plan) {
+        throw new Error("Selected plan not found");
+      }
 
       // Read the plan
       const planContent = await readPlan(plan.path);

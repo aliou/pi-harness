@@ -21,5 +21,5 @@ export const INDICATOR = {
 
 /** Get spinner frame for animation */
 export function getSpinnerFrame(frameIndex: number): string {
-  return SPINNER_FRAMES[Math.abs(frameIndex) % SPINNER_FRAMES.length];
+  return SPINNER_FRAMES[Math.abs(frameIndex) % SPINNER_FRAMES.length] ?? "•";
 }

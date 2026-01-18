@@ -124,7 +124,8 @@ const ANSI_16_COLORS: Rgb[] = [
 const ANSI_CUBE = [0, 95, 135, 175, 215, 255];
 
 function rgbFrom256(index: number): Rgb {
-  if (index < 16) return ANSI_16_COLORS[index] ?? ANSI_16_COLORS[0];
+  if (index < 16)
+    return ANSI_16_COLORS[index] ?? ANSI_16_COLORS[0] ?? { r: 0, g: 0, b: 0 };
   if (index >= 232) {
     const gray = 8 + (index - 232) * 10;
     return { r: gray, g: gray, b: gray };
@@ -245,7 +246,8 @@ class UsageComponent implements Component {
     if (matchesKey(data, "tab") || matchesKey(data, "right")) {
       const idx = TAB_ORDER.indexOf(this.activeTab);
       const nextIndex = (idx + 1 + TAB_ORDER.length) % TAB_ORDER.length;
-      this.activeTab = TAB_ORDER[nextIndex] ?? TAB_ORDER[0];
+      const nextTab = TAB_ORDER[nextIndex] ?? TAB_ORDER[0] ?? this.activeTab;
+      this.activeTab = nextTab;
       this.scrollOffset = 0;
       this.requestRender();
       return;
@@ -254,7 +256,8 @@ class UsageComponent implements Component {
     if (matchesKey(data, "shift+tab") || matchesKey(data, "left")) {
       const idx = TAB_ORDER.indexOf(this.activeTab);
       const prevIndex = (idx - 1 + TAB_ORDER.length) % TAB_ORDER.length;
-      this.activeTab = TAB_ORDER[prevIndex] ?? TAB_ORDER[0];
+      const prevTab = TAB_ORDER[prevIndex] ?? TAB_ORDER[0] ?? this.activeTab;
+      this.activeTab = prevTab;
       this.scrollOffset = 0;
       this.requestRender();
       return;
@@ -517,9 +520,11 @@ class UsageComponent implements Component {
     if (nameWidth < MIN_NAME_WIDTH) {
       let deficit = MIN_NAME_WIDTH - nameWidth;
       for (let i = columns.length - 1; i >= 0 && deficit > 0; i--) {
-        const reducible = Math.max(0, columns[i].width - MIN_COLUMN_WIDTH);
+        const col = columns[i];
+        if (!col) continue;
+        const reducible = Math.max(0, col.width - MIN_COLUMN_WIDTH);
         const reduction = Math.min(deficit, reducible);
-        columns[i].width -= reduction;
+        col.width -= reduction;
         deficit -= reduction;
       }
       nameWidth = Math.max(

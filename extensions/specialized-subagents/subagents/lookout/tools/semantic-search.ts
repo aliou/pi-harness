@@ -56,7 +56,7 @@ function parseIndexingProgress(text: string): IndexingProgress | null {
   // Progress with verbose: "- Indexing files (N files) • filename"
   // Check this FIRST - more specific than generic "- Indexing"
   const progressMatch = text.match(/- Indexing files \((\d+) files\) • (.+)/);
-  if (progressMatch) {
+  if (progressMatch && progressMatch[1] && progressMatch[2]) {
     return {
       status: "indexing",
       filesProcessed: parseInt(progressMatch[1], 10),
@@ -71,7 +71,7 @@ function parseIndexingProgress(text: string): IndexingProgress | null {
 
   // Complete: "✔ Indexing complete(N / M) • indexed N"
   const completeMatch = text.match(/Indexing complete\((\d+)\s*\/\s*(\d+)\)/);
-  if (completeMatch) {
+  if (completeMatch && completeMatch[1] && completeMatch[2]) {
     return {
       status: "complete",
       filesProcessed: parseInt(completeMatch[1], 10),
@@ -83,7 +83,7 @@ function parseIndexingProgress(text: string): IndexingProgress | null {
   const altCompleteMatch = text.match(
     /Initial indexing complete \((\d+)\/(\d+)\)/,
   );
-  if (altCompleteMatch) {
+  if (altCompleteMatch && altCompleteMatch[1] && altCompleteMatch[2]) {
     return {
       status: "complete",
       filesProcessed: parseInt(altCompleteMatch[1], 10),

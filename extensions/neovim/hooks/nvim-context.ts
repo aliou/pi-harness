@@ -183,10 +183,10 @@ export function registerNvimContextHook(
       return;
     }
 
-    let selectedInstance: DiscoveredInstance;
+    let selectedInstance: DiscoveredInstance | undefined;
 
     if (instances.length === 1) {
-      selectedInstance = instances[0];
+      selectedInstance = instances[0] ?? undefined;
     } else {
       // Multiple instances: prompt user to select
       if (!ctx.hasUI) {
@@ -214,7 +214,17 @@ export function registerNvimContextHook(
 
       // Find the matching instance
       const index = options.indexOf(selected);
-      selectedInstance = infos[index].instance;
+      const matchingInfo = infos[index];
+      if (!matchingInfo) {
+        ctx.ui.notify("nvim: Selected instance not found", "warning");
+        return;
+      }
+      selectedInstance = matchingInfo.instance;
+    }
+
+    if (!selectedInstance) {
+      ctx.ui.notify("nvim: No instance available", "warning");
+      return;
     }
 
     state.socket = selectedInstance.lockfile.socket;

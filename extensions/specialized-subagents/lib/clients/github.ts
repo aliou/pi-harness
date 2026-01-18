@@ -795,40 +795,46 @@ export function parseGitHubUrl(url: string): ParsedGitHubUrl {
 
   const owner = parts[0];
   const repo = parts[1];
+  if (!owner || !repo) {
+    throw new Error(`Invalid GitHub URL: ${url}`);
+  }
 
   // Just owner/repo
   if (parts.length === 2) {
     return { owner, repo, type: "repo" };
   }
 
+  const part2 = parts[2];
+  const part3 = parts[3];
+
   // Issues: owner/repo/issues/123
-  if (parts[2] === "issues" && parts.length >= 4) {
-    const number = parseInt(parts[3], 10);
+  if (part2 === "issues" && parts.length >= 4 && part3) {
+    const number = parseInt(part3, 10);
     if (Number.isNaN(number)) {
-      throw new Error(`Invalid issue number: ${parts[3]}`);
+      throw new Error(`Invalid issue number: ${part3}`);
     }
     return { owner, repo, type: "issue", number };
   }
 
   // Pull requests: owner/repo/pull/123
-  if (parts[2] === "pull" && parts.length >= 4) {
-    const number = parseInt(parts[3], 10);
+  if (part2 === "pull" && parts.length >= 4 && part3) {
+    const number = parseInt(part3, 10);
     if (Number.isNaN(number)) {
-      throw new Error(`Invalid PR number: ${parts[3]}`);
+      throw new Error(`Invalid PR number: ${part3}`);
     }
     return { owner, repo, type: "pull", number };
   }
 
   // owner/repo/blob/ref/path (file)
-  if (parts[2] === "blob" && parts.length >= 4) {
-    const ref = parts[3];
+  if (part2 === "blob" && parts.length >= 4 && part3) {
+    const ref = part3;
     const path = parts.slice(4).join("/");
     return { owner, repo, type: "file", path, ref };
   }
 
   // owner/repo/tree/ref/path (directory or tree)
-  if (parts[2] === "tree" && parts.length >= 4) {
-    const ref = parts[3];
+  if (part2 === "tree" && parts.length >= 4 && part3) {
+    const ref = part3;
     const path = parts.slice(4).join("/") || undefined;
     return { owner, repo, type: path ? "directory" : "tree", path, ref };
   }

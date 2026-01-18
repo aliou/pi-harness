@@ -57,8 +57,11 @@ function parseChangelog(
 
     // Find version headers (## [version] or ## version or # [version] etc.)
     for (let i = 0; i < lines.length; i++) {
-      const line = lines[i].trim();
-      const versionMatch = line.match(/^#+\s*(?:\[([^\]]+)\]|([^[\s]+))/);
+      const line = lines[i];
+      if (!line) continue;
+      const versionMatch = line
+        .trim()
+        .match(/^#+\s*(?:\[([^\]]+)\]|([^[\s]+))/);
       if (versionMatch) {
         const version = versionMatch[1] || versionMatch[2];
         // Skip non-version headers (like "Unreleased", "Overview", etc.)
@@ -75,17 +78,14 @@ function parseChangelog(
 
     // Set end lines for each version entry
     for (let i = 0; i < versionEntries.length; i++) {
-      const nextStart =
-        i < versionEntries.length - 1
-          ? versionEntries[i + 1].lineStart
-          : lines.length;
-      versionEntries[i].lineEnd = nextStart;
+      const entry = versionEntries[i];
+      if (!entry) continue;
+      const nextEntry = versionEntries[i + 1];
+      const nextStart = nextEntry ? nextEntry.lineStart : lines.length;
+      entry.lineEnd = nextStart;
 
       // Extract content for this version
-      const contentLines = lines.slice(
-        versionEntries[i].lineStart + 1,
-        versionEntries[i].lineEnd,
-      );
+      const contentLines = lines.slice(entry.lineStart + 1, entry.lineEnd);
       const rawContent = contentLines.join("\n").trim();
 
       // Check if content is effectively empty (only whitespace, horizontal rules, or very short)
@@ -93,10 +93,10 @@ function parseChangelog(
         .replace(/^-+$|^=+$|^\*+$|^#+$/gm, "")
         .trim();
       if (!cleanContent || cleanContent.length < 10) {
-        versionEntries[i].content =
+        entry.content =
           "[Empty changelog entry - no details provided for this version]";
       } else {
-        versionEntries[i].content = rawContent;
+        entry.content = rawContent;
       }
     }
 
@@ -139,6 +139,12 @@ function parseChangelog(
 
     // Return latest version (first entry)
     const latest = versionEntries[0];
+    if (!latest) {
+      return {
+        success: false,
+        message: "No version entries found in changelog",
+      };
+    }
     return {
       success: true,
       changelog: {

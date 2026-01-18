@@ -19,9 +19,7 @@ export function sanitizePath(p: string): string {
  */
 export function generateRunId(subagentName: string): string {
   const now = new Date();
-  const timestamp = now
-    .toISOString()
-    .split(".")[0] // Remove milliseconds: 2026-01-12T11:28:17
+  const timestamp = (now.toISOString().split(".")[0] ?? "") // Remove milliseconds: 2026-01-12T11:28:17
     .replace(/[-:T]/g, ""); // YYYYMMDDHHMMSS
   const formatted = timestamp.replace(/(\d{8})(\d{6})/, "$1-$2"); // YYYYMMDD-HHMMSS
   const random = crypto.randomBytes(3).toString("hex"); // 6 chars

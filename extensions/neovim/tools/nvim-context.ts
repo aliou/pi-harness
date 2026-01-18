@@ -178,6 +178,17 @@ Use this tool when you need to know what the user is currently looking at in the
 
         if (instances.length === 1) {
           const instance = instances[0];
+          if (!instance) {
+            return {
+              content: [
+                {
+                  type: "text",
+                  text: "nvim: No instance available",
+                },
+              ],
+              details: { success: false },
+            };
+          }
           socket = instance.lockfile.socket;
           state.socket = socket;
           state.lockfile = instance.lockfilePath;

@@ -78,7 +78,12 @@ export function getPiNvimDataDirs(): string[] {
 }
 
 export function getPiNvimDataDir(): string {
-  return getPiNvimDataDirs()[0];
+  const dirs = getPiNvimDataDirs();
+  const firstDir = dirs[0];
+  if (!firstDir) {
+    throw new Error("No Pi nvim data directory found");
+  }
+  return firstDir;
 }
 
 export function cwdHash(cwd: string): string {

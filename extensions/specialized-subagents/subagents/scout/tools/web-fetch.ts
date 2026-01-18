@@ -60,6 +60,10 @@ function formatContentsResult(result: ExaContentsResponse): string {
   }
 
   const item = result.results[0];
+  if (!item) {
+    return "No content found for the URL.";
+  }
+
   let markdown = "";
 
   if (item.title) {

@@ -72,7 +72,7 @@ export function setupSaveAsPlanCommand(pi: ExtensionAPI) {
       await ctx.waitForIdle();
 
       const additionalInstructions = args.trim();
-      const currentDate = new Date().toISOString().split("T")[0];
+      const currentDate = new Date().toISOString().split("T")[0] ?? "";
       let prompt = SAVE_AS_PLAN_PROMPT.replace("{curdate}", currentDate);
 
       if (additionalInstructions) {

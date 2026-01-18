@@ -18,7 +18,9 @@ function formatArgs(args: Record<string, unknown>, maxLength: number): string {
 
   const keys = Object.keys(args);
   if (keys.length === 1) {
-    const value = args[keys[0]];
+    const firstKey = keys[0];
+    if (!firstKey) return "";
+    const value = args[firstKey];
     const str = typeof value === "string" ? value : JSON.stringify(value);
     return truncate(str, maxLength);
   }
@@ -91,8 +93,9 @@ export function getCurrentRunningTool(
 
   // Find the last running tool
   for (let i = toolCalls.length - 1; i >= 0; i--) {
-    if (toolCalls[i].status === "running") {
-      return toolCalls[i];
+    const tool = toolCalls[i];
+    if (tool && tool.status === "running") {
+      return tool;
     }
   }
 
