@@ -6,6 +6,8 @@ import type {
 interface AutoThemeState {
   intervalId: ReturnType<typeof setInterval> | null;
   currentTheme: "dark" | "light" | null;
+  initialized: boolean;
+  inFlight: Promise<void> | null;
 }
 
 export function setupAutoThemeHook(pi: ExtensionAPI) {
@@ -17,6 +19,8 @@ export function setupAutoThemeHook(pi: ExtensionAPI) {
   const state: AutoThemeState = {
     intervalId: null,
     currentTheme: null,
+    initialized: false,
+    inFlight: null,
   };
 
   // macOS system appearance detection
@@ -35,17 +39,38 @@ export function setupAutoThemeHook(pi: ExtensionAPI) {
     }
   }
 
-  // Apply theme based on system appearance
-  async function applyTheme(ctx: ExtensionContext) {
+  // Detect system theme and sync UI
+  async function syncThemeFromSystem(ctx: ExtensionContext) {
     const dark = await isDarkMode();
     const theme = dark ? "dark" : "light";
 
-    // Only notify if theme actually changed
-    if (state.currentTheme !== theme) {
+    // First run: sync silently without notification
+    if (!state.initialized) {
+      await ctx.ui.setTheme(theme);
       state.currentTheme = theme;
-      ctx.ui.setTheme(theme);
+      state.initialized = true;
+      return;
+    }
+
+    // Subsequent runs: only notify if theme actually changed
+    if (state.currentTheme !== theme) {
+      await ctx.ui.setTheme(theme);
+      state.currentTheme = theme;
       ctx.ui.notify(`Theme changed to ${theme} mode`, "info");
     }
+  }
+
+  // Apply theme with serialization to prevent overlapping execution
+  async function applyTheme(ctx: ExtensionContext) {
+    if (state.inFlight) {
+      return state.inFlight;
+    }
+
+    state.inFlight = syncThemeFromSystem(ctx).finally(() => {
+      state.inFlight = null;
+    });
+
+    return state.inFlight;
   }
 
   // Start monitoring on session start
