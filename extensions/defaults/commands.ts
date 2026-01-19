@@ -2,6 +2,16 @@ import type { ExtensionAPI } from "@mariozechner/pi-coding-agent";
 import { generateTitle, getFirstUserText } from "./lib/title";
 
 export function setupCommands(pi: ExtensionAPI) {
+  pi.registerCommand("theme", {
+    description: "Set theme (light or dark)",
+    handler: async (args, ctx) => {
+      const input = args.trim().toLowerCase();
+      const theme = input === "light" ? "light" : "dark";
+      await ctx.ui.setTheme(theme);
+      ctx.ui.notify(`Theme: ${theme}`, "info");
+    },
+  });
+
   pi.registerCommand("ad-name", {
     description: "Set or generate session name",
     handler: async (args, ctx) => {
