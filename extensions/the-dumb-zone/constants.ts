@@ -90,8 +90,5 @@ export const DUMB_ZONE_PATTERNS: readonly RegExp[] = [
 // UI SETTINGS
 // ============================================================================
 
-/** How long to display the overlay (ms) */
-export const OVERLAY_DURATION_MS = 2500;
-
 /** Minimum time between overlay displays to avoid spam (ms) */
 export const OVERLAY_COOLDOWN_MS = 30000; // 30 seconds

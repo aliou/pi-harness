@@ -1,15 +1,6 @@
 import type { ExtensionContext, Theme } from "@mariozechner/pi-coding-agent";
-import {
-  Key,
-  matchesKey,
-  truncateToWidth,
-  visibleWidth,
-} from "@mariozechner/pi-tui";
-import {
-  DUMB_ZONE_MESSAGE,
-  OVERLAY_COOLDOWN_MS,
-  OVERLAY_DURATION_MS,
-} from "./constants";
+import { truncateToWidth, visibleWidth } from "@mariozechner/pi-tui";
+import { DUMB_ZONE_MESSAGE, OVERLAY_COOLDOWN_MS } from "./constants";
 
 // ============================================================================
 // STATE
@@ -82,12 +73,7 @@ async function showDumbZoneOverlay(
           done(undefined);
         };
 
-        const timeoutId = setTimeout(close, OVERLAY_DURATION_MS);
-
-        return new DumbZoneOverlay(theme, details, () => {
-          clearTimeout(timeoutId);
-          close();
-        });
+        return new DumbZoneOverlay(theme, details, close);
       },
       {
         overlay: true,
@@ -115,14 +101,8 @@ class DumbZoneOverlay {
     private readonly onClose: () => void,
   ) {}
 
-  handleInput(data: string): void {
-    if (
-      matchesKey(data, Key.escape) ||
-      matchesKey(data, Key.enter) ||
-      data === "q"
-    ) {
-      this.onClose();
-    }
+  handleInput(_data: string): void {
+    this.onClose();
   }
 
   render(width: number): string[] {

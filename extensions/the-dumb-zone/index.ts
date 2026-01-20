@@ -1,4 +1,5 @@
 import type { ExtensionAPI } from "@mariozechner/pi-coding-agent";
+import { setupDumbZoneCommands } from "./commands";
 import { setupDumbZoneHooks } from "./hooks";
 
 /**
@@ -8,4 +9,5 @@ import { setupDumbZoneHooks } from "./hooks";
  */
 export default function (pi: ExtensionAPI) {
   setupDumbZoneHooks(pi);
+  setupDumbZoneCommands(pi);
 }
