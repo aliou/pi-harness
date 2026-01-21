@@ -52,31 +52,44 @@ export function getEffectiveThreshold(
 }
 
 /**
- * Calculate total input tokens from session.
+ * Calculate context tokens from the last assistant message.
+ * Uses the same formula as pi-mono's footer: input + output + cacheRead + cacheWrite
  */
-function calculateInputTokens(ctx: ExtensionContext): number {
-  let inputTokens = 0;
+function calculateContextTokens(ctx: ExtensionContext): number {
+  const entries = ctx.sessionManager.getBranch();
 
-  for (const entry of ctx.sessionManager.getBranch()) {
-    if (entry.type === "message" && entry.message.role === "assistant") {
-      const message = entry.message as AssistantMessage;
-      inputTokens += message.usage.input;
-    }
+  // Find last assistant message (same approach as pi-mono)
+  const lastAssistantEntry = [...entries]
+    .reverse()
+    .find(
+      (entry) =>
+        entry.type === "message" &&
+        entry.message.role === "assistant" &&
+        (entry.message as AssistantMessage).stopReason !== "aborted",
+    );
+
+  if (!lastAssistantEntry || lastAssistantEntry.type !== "message") {
+    return 0;
   }
 
-  return inputTokens;
+  const message = lastAssistantEntry.message as AssistantMessage;
+  const usage = message.usage;
+
+  // Pi-mono formula: input + output + cacheRead + cacheWrite
+  return usage.input + usage.output + usage.cacheRead + usage.cacheWrite;
 }
 
 /**
  * Calculate context window utilization percentage.
+ * Matches pi-mono's footer calculation.
  */
 export function getContextUtilization(ctx: ExtensionContext): number {
   const contextWindow = ctx.model?.contextWindow;
 
   if (!contextWindow || contextWindow === 0) return 0;
 
-  const inputTokens = calculateInputTokens(ctx);
-  return (inputTokens / contextWindow) * 100;
+  const contextTokens = calculateContextTokens(ctx);
+  return (contextTokens / contextWindow) * 100;
 }
 
 // ============================================================================
