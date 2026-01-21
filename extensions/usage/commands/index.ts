@@ -290,6 +290,7 @@ class UsageComponent implements Component {
 
     const box = createBoxRenderer(width, this.colors.dim, {
       leadingSpace: true,
+      trailingSpace: true,
     });
     const lines: string[] = [];
 

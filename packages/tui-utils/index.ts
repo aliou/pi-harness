@@ -16,6 +16,8 @@ export type BorderFn = (s: string) => string;
 export type BoxOptions = {
   /** Add leading space before left border (default: false) */
   leadingSpace?: boolean;
+  /** Add trailing space after right border (default: false) */
+  trailingSpace?: boolean;
 };
 
 export type BoxRenderer = {
@@ -73,14 +75,20 @@ export function createBoxRenderer(
   borderFn: BorderFn,
   options: BoxOptions = {},
 ): BoxRenderer {
-  const { leadingSpace = false } = options;
+  const { leadingSpace = false, trailingSpace = false } = options;
 
-  // With leading space: " │ content │" = width - 4 for content
-  // Without leading space: "│ content │" = width - 4 for content
-  // The leading space is decorative and doesn't affect inner width calculation
-  const innerWidth = Math.max(0, width - 4);
+  // Calculate how much space is used by borders and padding
+  // Row structure: prefix + "│" + " " + content + "│" + suffix
+  // Base (no options): "│" + " " + content + "│" = 3 + content
+  // With leadingSpace: " │" + " " + content + "│" = 4 + content
+  // With trailingSpace: "│" + " " + content + "│ " = 4 + content
+  // With both: " │" + " " + content + "│ " = 5 + content
+  const extraChars = (leadingSpace ? 1 : 0) + (trailingSpace ? 1 : 0);
+  const innerWidth = Math.max(0, width - 3 - extraChars);
   const prefix = leadingSpace ? " " : "";
-  const borderWidth = leadingSpace ? width - 3 : width - 2;
+  const suffix = trailingSpace ? " " : "";
+  // borderWidth is the number of dashes between corners (excludes corner chars)
+  const borderWidth = width - 2 - extraChars;
 
   const pad = (s: string, w: number): string => {
     const vis = visibleWidth(s);
@@ -97,7 +105,8 @@ export function createBoxRenderer(
     width,
     padLine,
 
-    top: () => borderFn(`${prefix}╭${"─".repeat(Math.max(0, borderWidth))}╮`),
+    top: () =>
+      borderFn(`${prefix}╭${"─".repeat(Math.max(0, borderWidth))}╮${suffix}`),
 
     topWithTitle: (title: string, titleFn?: (s: string) => string): string => {
       const styledTitle = titleFn ? ` ${titleFn(title)} ` : ` ${title} `;
@@ -108,18 +117,18 @@ export function createBoxRenderer(
       return (
         borderFn(`${prefix}╭${"─".repeat(leftDashes)}`) +
         styledTitle +
-        borderFn(`${"─".repeat(rightDashes)}╮`)
+        borderFn(`${"─".repeat(rightDashes)}╮${suffix}`)
       );
     },
 
     bottom: () =>
-      borderFn(`${prefix}╰${"─".repeat(Math.max(0, borderWidth))}╯`),
+      borderFn(`${prefix}╰${"─".repeat(Math.max(0, borderWidth))}╯${suffix}`),
 
     divider: () =>
-      borderFn(`${prefix}├${"─".repeat(Math.max(0, borderWidth))}┤`),
+      borderFn(`${prefix}├${"─".repeat(Math.max(0, borderWidth))}┤${suffix}`),
 
     row: (content: string): string =>
-      `${borderFn(`${prefix}│`)} ${pad(content, innerWidth)}${borderFn("│")}`,
+      `${borderFn(`${prefix}│`)} ${pad(content, innerWidth)}${borderFn(`│${suffix}`)}`,
 
     centeredRow: (content: string): string => {
       const contentLen = visibleWidth(content);
@@ -133,12 +142,12 @@ export function createBoxRenderer(
         " ".repeat(leftPad) +
         content +
         " ".repeat(rightPad) +
-        borderFn("│")
+        borderFn(`│${suffix}`)
       );
     },
 
     empty: (): string =>
-      `${borderFn(`${prefix}│`)} ${" ".repeat(innerWidth)}${borderFn("│")}`,
+      `${borderFn(`${prefix}│`)} ${" ".repeat(innerWidth)}${borderFn(`│${suffix}`)}`,
   };
 }
 
