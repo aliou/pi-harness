@@ -14,6 +14,7 @@ import type { ProviderRateLimits, RateLimitWindow } from "../types";
 const WIDGET_ID = "usage-bar";
 
 type ProviderKey = "anthropic" | "openai-codex" | "opencode";
+type ClaudeModelFamily = "opus" | "sonnet" | null;
 
 const PROVIDER_DISPLAY_NAMES: Record<ProviderKey, string> = {
   anthropic: "Claude",
@@ -37,6 +38,64 @@ function getProviderKey(model: Model<any> | undefined): ProviderKey | null {
   if (provider === "openai-codex") return "openai-codex";
   if (provider === "opencode") return "opencode";
   return null;
+}
+
+/**
+ * Detects the Claude model family (opus/sonnet) from the model ID.
+ */
+function getClaudeModelFamily(
+  // biome-ignore lint/suspicious/noExplicitAny: Model type requires any for generic API
+  model: Model<any> | undefined,
+): ClaudeModelFamily {
+  if (!model) return null;
+  const modelId = model.id.toLowerCase();
+  if (modelId.includes("opus")) return "opus";
+  if (modelId.includes("sonnet")) return "sonnet";
+  return null;
+}
+
+/**
+ * Filters Claude rate limit windows based on the current model family.
+ * Always shows: 5-hour window + weekly window.
+ * For Sonnet: uses Sonnet-specific weekly window.
+ * For other models: uses generic weekly window.
+ */
+function filterClaudeWindows(
+  windows: RateLimitWindow[],
+  modelFamily: ClaudeModelFamily,
+): RateLimitWindow[] {
+  // For non-Claude models or unknown family, return all windows
+  if (!modelFamily) return windows;
+
+  let fiveHourWindow: RateLimitWindow | null = null;
+  let sonnetWeekWindow: RateLimitWindow | null = null;
+  let genericWeekWindow: RateLimitWindow | null = null;
+
+  for (const window of windows) {
+    const label = window.label.toLowerCase();
+
+    if (label.includes("5-hour") || label.includes("5h")) {
+      fiveHourWindow = window;
+    } else if (label.includes("sonnet")) {
+      sonnetWeekWindow = window;
+    } else if (label.includes("all models") || label === "7-day window") {
+      genericWeekWindow = window;
+    }
+  }
+
+  const filtered: RateLimitWindow[] = [];
+
+  // Always show 5-hour window
+  if (fiveHourWindow) filtered.push(fiveHourWindow);
+
+  // Sonnet uses Sonnet-specific weekly, others use generic
+  if (modelFamily === "sonnet" && sonnetWeekWindow) {
+    filtered.push(sonnetWeekWindow);
+  } else if (genericWeekWindow) {
+    filtered.push(genericWeekWindow);
+  }
+
+  return filtered;
 }
 
 /**
@@ -89,10 +148,10 @@ function createProgressBar(
   percent: number,
   width: number,
   theme: Theme,
+  pacePercent?: number | null,
 ): string {
   const clamped = Math.max(0, Math.min(100, Math.round(percent)));
   const filled = Math.round((clamped / 100) * width);
-  const empty = Math.max(0, width - filled);
   const filledChar = "━";
   const emptyChar = "─";
 
@@ -101,10 +160,29 @@ function createProgressBar(
   if (clamped >= 80) fillColor = "error";
   else if (clamped >= 60) fillColor = "warning";
 
-  return (
-    theme.fg(fillColor, filledChar.repeat(filled)) +
-    theme.fg("dim", emptyChar.repeat(empty))
-  );
+  const markerChar = "│";
+  const markerIndex =
+    pacePercent === null || pacePercent === undefined
+      ? null
+      : Math.max(
+          0,
+          Math.min(width - 1, Math.round((pacePercent / 100) * (width - 1))),
+        );
+
+  const parts: string[] = [];
+  for (let idx = 0; idx < width; idx += 1) {
+    if (markerIndex === idx) {
+      parts.push(theme.fg("accent", markerChar));
+      continue;
+    }
+    if (idx < filled) {
+      parts.push(theme.fg(fillColor, filledChar));
+    } else {
+      parts.push(theme.fg("dim", emptyChar));
+    }
+  }
+
+  return parts.join("");
 }
 
 /**
@@ -122,6 +200,16 @@ function getShortLabel(window: RateLimitWindow): string {
     return "Week";
   }
   return window.label;
+}
+
+function getPacePercent(window: RateLimitWindow): number | null {
+  if (!window.windowSeconds || !window.resetsAt) return null;
+  const totalMs = window.windowSeconds * 1000;
+  if (!Number.isFinite(totalMs) || totalMs <= 0) return null;
+  const remainingMs = window.resetsAt.getTime() - Date.now();
+  const elapsedMs = totalMs - remainingMs;
+  const percent = (elapsedMs / totalMs) * 100;
+  return Math.max(0, Math.min(100, percent));
 }
 
 /**
@@ -149,7 +237,13 @@ function renderWindow(
 ): string {
   const timeLeft = formatTimeRemaining(window.resetsAt);
   const percent = Math.round(window.usedPercent);
-  const bar = createProgressBar(window.usedPercent, barWidth, theme);
+  const pacePercent = getPacePercent(window);
+  const bar = createProgressBar(
+    window.usedPercent,
+    barWidth,
+    theme,
+    pacePercent,
+  );
   const shortLabel = getShortLabel(window);
 
   return `${shortLabel} (${timeLeft} left) ${bar} ${percent}% used`;
@@ -162,17 +256,20 @@ class UsageBarWidget implements Component {
   private theme: Theme;
   private limits: ProviderRateLimits | null;
   private providerKey: ProviderKey;
+  private modelFamily: ClaudeModelFamily;
   private loading: boolean;
 
   constructor(
     theme: Theme,
     limits: ProviderRateLimits | null,
     providerKey: ProviderKey,
+    modelFamily: ClaudeModelFamily,
     loading: boolean,
   ) {
     this.theme = theme;
     this.limits = limits;
     this.providerKey = providerKey;
+    this.modelFamily = modelFamily;
     this.loading = loading;
   }
 
@@ -196,7 +293,17 @@ class UsageBarWidget implements Component {
       return [truncateToWidth(content, width), separator];
     }
 
-    const windows = this.limits.windows;
+    // Filter windows for Claude based on current model family
+    const windows =
+      this.providerKey === "anthropic"
+        ? filterClaudeWindows(this.limits.windows, this.modelFamily)
+        : this.limits.windows;
+
+    if (!windows.length) {
+      const content = `${th.fg("dim", displayName)} (no data)`;
+      return [truncateToWidth(content, width), separator];
+    }
+
     const pipeSeparatorWidth = 3; // " | "
 
     // Calculate fixed width: provider name + separators + fixed parts of each window
@@ -240,12 +347,19 @@ function updateWidget(ctx: ExtensionContext): void {
     return;
   }
 
+  const modelFamily = getClaudeModelFamily(ctx.model);
   const loading = !cachedLimits || cachedProviderKey !== providerKey;
 
   ctx.ui.setWidget(
     WIDGET_ID,
     (_tui, theme) =>
-      new UsageBarWidget(theme, cachedLimits, providerKey, loading),
+      new UsageBarWidget(
+        theme,
+        cachedLimits,
+        providerKey,
+        modelFamily,
+        loading,
+      ),
     { placement: "belowEditor" },
   );
 }
