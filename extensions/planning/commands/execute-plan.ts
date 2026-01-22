@@ -8,7 +8,12 @@
  */
 
 import type { ExtensionAPI } from "@mariozechner/pi-coding-agent";
-import { listPlans, readPlan } from "../lib/plan-utils";
+import {
+  checkDependencies,
+  listPlans,
+  readPlan,
+  updatePlanStatus,
+} from "../lib/plan-utils";
 
 const EXECUTE_PLAN_PROMPT = `Execute the following implementation plan. Follow the Implementation Order section step by step.
 
@@ -16,6 +21,13 @@ As you complete each step:
 - Check off completed items in the Implementation Order
 - Update the Implementation Progress section with what was done
 - If you encounter issues or need to deviate from the plan, note it in Implementation Progress
+
+**When finished:**
+- Update the frontmatter \`status\` field to \`completed\`
+
+**If stopping early:**
+- Update \`status\` to \`cancelled\` (can resume later) or \`abandoned\` (won't continue)
+- Note the reason in Implementation Progress
 
 Here is the plan:
 
@@ -61,6 +73,24 @@ export function setupExecutePlanCommand(pi: ExtensionAPI) {
       if (!plan) {
         throw new Error("Selected plan not found");
       }
+
+      // Check dependencies
+      const depCheck = checkDependencies(plan, plans);
+      if (depCheck.unresolved.length > 0) {
+        const unresolvedList = depCheck.unresolved.join(", ");
+        const proceed = await ctx.ui.confirm(
+          "Unresolved dependencies",
+          `The following dependencies are not met:\n${unresolvedList}\n\nProceed anyway?`,
+        );
+
+        if (!proceed) {
+          ctx.ui.notify("Cancelled", "info");
+          return;
+        }
+      }
+
+      // Update status to in-progress
+      await updatePlanStatus(plan.path, "in-progress");
 
       // Read the plan
       const planContent = await readPlan(plan.path);

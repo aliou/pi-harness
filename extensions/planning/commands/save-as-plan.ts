@@ -55,6 +55,18 @@ const SAVE_AS_PLAN_PROMPT = `Review our entire conversation thread and create a 
        1. If an \`AGENTS.md\` file exists at project root and defines a project name, use that
        2. Otherwise, use the project directory name
        3. Omit this key if it would just duplicate the directory name
+     - \`status\`: Always set to \`pending\` for new plans
+     - \`dependencies\`: Array of plan slugs this depends on (empty array if none)
+     - \`dependents\`: Array of plan slugs that depend on this (empty array if none)
+   
+   - **Slug convention**: Slug = filename without date prefix and .md extension
+     - Example: \`2026-01-22-phase-1-auth.md\` → slug is \`phase-1-auth\`
+   
+   - **Multiple related plans**: If work naturally splits into phases or modules:
+     - Create separate plan files for each phase
+     - Use consistent naming: \`phase-1-<name>\`, \`phase-2-<name>\`, etc.
+     - Set dependencies/dependents arrays to link them
+     - Example: Phase 2 has \`dependencies: [phase-1-display-infrastructure]\`
 
 ## Guidelines:
 
