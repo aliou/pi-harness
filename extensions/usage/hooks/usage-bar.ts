@@ -142,29 +142,45 @@ async function fetchProviderRateLimits(
 }
 
 /**
- * Formats the time remaining until reset.
+ * Formats durations as decimals based on the total window size.
  */
-function formatTimeRemaining(date: Date | null): string {
-  if (!date) return "??";
-  const now = Date.now();
-  const diff = date.getTime() - now;
-  if (diff <= 0) return "0m";
+function getDurationUnit(totalSeconds: number): {
+  label: "d" | "h" | "m";
+  seconds: number;
+} {
+  if (totalSeconds >= 24 * 60 * 60)
+    return { label: "d", seconds: 24 * 60 * 60 };
+  if (totalSeconds >= 60 * 60) return { label: "h", seconds: 60 * 60 };
+  return { label: "m", seconds: 60 };
+}
 
-  const totalMinutes = Math.floor(diff / 60000);
-  const days = Math.floor(totalMinutes / 1440);
-  const hours = Math.floor((totalMinutes % 1440) / 60);
-  const minutes = totalMinutes % 60;
+function formatDurationDecimal(
+  seconds: number,
+  unit: { label: "d" | "h" | "m"; seconds: number },
+): string {
+  if (!Number.isFinite(seconds) || seconds <= 0) return `0${unit.label}`;
+  const value = seconds / unit.seconds;
+  const rounded = Math.round(value * 10) / 10;
+  const text = Number.isInteger(rounded)
+    ? rounded.toFixed(0)
+    : rounded.toFixed(1);
+  return `${text}${unit.label}`;
+}
 
-  if (days > 0) {
-    return hours > 0 ? `${days}d${hours}h` : `${days}d`;
-  }
-  if (hours > 0) {
-    return minutes > 0 ? `${hours}h${minutes}m` : `${hours}h`;
-  }
-  return `${minutes}m`;
+function formatDurationPairSeconds(
+  elapsedSeconds: number,
+  totalSeconds: number,
+): string {
+  if (!Number.isFinite(totalSeconds) || totalSeconds <= 0) return "??/??";
+  const unit = getDurationUnit(totalSeconds);
+  const elapsedText = formatDurationDecimal(elapsedSeconds, unit);
+  const totalText = formatDurationDecimal(totalSeconds, unit);
+  return `${elapsedText}/${totalText}`;
 }
 
 const MIN_PACE_PERCENT = 5;
+
+type FillColor = "success" | "warning" | "error";
 
 function getProjectedPercent(
   usedPercent: number,
@@ -175,6 +191,12 @@ function getProjectedPercent(
   return Math.max(0, (usedPercent / effectivePace) * 100);
 }
 
+function getFillColor(projectedPercent: number): FillColor {
+  if (projectedPercent >= 90) return "error";
+  if (projectedPercent >= 80) return "warning";
+  return "success";
+}
+
 /**
  * Creates a compact progress bar with theme colors.
  */
@@ -182,19 +204,13 @@ function createProgressBar(
   percent: number,
   width: number,
   theme: Theme,
+  fillColor: FillColor,
   pacePercent?: number | null,
 ): string {
   const clamped = Math.max(0, Math.min(100, Math.round(percent)));
   const filled = Math.round((clamped / 100) * width);
   const filledChar = "━";
   const emptyChar = "─";
-
-  const projected = getProjectedPercent(clamped, pacePercent);
-
-  // Color based on projected usage level
-  let fillColor: "success" | "warning" | "error" = "success";
-  if (projected >= 90) fillColor = "error";
-  else if (projected >= 80) fillColor = "warning";
 
   const markerChar = "│";
   const markerIndex =
@@ -219,24 +235,6 @@ function createProgressBar(
   }
 
   return parts.join("");
-}
-
-/**
- * Gets short label for a rate limit window.
- */
-function getShortLabel(window: RateLimitWindow): string {
-  const label = window.label.toLowerCase();
-  if (label.includes("5-hour") || label.includes("5h")) {
-    return "5h";
-  }
-  if (
-    label.includes("7-day") ||
-    label.includes("week") ||
-    label.includes("weekly")
-  ) {
-    return "Week";
-  }
-  return window.label;
 }
 
 function inferWindowSeconds(label: string): number | null {
@@ -270,19 +268,26 @@ function getPacePercent(window: RateLimitWindow): number | null {
   return Math.max(0, Math.min(100, percent));
 }
 
+function getWindowProgressText(window: RateLimitWindow): string {
+  const windowSeconds =
+    window.windowSeconds ?? inferWindowSeconds(window.label);
+  if (!windowSeconds || !window.resetsAt) return "??/??";
+  const totalMs = windowSeconds * 1000;
+  const remainingMs = window.resetsAt.getTime() - Date.now();
+  const elapsedMs = Math.min(totalMs, Math.max(0, totalMs - remainingMs));
+  return formatDurationPairSeconds(elapsedMs / 1000, windowSeconds);
+}
+
 /**
  * Calculates fixed width for a window (everything except the bar).
- * Format: "Label (Xh left) [bar] X% used"
+ * Format: "(elapsed/total) [bar] X%"
  */
 function getWindowFixedWidth(window: RateLimitWindow): number {
-  const label = getShortLabel(window);
-  const timeLeft = formatTimeRemaining(window.resetsAt);
+  const progressText = getWindowProgressText(window);
   const percent = Math.round(window.usedPercent);
-  // "Label (time left) " + " X% used"
-  // label + " (" + time + " left) " + " " + percent + "% used"
-  return (
-    label.length + 2 + timeLeft.length + 7 + 1 + String(percent).length + 6
-  );
+  // "(elapsed/total) " + " X%"
+  // "(" + progress + ") " + " " + percent + "%"
+  return 1 + progressText.length + 2 + 1 + String(percent).length + 1;
 }
 
 /**
@@ -293,18 +298,21 @@ function renderWindow(
   barWidth: number,
   theme: Theme,
 ): string {
-  const timeLeft = formatTimeRemaining(window.resetsAt);
+  const progressText = getWindowProgressText(window);
   const percent = Math.round(window.usedPercent);
   const pacePercent = getPacePercent(window);
+  const projected = getProjectedPercent(window.usedPercent, pacePercent);
+  const fillColor = getFillColor(projected);
   const bar = createProgressBar(
     window.usedPercent,
     barWidth,
     theme,
+    fillColor,
     pacePercent,
   );
-  const shortLabel = getShortLabel(window);
+  const percentLabel = theme.fg(fillColor, `${percent}%`);
 
-  return `${shortLabel} (${timeLeft} left) ${bar} ${percent}% used`;
+  return `(${progressText}) ${bar} ${percentLabel}`;
 }
 
 /**

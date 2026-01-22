@@ -258,20 +258,50 @@ function getProjectedPercent(
   return Math.max(0, (usedPercent / effectivePace) * 100);
 }
 
-function formatDurationMs(durationMs: number): string {
-  if (!Number.isFinite(durationMs) || durationMs <= 0) return "0m";
-  const totalMinutes = Math.floor(durationMs / 60000);
-  const days = Math.floor(totalMinutes / 1440);
-  const hours = Math.floor((totalMinutes % 1440) / 60);
-  const minutes = totalMinutes % 60;
+function getDurationUnitMs(totalMs: number): {
+  label: "d" | "h" | "m";
+  ms: number;
+} {
+  if (totalMs >= 24 * 60 * 60 * 1000) {
+    return { label: "d", ms: 24 * 60 * 60 * 1000 };
+  }
+  if (totalMs >= 60 * 60 * 1000) {
+    return { label: "h", ms: 60 * 60 * 1000 };
+  }
+  return { label: "m", ms: 60 * 1000 };
+}
 
-  if (days > 0) {
-    return hours > 0 ? `${days}d${hours}h` : `${days}d`;
+function formatDurationDecimalMs(
+  durationMs: number,
+  unit: { label: "d" | "h" | "m"; ms: number },
+): string {
+  if (!Number.isFinite(durationMs) || durationMs <= 0) {
+    return `0${unit.label}`;
   }
-  if (hours > 0) {
-    return minutes > 0 ? `${hours}h${minutes}m` : `${hours}h`;
-  }
-  return `${minutes}m`;
+  const value = durationMs / unit.ms;
+  const rounded = Math.round(value * 10) / 10;
+  const text = Number.isInteger(rounded)
+    ? rounded.toFixed(0)
+    : rounded.toFixed(1);
+  return `${text}${unit.label}`;
+}
+
+function formatDurationPairMs(elapsedMs: number, totalMs: number): string {
+  if (!Number.isFinite(totalMs) || totalMs <= 0) return "??/??";
+  const unit = getDurationUnitMs(totalMs);
+  const elapsedText = formatDurationDecimalMs(elapsedMs, unit);
+  const totalText = formatDurationDecimalMs(totalMs, unit);
+  return `${elapsedText}/${totalText}`;
+}
+
+function getWindowProgressText(window: RateLimitWindow): string {
+  const windowSeconds =
+    window.windowSeconds ?? inferWindowSeconds(window.label);
+  if (!windowSeconds || !window.resetsAt) return "??/??";
+  const totalMs = windowSeconds * 1000;
+  const remainingMs = window.resetsAt.getTime() - Date.now();
+  const elapsedMs = Math.min(totalMs, Math.max(0, totalMs - remainingMs));
+  return formatDurationPairMs(elapsedMs, totalMs);
 }
 
 function getStartOfWeek(date: Date): Date {
@@ -285,7 +315,7 @@ function getStartOfWeek(date: Date): Date {
 
 function getPeriodProgress(
   tab: TabName,
-): { label: string; percent: number; timeLeft: string } | null {
+): { label: string; percent: number; progressText: string } | null {
   const now = new Date();
 
   if (tab === "today") {
@@ -295,12 +325,11 @@ function getPeriodProgress(
     end.setDate(start.getDate() + 1);
     const totalMs = end.getTime() - start.getTime();
     const elapsedMs = now.getTime() - start.getTime();
-    const remainingMs = end.getTime() - now.getTime();
     const percent = (elapsedMs / totalMs) * 100;
     return {
       label: "Today",
       percent: Math.max(0, Math.min(100, percent)),
-      timeLeft: formatDurationMs(remainingMs),
+      progressText: formatDurationPairMs(elapsedMs, totalMs),
     };
   }
 
@@ -310,12 +339,11 @@ function getPeriodProgress(
     end.setDate(start.getDate() + 7);
     const totalMs = end.getTime() - start.getTime();
     const elapsedMs = now.getTime() - start.getTime();
-    const remainingMs = end.getTime() - now.getTime();
     const percent = (elapsedMs / totalMs) * 100;
     return {
       label: "Week",
       percent: Math.max(0, Math.min(100, percent)),
-      timeLeft: formatDurationMs(remainingMs),
+      progressText: formatDurationPairMs(elapsedMs, totalMs),
     };
   }
 
@@ -506,7 +534,8 @@ class UsageComponent implements Component {
 
       for (const window of provider.windows) {
         const pacePercent = getPacePercent(window);
-        lines.push(window.label);
+        const progressText = getWindowProgressText(window);
+        lines.push(`${window.label} (${progressText})`);
         lines.push(
           this.renderProgressBar(window.usedPercent, width, pacePercent),
         );
@@ -550,11 +579,10 @@ class UsageComponent implements Component {
     usedPercent: number,
     width: number,
     pacePercent?: number | null,
-    labelSuffix = "used",
     colorMode: "usage" | "neutral" = "usage",
   ): string {
     const clamped = Math.max(0, Math.min(100, Math.round(usedPercent)));
-    const label = `${clamped}% ${labelSuffix}`;
+    const label = `${clamped}%`;
     const labelWidth = visibleWidth(label);
     const barWidth = Math.max(10, width - labelWidth - 1);
     const filled = Math.round((clamped / 100) * barWidth);
@@ -590,7 +618,8 @@ class UsageComponent implements Component {
       }
     }
 
-    return `${parts.join("")} ${label}`;
+    const coloredLabel = this.colors[fillColor](label);
+    return `${parts.join("")} ${coloredLabel}`;
   }
 
   private renderStatsTab(stats: TimeFilteredStats, width: number): string[] {
@@ -599,13 +628,12 @@ class UsageComponent implements Component {
 
     const period = getPeriodProgress(this.activeTab);
     if (period) {
-      lines.push(`${period.label} (${period.timeLeft} left)`);
+      lines.push(`${period.label} (${period.progressText})`);
       lines.push(
         this.renderProgressBar(
           period.percent,
           width,
           period.percent,
-          "elapsed",
           "neutral",
         ),
       );
