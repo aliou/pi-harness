@@ -73,12 +73,35 @@ function filterClaudeWindows(
 
   for (const window of windows) {
     const label = window.label.toLowerCase();
+    const windowSeconds =
+      window.windowSeconds ?? inferWindowSeconds(window.label);
 
-    if (label.includes("5-hour") || label.includes("5h")) {
+    const isFiveHour =
+      (windowSeconds !== null &&
+        windowSeconds > 0 &&
+        windowSeconds <= 6 * 60 * 60) ||
+      label.includes("5-hour") ||
+      label.includes("5h");
+    const isWeekly =
+      (windowSeconds !== null && windowSeconds >= 6 * 24 * 60 * 60) ||
+      label.includes("7-day") ||
+      label.includes("week") ||
+      label.includes("weekly");
+
+    if (isFiveHour) {
       fiveHourWindow = window;
-    } else if (label.includes("sonnet")) {
+      continue;
+    }
+
+    if (label.includes("sonnet") && isWeekly) {
       sonnetWeekWindow = window;
-    } else if (label.includes("all models") || label === "7-day window") {
+      continue;
+    }
+
+    if (
+      (label.includes("all models") || label === "7-day window") &&
+      isWeekly
+    ) {
       genericWeekWindow = window;
     }
   }
@@ -189,22 +212,44 @@ function createProgressBar(
  * Gets short label for a rate limit window.
  */
 function getShortLabel(window: RateLimitWindow): string {
-  if (window.label.includes("5-hour") || window.label.includes("5h")) {
+  const label = window.label.toLowerCase();
+  if (label.includes("5-hour") || label.includes("5h")) {
     return "5h";
   }
   if (
-    window.label.includes("7-day") ||
-    window.label.includes("Week") ||
-    window.label.includes("weekly")
+    label.includes("7-day") ||
+    label.includes("week") ||
+    label.includes("weekly")
   ) {
     return "Week";
   }
   return window.label;
 }
 
+function inferWindowSeconds(label: string): number | null {
+  const lower = label.toLowerCase();
+  if (lower.includes("5-hour") || lower.includes("5h")) {
+    return 5 * 60 * 60;
+  }
+  if (
+    lower.includes("7-day") ||
+    lower.includes("week") ||
+    lower.includes("weekly")
+  ) {
+    return 7 * 24 * 60 * 60;
+  }
+  const hourMatch = lower.match(/(\d+)\s*h/);
+  if (hourMatch?.[1]) return Number(hourMatch[1]) * 60 * 60;
+  const dayMatch = lower.match(/(\d+)\s*d/);
+  if (dayMatch?.[1]) return Number(dayMatch[1]) * 24 * 60 * 60;
+  return null;
+}
+
 function getPacePercent(window: RateLimitWindow): number | null {
-  if (!window.windowSeconds || !window.resetsAt) return null;
-  const totalMs = window.windowSeconds * 1000;
+  const windowSeconds =
+    window.windowSeconds ?? inferWindowSeconds(window.label);
+  if (!windowSeconds || !window.resetsAt) return null;
+  const totalMs = windowSeconds * 1000;
   if (!Number.isFinite(totalMs) || totalMs <= 0) return null;
   const remainingMs = window.resetsAt.getTime() - Date.now();
   const elapsedMs = totalMs - remainingMs;

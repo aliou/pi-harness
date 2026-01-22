@@ -15,6 +15,17 @@ function mapClaudeStatus(indicator: string | undefined): StatusIndicator {
   return "unknown";
 }
 
+function getWindowSeconds(label: string): number | undefined {
+  const lower = label.toLowerCase();
+  if (lower.includes("5-hour") || lower.includes("5h")) {
+    return 5 * 60 * 60;
+  }
+  if (lower.includes("7-day") || lower.includes("week")) {
+    return 7 * 24 * 60 * 60;
+  }
+  return undefined;
+}
+
 function createTimeoutSignal(
   timeoutMs: number,
   signal?: AbortSignal,
@@ -110,7 +121,8 @@ export async function fetchClaudeRateLimits(
             Math.min(100, entry.utilization ?? 0),
           );
           const resetsAt = entry.resets_at ? new Date(entry.resets_at) : null;
-          return { label, usedPercent, resetsAt };
+          const windowSeconds = getWindowSeconds(label);
+          return { label, usedPercent, resetsAt, windowSeconds };
         };
 
         const windowsList: Array<RateLimitWindow | null> = [

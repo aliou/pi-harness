@@ -224,6 +224,17 @@ function normalizePercent(value: number): number {
   return Math.max(0, Math.min(100, value));
 }
 
+function getWindowSecondsFromLabel(label: string): number | undefined {
+  const lower = label.toLowerCase();
+  if (lower.includes("5-hour") || lower.includes("5h")) {
+    return 5 * 60 * 60;
+  }
+  if (lower.includes("7-day") || lower.includes("week")) {
+    return 7 * 24 * 60 * 60;
+  }
+  return undefined;
+}
+
 interface UsageWindows {
   rolling?: UsageWindow;
   weekly?: UsageWindow;
@@ -396,22 +407,26 @@ export async function fetchOpencodeRateLimits(
   const windows: RateLimitWindow[] = [];
 
   if (usage.rollingUsagePercent > 0 || usage.rollingResetInSec > 0) {
+    const label = "5-hour window";
     windows.push({
-      label: "5-hour window",
+      label,
       usedPercent: usage.rollingUsagePercent,
       resetsAt: usage.rollingResetInSec
         ? new Date(Date.now() + usage.rollingResetInSec * 1000)
         : null,
+      windowSeconds: getWindowSecondsFromLabel(label),
     });
   }
 
   if (usage.weeklyUsagePercent > 0 || usage.weeklyResetInSec > 0) {
+    const label = "7-day window";
     windows.push({
-      label: "7-day window",
+      label,
       usedPercent: usage.weeklyUsagePercent,
       resetsAt: usage.weeklyResetInSec
         ? new Date(Date.now() + usage.weeklyResetInSec * 1000)
         : null,
+      windowSeconds: getWindowSecondsFromLabel(label),
     });
   }
 

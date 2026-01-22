@@ -14,6 +14,7 @@ import { collectSessionStats } from "../collectors/session-stats";
 import { fetchAllProviderRateLimits } from "../providers";
 import type {
   ProviderRateLimits,
+  RateLimitWindow,
   TabName,
   TimeFilteredStats,
   UsageData,
@@ -215,6 +216,101 @@ function createAnsiTheme(theme: Theme): AnsiTheme {
   };
 }
 
+function inferWindowSeconds(label: string): number | null {
+  const lower = label.toLowerCase();
+  if (lower.includes("5-hour") || lower.includes("5h")) {
+    return 5 * 60 * 60;
+  }
+  if (
+    lower.includes("7-day") ||
+    lower.includes("week") ||
+    lower.includes("weekly")
+  ) {
+    return 7 * 24 * 60 * 60;
+  }
+  const hourMatch = lower.match(/(\d+)\s*h/);
+  if (hourMatch?.[1]) return Number(hourMatch[1]) * 60 * 60;
+  const dayMatch = lower.match(/(\d+)\s*d/);
+  if (dayMatch?.[1]) return Number(dayMatch[1]) * 24 * 60 * 60;
+  return null;
+}
+
+function getPacePercent(window: RateLimitWindow): number | null {
+  const windowSeconds =
+    window.windowSeconds ?? inferWindowSeconds(window.label);
+  if (!windowSeconds || !window.resetsAt) return null;
+  const totalMs = windowSeconds * 1000;
+  if (!Number.isFinite(totalMs) || totalMs <= 0) return null;
+  const remainingMs = window.resetsAt.getTime() - Date.now();
+  const elapsedMs = totalMs - remainingMs;
+  const percent = (elapsedMs / totalMs) * 100;
+  return Math.max(0, Math.min(100, percent));
+}
+
+function formatDurationMs(durationMs: number): string {
+  if (!Number.isFinite(durationMs) || durationMs <= 0) return "0m";
+  const totalMinutes = Math.floor(durationMs / 60000);
+  const days = Math.floor(totalMinutes / 1440);
+  const hours = Math.floor((totalMinutes % 1440) / 60);
+  const minutes = totalMinutes % 60;
+
+  if (days > 0) {
+    return hours > 0 ? `${days}d${hours}h` : `${days}d`;
+  }
+  if (hours > 0) {
+    return minutes > 0 ? `${hours}h${minutes}m` : `${hours}h`;
+  }
+  return `${minutes}m`;
+}
+
+function getStartOfWeek(date: Date): Date {
+  const start = new Date(date);
+  const day = start.getDay();
+  const diff = (day + 6) % 7;
+  start.setDate(start.getDate() - diff);
+  start.setHours(0, 0, 0, 0);
+  return start;
+}
+
+function getPeriodProgress(
+  tab: TabName,
+): { label: string; percent: number; timeLeft: string } | null {
+  const now = new Date();
+
+  if (tab === "today") {
+    const start = new Date(now);
+    start.setHours(0, 0, 0, 0);
+    const end = new Date(start);
+    end.setDate(start.getDate() + 1);
+    const totalMs = end.getTime() - start.getTime();
+    const elapsedMs = now.getTime() - start.getTime();
+    const remainingMs = end.getTime() - now.getTime();
+    const percent = (elapsedMs / totalMs) * 100;
+    return {
+      label: "Today",
+      percent: Math.max(0, Math.min(100, percent)),
+      timeLeft: formatDurationMs(remainingMs),
+    };
+  }
+
+  if (tab === "thisWeek") {
+    const start = getStartOfWeek(now);
+    const end = new Date(start);
+    end.setDate(start.getDate() + 7);
+    const totalMs = end.getTime() - start.getTime();
+    const elapsedMs = now.getTime() - start.getTime();
+    const remainingMs = end.getTime() - now.getTime();
+    const percent = (elapsedMs / totalMs) * 100;
+    return {
+      label: "Week",
+      percent: Math.max(0, Math.min(100, percent)),
+      timeLeft: formatDurationMs(remainingMs),
+    };
+  }
+
+  return null;
+}
+
 class UsageComponent implements Component {
   private activeTab: TabName = "session";
   private data: UsageData;
@@ -398,8 +494,11 @@ class UsageComponent implements Component {
       }
 
       for (const window of provider.windows) {
+        const pacePercent = getPacePercent(window);
         lines.push(window.label);
-        lines.push(this.renderProgressBar(window.usedPercent, width));
+        lines.push(
+          this.renderProgressBar(window.usedPercent, width, pacePercent),
+        );
         lines.push(`Resets ${formatResetTime(window.resetsAt, timezone)}`);
         lines.push("");
       }
@@ -436,26 +535,76 @@ class UsageComponent implements Component {
     }
   }
 
-  private renderProgressBar(usedPercent: number, width: number): string {
+  private renderProgressBar(
+    usedPercent: number,
+    width: number,
+    pacePercent?: number | null,
+    labelSuffix = "used",
+    colorMode: "usage" | "neutral" = "usage",
+  ): string {
     const clamped = Math.max(0, Math.min(100, Math.round(usedPercent)));
-    const label = `${clamped}% used`;
+    const label = `${clamped}% ${labelSuffix}`;
     const labelWidth = visibleWidth(label);
     const barWidth = Math.max(10, width - labelWidth - 1);
     const filled = Math.round((clamped / 100) * barWidth);
-    const empty = Math.max(0, barWidth - filled);
-    const bar =
-      this.colors.accent("█".repeat(filled)) +
-      this.colors.dim("░".repeat(empty));
-    return `${bar} ${label}`;
+    const markerIndex =
+      pacePercent === null || pacePercent === undefined
+        ? null
+        : Math.max(
+            0,
+            Math.min(
+              barWidth - 1,
+              Math.round((pacePercent / 100) * (barWidth - 1)),
+            ),
+          );
+
+    let fillColor: keyof AnsiTheme = "accent";
+    if (colorMode === "usage") {
+      fillColor = "green";
+      if (clamped >= 80) fillColor = "red";
+      else if (clamped >= 60) fillColor = "yellow";
+    }
+
+    const parts: string[] = [];
+    for (let idx = 0; idx < barWidth; idx += 1) {
+      if (markerIndex === idx) {
+        parts.push(this.colors.cyan("│"));
+        continue;
+      }
+      if (idx < filled) {
+        parts.push(this.colors[fillColor]("━"));
+      } else {
+        parts.push(this.colors.dim("─"));
+      }
+    }
+
+    return `${parts.join("")} ${label}`;
   }
 
   private renderStatsTab(stats: TimeFilteredStats, width: number): string[] {
-    if (stats.providers.size === 0) {
-      return [this.colors.dim("No usage data for this period")];
-    }
-
     const layout = this.buildStatsLayout(width);
     const lines: string[] = [];
+
+    const period = getPeriodProgress(this.activeTab);
+    if (period) {
+      lines.push(`${period.label} (${period.timeLeft} left)`);
+      lines.push(
+        this.renderProgressBar(
+          period.percent,
+          width,
+          period.percent,
+          "elapsed",
+          "neutral",
+        ),
+      );
+      lines.push("");
+    }
+
+    if (stats.providers.size === 0) {
+      lines.push(this.colors.dim("No usage data for this period"));
+      return lines;
+    }
+
     lines.push(this.renderStatsHeader(layout));
     lines.push(this.colors.dim("─".repeat(layout.tableWidth)));
 

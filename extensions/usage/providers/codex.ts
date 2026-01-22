@@ -48,6 +48,11 @@ function formatWindowLabel(seconds: number, fallback: string): string {
   return `${hours}h window`;
 }
 
+function normalizeWindowSeconds(seconds?: number | null): number | undefined {
+  if (!seconds || !Number.isFinite(seconds) || seconds <= 0) return undefined;
+  return Math.round(seconds);
+}
+
 export async function fetchCodexRateLimits(
   authStorage: AuthStorage,
   signal?: AbortSignal,
@@ -148,7 +153,10 @@ export async function fetchCodexRateLimits(
             entry.limit_window_seconds ?? 0,
             labelFallback,
           );
-          return { label, usedPercent, resetsAt };
+          const windowSeconds = normalizeWindowSeconds(
+            entry.limit_window_seconds,
+          );
+          return { label, usedPercent, resetsAt, windowSeconds };
         };
 
         const windowsList: Array<RateLimitWindow | null> = [
