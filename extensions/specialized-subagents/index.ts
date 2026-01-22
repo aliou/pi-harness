@@ -2,6 +2,7 @@ import type { ExtensionAPI } from "@mariozechner/pi-coding-agent";
 import { createWebFetchTool } from "./lib/tools";
 import { createLookoutTool, LOOKOUT_GUIDANCE } from "./subagents/lookout";
 import { createOracleTool, ORACLE_GUIDANCE } from "./subagents/oracle";
+import { createReviewerTool, REVIEWER_GUIDANCE } from "./subagents/reviewer";
 import { createScoutTool, SCOUT_GUIDANCE } from "./subagents/scout";
 
 /**
@@ -11,6 +12,7 @@ import { createScoutTool, SCOUT_GUIDANCE } from "./subagents/scout";
  * - scout: Web research and GitHub codebase exploration
  * - lookout: Local codebase search by functionality/concept (uses osgrep)
  * - oracle: Expert AI advisor for complex reasoning and planning
+ * - reviewer: Code review feedback on diffs
  *
  * Also provides standalone tools:
  * - web_fetch: Fetch URL content as markdown (no LLM)
@@ -40,7 +42,12 @@ function checkApiKeys(): void {
 }
 
 // Collect all subagent guidances
-const SUBAGENT_GUIDANCES = [SCOUT_GUIDANCE, LOOKOUT_GUIDANCE, ORACLE_GUIDANCE];
+const SUBAGENT_GUIDANCES = [
+  SCOUT_GUIDANCE,
+  LOOKOUT_GUIDANCE,
+  ORACLE_GUIDANCE,
+  REVIEWER_GUIDANCE,
+];
 
 export default function (pi: ExtensionAPI) {
   // Check API keys at load time - throws if missing
@@ -50,6 +57,7 @@ export default function (pi: ExtensionAPI) {
   pi.registerTool(createScoutTool());
   pi.registerTool(createLookoutTool());
   pi.registerTool(createOracleTool());
+  pi.registerTool(createReviewerTool());
 
   // Register standalone tools
   pi.registerTool(createWebFetchTool());
