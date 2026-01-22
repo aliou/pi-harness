@@ -205,7 +205,7 @@ function readSafariBinaryCookies(): Cookie[] {
       pageOffset += pageSize;
     }
 
-    // Filter for OpenCode domains
+    // Filter for Opencode domains
     return cookies.filter((c) =>
       OPENCODE_DOMAINS.some(
         (d) => c.domain === d || c.domain.endsWith(`.${d}`),
@@ -289,7 +289,7 @@ function buildCookieHeader(cookies: Cookie[]): string {
   return cookies.map((c) => `${c.name}=${c.value}`).join("; ");
 }
 
-export function importOpenCodeCookies(): CookieSession | null {
+export function importOpencodeCookies(): CookieSession | null {
   // Try Safari first (no Keychain access needed, no password prompts)
   const safariCookies = readSafariBinaryCookies();
   if (hasAuthCookie(safariCookies)) {

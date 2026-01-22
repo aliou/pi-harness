@@ -1,7 +1,7 @@
 import type { ProviderRateLimits, RateLimitWindow } from "../../types";
-import { type CookieSession, importOpenCodeCookies } from "./cookies";
+import { type CookieSession, importOpencodeCookies } from "./cookies";
 
-// Server IDs from OpenCode's internal API (reverse-engineered from CodexBar)
+// Server IDs from Opencode's internal API (reverse-engineered from CodexBar)
 // These may change without notice. If broken, check: https://github.com/steipete/CodexBar
 const WORKSPACE_SERVER_ID =
   "def39973159c7f0483d8793a822b8dbb10d067e12c65455fcb4608459ba0234f";
@@ -11,9 +11,9 @@ const SUBSCRIPTION_SERVER_ID =
 const SERVER_ENDPOINT = "https://opencode.ai/_server";
 
 const CODEXBAR_REPO = "https://github.com/steipete/CodexBar";
-const API_BROKEN_MSG = `OpenCode API may have changed. Check if it's fixed in ${CODEXBAR_REPO}`;
+const API_BROKEN_MSG = `Opencode API may have changed. Check if it's fixed in ${CODEXBAR_REPO}`;
 
-interface OpenCodeUsage {
+interface OpencodeUsage {
   rollingUsagePercent: number;
   weeklyUsagePercent: number;
   rollingResetInSec: number;
@@ -126,7 +126,7 @@ async function fetchUsage(
   session: CookieSession,
   workspaceId: string,
   signal: AbortSignal,
-): Promise<OpenCodeUsage | null> {
+): Promise<OpencodeUsage | null> {
   const referer = `https://opencode.ai/workspace/${workspaceId}/billing`;
 
   // Try GET with query params first (this is what CodexBar does)
@@ -180,7 +180,7 @@ interface UsageWindow {
   resetAt?: number;
 }
 
-function parseUsageResponse(data: unknown): OpenCodeUsage | null {
+function parseUsageResponse(data: unknown): OpencodeUsage | null {
   if (!data || typeof data !== "object") return null;
 
   // Look for usage windows in the response
@@ -218,7 +218,7 @@ function parseUsageResponse(data: unknown): OpenCodeUsage | null {
 }
 
 function normalizePercent(value: number): number {
-  // OpenCode returns percentages directly (1 = 1%, 50 = 50%)
+  // Opencode returns percentages directly (1 = 1%, 50 = 50%)
   // Only convert if value looks like a decimal (e.g., 0.5 for 50%)
   if (value > 0 && value < 1) return value * 100;
   return Math.max(0, Math.min(100, value));
@@ -277,7 +277,7 @@ function findUsageWindows(obj: unknown, depth = 0): UsageWindows {
   return result;
 }
 
-function parseUsageFromText(text: string): OpenCodeUsage | null {
+function parseUsageFromText(text: string): OpencodeUsage | null {
   // Parse the JavaScript-like response format:
   // rollingUsage:$R[1]={status:"ok",resetInSec:15284,usagePercent:1}
   // weeklyUsage:$R[2]={status:"ok",resetInSec:368222,usagePercent:1}
@@ -337,14 +337,14 @@ function parseUsageFromText(text: string): OpenCodeUsage | null {
   };
 }
 
-export async function fetchOpenCodeRateLimits(
+export async function fetchOpencodeRateLimits(
   signal?: AbortSignal,
 ): Promise<ProviderRateLimits> {
-  const session = importOpenCodeCookies();
+  const session = importOpencodeCookies();
 
   if (!session) {
     return {
-      provider: "OpenCode",
+      provider: "Opencode",
       status: "unknown",
       windows: [],
       error: "Not logged in (no cookies in Helium or Safari)",
@@ -354,7 +354,7 @@ export async function fetchOpenCodeRateLimits(
   const timeoutSignal = createTimeoutSignal(10000, signal);
 
   let workspaceId: string | null = null;
-  let usage: OpenCodeUsage | null = null;
+  let usage: OpencodeUsage | null = null;
   let error: string | undefined;
 
   try {
@@ -362,7 +362,7 @@ export async function fetchOpenCodeRateLimits(
 
     if (!workspaceId) {
       return {
-        provider: "OpenCode",
+        provider: "Opencode",
         status: "unknown",
         windows: [],
         error: `Could not fetch workspace. ${API_BROKEN_MSG}`,
@@ -373,7 +373,7 @@ export async function fetchOpenCodeRateLimits(
 
     if (!usage) {
       return {
-        provider: "OpenCode",
+        provider: "Opencode",
         status: "unknown",
         windows: [],
         error: `Could not fetch usage. ${API_BROKEN_MSG}`,
@@ -386,7 +386,7 @@ export async function fetchOpenCodeRateLimits(
       error = `Network error. ${API_BROKEN_MSG}`;
     }
     return {
-      provider: "OpenCode",
+      provider: "Opencode",
       status: "unknown",
       windows: [],
       error,
@@ -416,7 +416,7 @@ export async function fetchOpenCodeRateLimits(
   }
 
   return {
-    provider: "OpenCode",
+    provider: "Opencode",
     status: "operational",
     windows,
   };

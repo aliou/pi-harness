@@ -2,7 +2,7 @@ import type { AuthStorage } from "@mariozechner/pi-coding-agent";
 import type { ProviderRateLimits } from "../types";
 import { fetchClaudeRateLimits } from "./claude";
 import { fetchCodexRateLimits } from "./codex";
-import { fetchOpenCodeRateLimits } from "./opencode";
+import { fetchOpencodeRateLimits } from "./opencode";
 
 export async function fetchAllProviderRateLimits(
   authStorage: AuthStorage,
@@ -11,7 +11,7 @@ export async function fetchAllProviderRateLimits(
   const [claude, codex, opencode] = await Promise.all([
     fetchClaudeRateLimits(authStorage, signal),
     fetchCodexRateLimits(authStorage, signal),
-    fetchOpenCodeRateLimits(signal),
+    fetchOpencodeRateLimits(signal),
   ]);
   return [claude, codex, opencode];
 }

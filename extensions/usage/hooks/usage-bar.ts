@@ -8,7 +8,7 @@ import type {
 import { type Component, truncateToWidth } from "@mariozechner/pi-tui";
 import { fetchClaudeRateLimits } from "../providers/claude";
 import { fetchCodexRateLimits } from "../providers/codex";
-import { fetchOpenCodeRateLimits } from "../providers/opencode";
+import { fetchOpencodeRateLimits } from "../providers/opencode";
 import type { ProviderRateLimits, RateLimitWindow } from "../types";
 
 const WIDGET_ID = "usage-bar";
@@ -18,7 +18,7 @@ type ProviderKey = "anthropic" | "openai-codex" | "opencode";
 const PROVIDER_DISPLAY_NAMES: Record<ProviderKey, string> = {
   anthropic: "Claude",
   "openai-codex": "Codex",
-  opencode: "OpenCode",
+  opencode: "Opencode",
 };
 
 // State
@@ -53,7 +53,7 @@ async function fetchProviderRateLimits(
     case "openai-codex":
       return fetchCodexRateLimits(authStorage, signal);
     case "opencode":
-      return fetchOpenCodeRateLimits(signal);
+      return fetchOpencodeRateLimits(signal);
     default:
       return null;
   }
