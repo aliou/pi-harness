@@ -1,12 +1,12 @@
 /**
- * Save As Plan Command
+ * Save Plan Command
  *
  * Converts the current conversation into a structured implementation plan.
  * The agent figures out everything - name, structure, content.
  *
  * Usage:
- *   /save-as-plan
- *   /save-as-plan focus on the error handling approach we discussed
+ *   /plan:save
+ *   /plan:save focus on the error handling approach we discussed
  */
 
 import type { ExtensionAPI } from "@mariozechner/pi-coding-agent";
@@ -78,7 +78,7 @@ const SAVE_AS_PLAN_PROMPT = `Review our entire conversation thread and create a 
 - Include relevant links to existing patterns in the codebase to follow`;
 
 export function setupSaveAsPlanCommand(pi: ExtensionAPI) {
-  pi.registerCommand("save-as-plan", {
+  pi.registerCommand("plan:save", {
     description: "Create implementation plan from conversation",
     handler: async (args, ctx) => {
       await ctx.waitForIdle();

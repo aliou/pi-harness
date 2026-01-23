@@ -4,7 +4,7 @@
  * Lists available plans, lets user select one, then starts execution.
  *
  * Usage:
- *   /execute-plan
+ *   /plan:execute
  */
 
 import {
@@ -39,7 +39,7 @@ Here is the plan:
 `;
 
 export function setupExecutePlanCommand(pi: ExtensionAPI) {
-  pi.registerCommand("execute-plan", {
+  pi.registerCommand("plan:execute", {
     description: "Select and execute an implementation plan",
     handler: async (_args, ctx) => {
       if (!ctx.hasUI) {
