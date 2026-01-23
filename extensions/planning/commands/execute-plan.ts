@@ -7,7 +7,12 @@
  *   /execute-plan
  */
 
-import type { ExtensionAPI } from "@mariozechner/pi-coding-agent";
+import {
+  DynamicBorder,
+  type ExtensionAPI,
+} from "@mariozechner/pi-coding-agent";
+import { Container, Text } from "@mariozechner/pi-tui";
+import { selectPlan } from "../lib/plan-selector";
 import {
   checkDependencies,
   listPlans,
@@ -53,25 +58,15 @@ export function setupExecutePlanCommand(pi: ExtensionAPI) {
         return;
       }
 
-      // Build selection options: "YYYY-MM-DD: Title"
-      const options = plans.map((p) => `${p.date}: ${p.title}`);
+      const plan = await selectPlan(ctx, plans, "Select a plan to execute");
 
-      // Let user select
-      const selected = await ctx.ui.select(
-        "Select a plan to execute:",
-        options,
-      );
-
-      if (!selected) {
-        ctx.ui.notify("Cancelled", "info");
+      if (!plan) {
         return;
       }
 
-      // Find the selected plan
-      const selectedIndex = options.indexOf(selected);
-      const plan = plans[selectedIndex];
-      if (!plan) {
-        throw new Error("Selected plan not found");
+      const planTitle = plan.title?.trim() || plan.slug || plan.filename;
+      if (planTitle) {
+        pi.setSessionName(planTitle);
       }
 
       // Check dependencies
@@ -91,6 +86,20 @@ export function setupExecutePlanCommand(pi: ExtensionAPI) {
 
       // Update status to in-progress
       await updatePlanStatus(plan.path, "in-progress");
+
+      ctx.ui.setWidget("plan-execution", (_tui, theme) => {
+        const container = new Container();
+        container.addChild(
+          new DynamicBorder((s: string) => theme.fg("muted", s)),
+        );
+        const header = theme.fg(
+          "accent",
+          theme.bold(`Executing Plan: ${planTitle}`),
+        );
+        const pathLine = theme.fg("dim", plan.path);
+        container.addChild(new Text(`${header}\n${pathLine}`, 1, 0));
+        return container;
+      });
 
       // Read the plan
       const planContent = await readPlan(plan.path);
