@@ -134,6 +134,33 @@ Add your required keys to `checkApiKeys()` in `extensions/specialized-subagents/
 - **Final tool calls**: Use `result.toolCalls` if present to decide failure state
 - **Mark tool as failed**: When all internal tools fail, return error so parent agent sees failure
 
+## Notifications
+
+Subagents can emit notifications to alert users. This is useful for long-running subagent tasks or when user attention is needed.
+
+### Emitting Notifications
+
+```typescript
+const NOTIFICATION_EVENT = "ad:notification";
+
+interface NotificationEvent {
+  message: string;
+  sound?: string;
+}
+
+// In execute function, after completion
+pi.events.emit(NOTIFICATION_EVENT, {
+  message: "Research completed",
+  sound: "/System/Library/Sounds/Blow.aiff",
+});
+```
+
+### When to Notify
+
+- Subagent completes a long-running task
+- Subagent encounters errors that need user attention
+- Subagent needs user input (though prefer interactive tools like `ask_user`)
+
 ## Reference
 
 Refer to the scout subagent for complete implementation:

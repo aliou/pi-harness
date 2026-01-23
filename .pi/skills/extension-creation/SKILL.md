@@ -284,7 +284,53 @@ import { Type, Static } from "@sinclair/typebox";
 import { StringEnum } from "@mariozechner/pi-ai";
 ```
 
+## Notifications
+
+Extensions can emit notifications to alert users. The presenter extension handles actual presentation (OSC sequences, sounds).
+
+### Event Channels
+
+| Event | Description |
+|-------|-------------|
+| `ad:terminal-title` | Updates terminal title bar |
+| `ad:notification` | Sends system notification with optional sound |
+
+### Emitting Notifications
+
+```typescript
+// Define event interface (duplicated for decoupling)
+const NOTIFICATION_EVENT = "ad:notification";
+
+interface NotificationEvent {
+  message: string;
+  sound?: string;  // Path to .aiff file (macOS)
+}
+
+function emitNotification(pi: ExtensionAPI, message: string, sound?: string) {
+  const event: NotificationEvent = { message, sound };
+  pi.events.emit(NOTIFICATION_EVENT, event);
+}
+
+// Usage
+emitNotification(pi, "Task completed", "/System/Library/Sounds/Blow.aiff");
+```
+
+### Common Sounds (macOS)
+
+```
+/System/Library/Sounds/Blow.aiff    # Default notification
+/System/Library/Sounds/Ping.aiff    # Attention/alert
+/System/Library/Sounds/Glass.aiff   # Success
+```
+
+### When to Notify
+
+- User attention required (e.g., dangerous command confirmation)
+- Long-running task completed
+- Errors that need user intervention
+
 ## References
 
 - [extensions/meta/](../../extensions/meta/) - Simple extension with multiple tools
 - [extensions/processes/](../../extensions/processes/) - Complex extension with tools, hooks, commands, and state management
+- [extensions/presenter/](../../extensions/presenter/) - Notification presentation (OSC, sounds)
