@@ -13,6 +13,7 @@ const WARNING_THRESHOLD = 80;
 const ERROR_THRESHOLD = 90;
 const CRITICAL_THRESHOLD = 100;
 const MIN_PACE_PERCENT = 5;
+const END_WINDOW_SUPPRESS_THRESHOLD = 90;
 
 type ProviderKey = "anthropic" | "openai-codex";
 
@@ -125,6 +126,14 @@ function findNewHighUsageWindows(
       pacePercent,
     );
     if (projectedPercent < WARNING_THRESHOLD) return [];
+    if (
+      pacePercent !== null &&
+      pacePercent !== undefined &&
+      pacePercent >= END_WINDOW_SUPPRESS_THRESHOLD &&
+      projectedPercent < CRITICAL_THRESHOLD
+    ) {
+      return [];
+    }
     if (skipAlreadyWarned) {
       const key = getWindowKey(limits.provider, window.label);
       if (warnedWindows.has(key)) return [];
