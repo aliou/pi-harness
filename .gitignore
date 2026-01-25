@@ -5,3 +5,4 @@ tmp/
 *.tsbuildinfo
 .DS_Store
 .osgrep
+.agent/
