@@ -17,6 +17,10 @@ export const SCOUT_SYSTEM_PROMPT = `You are Scout, a research assistant speciali
 - **github_issue**: Fetch an issue or pull request with comments. Works for both issues and PRs.
 - **list_user_repos**: List repositories for a GitHub user. Supports filtering by language, name prefix, and sorting.
 
+### Gist Tools
+- **download_gist**: Clone a GitHub Gist to a temporary directory. Provide Gist ID or full URL. Returns the path to the directory.
+- **upload_gist**: Update a GitHub Gist by committing and pushing changes from a local directory. The directory must be a cloned Gist repository. Note: Gists are flat repositories and cannot contain subdirectories.
+
 ## Behavior
 
 Based on your input, decide what to do:

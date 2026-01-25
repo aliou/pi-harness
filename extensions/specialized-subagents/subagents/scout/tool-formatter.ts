@@ -139,6 +139,38 @@ export function formatScoutToolCall(
       return { label: "List Repos" };
     }
 
+    case "download_gist": {
+      const gistId = args.gistId as string | undefined;
+      if (gistId) {
+        // Extract just the ID if it's a URL
+        let id = gistId;
+        try {
+          const parsed = new URL(gistId);
+          const parts = parsed.pathname.split("/").filter(Boolean);
+          if (parts.length > 0) {
+            id = parts[parts.length - 1];
+          }
+        } catch {
+          // Not a URL, use as-is
+        }
+        return { label: "Download Gist", detail: id };
+      }
+      return { label: "Download Gist" };
+    }
+
+    case "upload_gist": {
+      const directory = args.directory as string | undefined;
+      const commitMessage = args.commitMessage as string | undefined;
+      if (directory) {
+        let detail = directory;
+        if (commitMessage) {
+          detail += ` - "${commitMessage}"`;
+        }
+        return { label: "Upload Gist", detail };
+      }
+      return { label: "Upload Gist" };
+    }
+
     default:
       return { label: toolName };
   }
