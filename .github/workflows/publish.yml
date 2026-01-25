@@ -17,6 +17,7 @@ jobs:
       contents: write
       packages: write
       pull-requests: write
+      id-token: write
 
     steps:
       - name: Checkout
@@ -75,7 +76,6 @@ jobs:
           commit: ${{ steps.release-info.outputs.commit || 'Version Packages' }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
       - name: Create GitHub releases
         if: steps.changesets.outputs.published == 'true'
