@@ -18,4 +18,9 @@ import { createAskUserTool } from "./tools/ask-user";
 export default function (pi: ExtensionAPI) {
   setupPlanningCommands(pi);
   pi.registerTool(createAskUserTool(pi));
+
+  // Clear plan execution widget when switching sessions
+  pi.on("session_before_switch", async (_event, ctx) => {
+    ctx.ui.setWidget("plan-execution", undefined);
+  });
 }
