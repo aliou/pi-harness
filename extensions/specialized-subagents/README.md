@@ -29,6 +29,8 @@ The extension will fail to load if any required variables are missing.
 | Scout | Web research and GitHub codebase exploration. Fetches URLs, searches the web, explores repositories (code, commits, issues, PRs). | `LINKUP_API_KEY`, `EXA_API_KEY`, `SCOUT_GITHUB_TOKEN` |
 | Lookout | Local codebase search by functionality/concept. Uses osgrep for semantic search + grep/find for exact matches. | [osgrep](https://github.com/Ryandonofrio3/osgrep) |
 | Oracle | AI advisor powered by GPT-5 for complex reasoning, code reviews, architecture planning, and debugging. | None |
+| Reviewer | Code review agent that analyzes diffs and returns structured feedback. Parses diff descriptions, focuses on security/performance/style, and flags issues with priority levels. | None |
+| Jester | Quick, playful, high-variance answers from training data only. No tools, no browsing. For brainstorming and creative responses. | None |
 
 ## Standalone Tools
 
