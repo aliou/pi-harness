@@ -10,8 +10,8 @@ Publish a single extension from this repo as `@aliou/pi-<name>` using the change
 ## Preconditions
 - The extension has its own `package.json` in `extensions/<name>/`.
 - Root changesets config exists at `.changeset/config.json`.
-- GitHub Actions publish workflow exists (uses `changesets/action@v1`).
-- `NPM_TOKEN` secret is configured in GitHub with publish rights for `@aliou`.
+- GitHub Actions publish workflow exists (uses `changesets/action@v1` with OIDC).
+- npm trusted publisher configured for the package (repo: `aliou/pi-extensions`, workflow: `publish.yml`).
 
 ## Documentation requirements
 
@@ -31,16 +31,34 @@ Before publishing, ensure:
 
 ## Package.json requirements (extensions/<name>/package.json)
 - `name`: `@aliou/pi-<name>`
-- `version`: semantic version
+- `version`: start at `0.0.1` (first minor changeset publishes as 0.1.0)
 - `type`: `module`
+- `private`: `false`
 - `publishConfig.access`: `public`
 - `keywords`: include `pi-package`
-- `pi` field with entry points, for example:
+- `repository`: required for npm provenance
 
 ```json
 {
+  "name": "@aliou/pi-<name>",
+  "version": "0.0.1",
+  "type": "module",
+  "private": false,
+  "keywords": ["pi-package", "pi-extension", "pi", "<name>"],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/aliou/pi-extensions"
+  },
   "pi": {
     "extensions": ["./index.ts"]
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "files": ["*.ts", "<subdirs>", "README.md"],
+  "peerDependencies": {
+    "@mariozechner/pi-coding-agent": ">=0.49.0",
+    "@mariozechner/pi-tui": ">=0.49.0"
   }
 }
 ```
@@ -50,7 +68,11 @@ Do not publish `@aliou/tui-utils`. Vendor it into the final published output dur
 
 ## Create a changeset
 1. Run `pnpm changeset`.
-2. Select the package to version and choose the bump type.
+2. Select the package to version and choose the bump type:
+   - First publish: use `minor` (0.0.1 → 0.1.0)
+   - Bug fixes: use `patch`
+   - New features: use `minor`
+   - Breaking changes: use `major`
 3. Write a short summary.
 4. Commit the changeset and related code changes.
 
@@ -59,6 +81,19 @@ Do not publish `@aliou/tui-utils`. Vendor it into the final published output dur
 2. CI runs `pnpm changeset version` and `pnpm changeset publish`.
 3. Tags are created as `pi-<name>@x.y.z`.
 4. GitHub release is created for each tag.
+
+## First-time npm trusted publisher setup
+For new packages, npm trusted publishers require the package to exist first:
+1. Create a minimal placeholder package locally:
+   ```bash
+   mkdir /tmp/pi-<name>-init && cd /tmp/pi-<name>-init
+   echo '{"name":"@aliou/pi-<name>","version":"0.0.0","publishConfig":{"access":"public"}}' > package.json
+   npm publish --access public --otp=<code>
+   ```
+2. Configure trusted publisher on npmjs.com:
+   - Go to package settings → Trusted Publisher
+   - Add GitHub Actions: `aliou/pi-extensions`, workflow `publish.yml`
+3. Now CI can publish subsequent versions via OIDC.
 
 ## Local validation
 - `pnpm changeset version` to verify version bumps.
