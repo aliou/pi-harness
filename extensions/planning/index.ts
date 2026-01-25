@@ -4,8 +4,8 @@
  * Commands for creating and executing implementation plans.
  *
  * Commands:
- * - /save-as-plan [instructions] - Create plan from conversation
- * - /execute-plan - Select and execute a plan
+ * - /plan:save [instructions] - Create plan from conversation
+ * - /plan:execute - Select and execute a plan
  *
  * Tools:
  * - ask_user - Gather user input through structured multiple-choice questions
