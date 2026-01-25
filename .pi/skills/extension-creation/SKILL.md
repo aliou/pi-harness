@@ -32,7 +32,14 @@ extensions/<name>/
 ## Documentation
 
 - Add a **Requirements** section in the extension README when tools depend on external binaries, permissions, system services, or environment setup.
-- Update the root `README.md` extensions table to reflect those requirements.
+- Update the root `README.md` to include the extension in the appropriate section:
+  - **UX**: interaction experience improvements
+  - **Safety**: mistake prevention
+  - **Context Engineering**: agent reasoning and planning
+  - **Monitoring**: session health and API usage
+  - **Tools**: custom tools for external automation
+  - **Introspection**: understanding Pi itself
+- Root README format: `### [name](extensions/name/)` header, short description paragraph, optional `[npm](url)` link if published.
 
 ## Entry Point
 
@@ -266,6 +273,33 @@ export function setupXxxCommands(pi: ExtensionAPI) {
 
 Short description.
 
+## Installation
+
+Install via the pi-extensions package:
+
+\`\`\`bash
+pi install git:github.com/aliou/pi-extensions
+\`\`\`
+
+Or selectively in your `settings.json`:
+
+\`\`\`json
+{
+  "packages": [
+    {
+      "source": "git:github.com/aliou/pi-extensions",
+      "extensions": ["extensions/<name>"]
+    }
+  ]
+}
+\`\`\`
+
+If published to npm, also include:
+
+\`\`\`bash
+pi install npm:@aliou/pi-<name>
+\`\`\`
+
 ## Features
 
 - **Tool**: `tool_name` - what it does
@@ -298,7 +332,7 @@ Run `/command` to open panel.
 6. Add hooks in `hooks/` if needed (cleanup, events)
 7. Add commands in `commands/` if interactive UI needed
 8. Create `README.md`
-9. Update root `README.md` to list the new extension and link to its README
+9. Update root `README.md` to add the extension under the appropriate section (UX, Safety, Context Engineering, Monitoring, Tools, or Introspection)
 10. Run `pnpm typecheck` to verify
 
 ## Key Imports
