@@ -41,13 +41,38 @@ jobs:
       - name: Build processes dist
         run: pnpm --filter @aliou/pi-processes build
 
+      - name: Get release info
+        id: release-info
+        run: |
+          pnpm changeset status --output=release.json 2>/dev/null || echo '{"releases":[]}' > release.json
+          node <<NODE
+          const fs = require('fs');
+          const release = JSON.parse(fs.readFileSync('release.json', 'utf8'));
+          const releases = release.releases?.filter(r => r.type !== 'none') || [];
+
+          let title = 'Version Packages';
+          if (releases.length === 1) {
+            const { name, newVersion } = releases[0];
+            title = 'Updating ' + name + ' to version ' + newVersion;
+          } else if (releases.length > 1) {
+            const summary = releases.map(r => r.name + '@' + r.newVersion).join(', ');
+            title = 'Updating ' + summary;
+          }
+
+          fs.appendFileSync(process.env.GITHUB_OUTPUT, 'title=' + title + '\n');
+          fs.appendFileSync(process.env.GITHUB_OUTPUT, 'commit=' + title + '\n');
+          NODE
+          rm -f release.json
+        continue-on-error: true
+
       - name: Create Release PR or Publish
         id: changesets
         uses: changesets/action@v1
         with:
           version: pnpm changeset version
           publish: pnpm changeset publish
-          title: "Release packages"
+          title: ${{ steps.release-info.outputs.title || 'Version Packages' }}
+          commit: ${{ steps.release-info.outputs.commit || 'Version Packages' }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
