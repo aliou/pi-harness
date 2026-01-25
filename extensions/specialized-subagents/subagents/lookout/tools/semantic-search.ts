@@ -50,6 +50,31 @@ function needsIndexing(cwd: string): boolean {
 }
 
 /**
+ * Check if index is stale (not modified in 3 days) and needs full reset.
+ * Checks the lancedb _versions directory which always gets touched during indexing.
+ */
+function needsResetIndexing(cwd: string): boolean {
+  const versionsDir = path.join(
+    cwd,
+    ".osgrep",
+    "lancedb",
+    "chunks.lance",
+    "_versions",
+  );
+  if (!fs.existsSync(versionsDir)) {
+    return false; // doesn't exist, not stale
+  }
+
+  try {
+    const stats = fs.statSync(versionsDir);
+    const threeDaysAgo = Date.now() - 3 * 24 * 60 * 60 * 1000;
+    return stats.mtimeMs < threeDaysAgo;
+  } catch {
+    return false;
+  }
+}
+
+/**
  * Parse osgrep stderr output to extract indexing progress.
  */
 function parseIndexingProgress(text: string): IndexingProgress | null {
@@ -101,9 +126,14 @@ async function runOsgrepIndex(
   cwd: string,
   onProgress: (progress: IndexingProgress) => void,
   signal?: AbortSignal,
+  reset?: boolean,
 ): Promise<void> {
   return new Promise((resolve, reject) => {
-    const child = spawn("osgrep", ["index", "--verbose"], {
+    const args = ["index", "--verbose"];
+    if (reset) {
+      args.push("--reset");
+    }
+    const child = spawn("osgrep", args, {
       cwd,
       stdio: ["pipe", "pipe", "pipe"],
     });
@@ -170,7 +200,7 @@ async function runOsgrepSearch(
   return new Promise((resolve, reject) => {
     const child = spawn(
       "osgrep",
-      [query, "-m", String(maxResults), "--plain"],
+      [query, "-m", String(maxResults), "--plain", "--sync"],
       {
         cwd,
         stdio: ["pipe", "pipe", "pipe"],
@@ -240,11 +270,17 @@ Returns file paths, line ranges, roles (ORCHESTRATION = logic, DEFINITION = type
       const { query, maxResults = 10 } = args as SemanticSearchParams;
 
       try {
-        // Pre-flight check: does index exist?
-        if (needsIndexing(cwd)) {
+        // Check if index is stale (>3 days old) and needs full reset
+        const needsReset = needsResetIndexing(cwd);
+        const needsInit = needsIndexing(cwd);
+
+        if (needsInit || needsReset) {
           // Update UI to show indexing status
+          const message = needsReset
+            ? "Index stale (>3 days), re-indexing from scratch..."
+            : "Indexing repository...";
           onUpdate?.({
-            content: [{ type: "text", text: "Indexing repository..." }],
+            content: [{ type: "text", text: message }],
             details: undefined,
           });
 
@@ -252,7 +288,7 @@ Returns file paths, line ranges, roles (ORCHESTRATION = logic, DEFINITION = type
           await runOsgrepIndex(
             cwd,
             (progress) => {
-              const message =
+              const progressMessage =
                 progress.status === "complete"
                   ? `Indexing complete (${progress.filesProcessed} files)`
                   : progress.currentFile
@@ -260,11 +296,12 @@ Returns file paths, line ranges, roles (ORCHESTRATION = logic, DEFINITION = type
                     : "Indexing...";
 
               onUpdate?.({
-                content: [{ type: "text", text: message }],
+                content: [{ type: "text", text: progressMessage }],
                 details: undefined,
               });
             },
             signal,
+            needsReset,
           );
         }
 
