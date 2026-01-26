@@ -48,8 +48,9 @@ Use the \`lookout\` tool to find code by functionality or concept in the local c
 - Understand code flow: "How does the auth flow work?"
 
 **When NOT to use:**
-- Known file path -> use \`read\` directly
+- Known file path or existing doc/plan -> use \`read\` directly
 - Simple exact string search -> use \`grep\` directly
+- Planning, strategy, or request for an implementation plan -> use \`oracle\`
 - External/web research -> use \`scout\` instead
 
 **Example:**
