@@ -8,8 +8,8 @@ import {
 import type { ExtensionContext } from "@mariozechner/pi-coding-agent";
 
 const TITLE_MODEL = {
-  provider: "google",
-  model: "gemini-2.5-flash-lite",
+  provider: "openrouter",
+  model: "google/gemini-2.5-flash-lite",
 } as const;
 
 const TITLE_PROMPT = `Generate a short title (3-7 words, sentence case) for this coding session based on the user's message. Be concise and capture the main intent. Use common software engineering terms and acronyms when helpful. Do not assume intent beyond what's stated. Output only the title, nothing else.`;
@@ -19,10 +19,16 @@ export async function generateTitle(
   ctx: ExtensionContext,
 ): Promise<string | null> {
   const model = getModel(TITLE_MODEL.provider, TITLE_MODEL.model);
-  if (!model) return null;
+  if (!model) {
+    throw new Error(
+      `Model not found: ${TITLE_MODEL.provider}/${TITLE_MODEL.model}`,
+    );
+  }
 
   const apiKey = await ctx.modelRegistry.getApiKey(model);
-  if (!apiKey) return null;
+  if (!apiKey) {
+    throw new Error(`No API key for provider: ${TITLE_MODEL.provider}`);
+  }
 
   const messages: Message[] = [
     {

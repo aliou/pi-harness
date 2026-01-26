@@ -39,9 +39,12 @@ export function setupSessionNameHook(pi: ExtensionAPI) {
       if (title) {
         pi.setSessionName(title);
         ctx.ui.notify(`Session: ${title}`, "info");
+      } else {
+        ctx.ui.notify("Failed to generate session title", "error");
       }
-    } catch {
-      // Silent failure - title generation is optional
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Unknown error";
+      ctx.ui.notify(`Title generation error: ${message}`, "error");
     }
 
     state.hasAutoNamed = true;
