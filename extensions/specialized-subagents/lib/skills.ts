@@ -1,4 +1,4 @@
-import { discoverSkills, type Skill } from "@mariozechner/pi-coding-agent";
+import { loadSkills, type Skill } from "@mariozechner/pi-coding-agent";
 
 export interface ResolveSkillsResult {
   /** Successfully resolved skills */
@@ -22,7 +22,7 @@ export function resolveSkillsByName(
   cwd: string,
 ): ResolveSkillsResult {
   // Discover all available skills from standard locations
-  const { skills: allSkills } = discoverSkills(cwd);
+  const { skills: allSkills } = loadSkills({ cwd });
 
   const found: Skill[] = [];
   const notFound: string[] = [];

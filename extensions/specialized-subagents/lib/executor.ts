@@ -9,7 +9,10 @@ import type { AssistantMessage } from "@mariozechner/pi-ai";
 import type { ExtensionContext } from "@mariozechner/pi-coding-agent";
 import {
   createAgentSession,
+  DefaultResourceLoader,
+  getAgentDir,
   SessionManager,
+  SettingsManager,
 } from "@mariozechner/pi-coding-agent";
 import { createRunLogger, generateRunId, type RunLogger } from "./logging";
 import type {
@@ -59,17 +62,34 @@ export async function executeSubagent(
     runId = generateRunId(config.name);
   }
 
+  const agentDir = getAgentDir();
+  const settingsManager = SettingsManager.create(ctx.cwd, agentDir);
+  const resourceLoader = new DefaultResourceLoader({
+    cwd: ctx.cwd,
+    agentDir,
+    settingsManager,
+    noExtensions: true,
+    noPromptTemplates: true,
+    noThemes: true,
+    noSkills: true,
+    systemPromptOverride: () => config.systemPrompt,
+    appendSystemPromptOverride: () => [],
+    agentsFilesOverride: () => ({ agentsFiles: [] }),
+    skillsOverride: () => ({
+      skills: config.skills ?? [],
+      diagnostics: [],
+    }),
+  });
+  await resourceLoader.reload();
+
   const { session } = await createAgentSession({
     model: config.model,
-    systemPrompt: config.systemPrompt,
     tools: config.tools ?? [],
     customTools: config.customTools ?? [],
-    skills: config.skills ?? [],
     sessionManager: SessionManager.inMemory(),
     thinkingLevel: config.thinkingLevel ?? "low",
     modelRegistry: ctx.modelRegistry,
-    // Disable discovery - subagents shouldn't run user extensions
-    extensions: [],
+    resourceLoader,
   });
 
   let accumulated = "";
