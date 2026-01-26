@@ -1,5 +1,7 @@
 # Jellybeans Theme
 
+[![npm version](https://img.shields.io/npm/v/@aliou/pi-theme-jellybeans)](https://www.npmjs.com/package/@aliou/pi-theme-jellybeans)
+
 Pi theme package for Jellybeans mono variants.
 
 ## Previews
