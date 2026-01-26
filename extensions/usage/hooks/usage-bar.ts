@@ -26,6 +26,7 @@ const PROVIDER_DISPLAY_NAMES: Record<ProviderKey, string> = {
 let cachedLimits: ProviderRateLimits | null = null;
 let cachedProviderKey: ProviderKey | null = null;
 let refreshInterval: ReturnType<typeof setInterval> | null = null;
+let widgetVisible = true;
 
 /**
  * Maps a model provider to the rate limit provider key.
@@ -400,10 +401,24 @@ class UsageBarWidget implements Component {
 }
 
 /**
+ * Toggles the widget visibility.
+ */
+export function toggleWidgetVisibility(ctx: ExtensionContext): boolean {
+  widgetVisible = !widgetVisible;
+  updateWidget(ctx);
+  return widgetVisible;
+}
+
+/**
  * Updates the widget display.
  */
 function updateWidget(ctx: ExtensionContext): void {
   if (!ctx.hasUI) {
+    return;
+  }
+
+  if (!widgetVisible) {
+    ctx.ui.setWidget(WIDGET_ID, undefined);
     return;
   }
 
