@@ -18,9 +18,13 @@ extensions/<name>/
 ├── commands/          # Optional
 │   ├── index.ts       # Hub: exports register function
 │   └── <command>.ts   # Individual command definitions
-├── constants.ts       # Optional: shared constants
-├── manager.ts         # Optional: state management class
-└── utils.ts           # Optional: shared utilities
+├── constants/         # Optional: shared types and constants
+│   ├── index.ts       # Barrel exports
+│   └── types.ts       # Type definitions and constants
+├── utils/             # Optional: shared utilities
+│   ├── index.ts       # Barrel exports
+│   └── <util>.ts      # Utility functions
+└── manager.ts         # Optional: state management class
 ```
 
 ## Entry Point
