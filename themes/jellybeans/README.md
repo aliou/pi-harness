@@ -6,13 +6,13 @@ Pi theme package for Jellybeans mono variants.
 
 Dark:
 
-[![Jellybeans Mono (Dark)](https://assets.aliou.me/pi-extensions/jellybeans-mono.png)](https://assets.aliou.me/pi-extensions/jellybeans-mono.png)
+[![Jellybeans Mono (Dark)](https://assets.aliou.me/pi-extensions/2026-01-26-jellybeans-mono.png)](https://assets.aliou.me/pi-extensions/2026-01-26-jellybeans-mono.png)
 
 Export preview: https://buildwithpi.ai/session/#5767748149f3ec673145a4aabcb74400
 
 Light:
 
-[![Jellybeans Mono (Light)](https://assets.aliou.me/pi-extensions/jellybeans-mono-light.png)](https://assets.aliou.me/pi-extensions/jellybeans-mono-light.png)
+[![Jellybeans Mono (Light)](https://assets.aliou.me/pi-extensions/2026-01-26-jellybeans-mono-light.png)](https://assets.aliou.me/pi-extensions/2026-01-26-jellybeans-mono-light.png)
 
 Export preview: https://buildwithpi.ai/session/#ea67a1e2dea7211d66879805fc5abe19
 
