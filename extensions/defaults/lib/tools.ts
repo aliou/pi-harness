@@ -2,6 +2,7 @@ import { lstat } from "node:fs/promises";
 import { resolve } from "node:path";
 import type { ExtensionAPI } from "@mariozechner/pi-coding-agent";
 import { createLsTool, createReadTool } from "@mariozechner/pi-coding-agent";
+import { setupGetCurrentTimeTool } from "../tools/get-current-time";
 
 /**
  * Register tool overrides for the defaults extension.
@@ -50,4 +51,6 @@ export function setupTools(pi: ExtensionAPI): void {
       );
     },
   });
+
+  setupGetCurrentTimeTool(pi);
 }
