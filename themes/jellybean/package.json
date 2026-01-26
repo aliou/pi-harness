@@ -1,0 +1,29 @@
+{
+  "name": "@aliou/pi-theme-jellybeans",
+  "version": "0.0.1",
+  "type": "module",
+  "private": false,
+  "keywords": [
+    "pi-package",
+    "pi-theme",
+    "pi",
+    "jellybeans"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/aliou/pi-extensions"
+  },
+  "pi": {
+    "themes": [
+      "./jellybeans-mono.json",
+      "./jellybeans-mono-light.json"
+    ]
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "files": [
+    "*.json",
+    "README.md"
+  ]
+}
