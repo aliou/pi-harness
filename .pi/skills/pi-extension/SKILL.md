@@ -7,6 +7,8 @@ description: Create, update, and publish Pi extensions. Use when working on exte
 
 Manage Pi extensions in the `extensions/` directory of this monorepo.
 
+**Important**: All packages in this repository are published under the `@aliou` scope, not `@anthropic` or `@anthropic-ai`.
+
 ## Workflow
 
 1. **Creating a new extension**: Read `refs/structure.md` first, then the relevant component refs

@@ -2,6 +2,8 @@
 
 This repository hosts custom extensions for [Pi](https://github.com/mariozechner/pi-coding-agent), a coding agent.
 
+All packages in this repository are published under the `@aliou` scope, not `@anthropic` or `@anthropic-ai`.
+
 ## Structure
 
 - `extensions/` - Custom Pi extensions
