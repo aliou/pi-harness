@@ -139,6 +139,16 @@ export function formatScoutToolCall(
       return { label: "List Repos" };
     }
 
+    case "download_gist": {
+      const gist = args.gist as string | undefined;
+      return { label: "Download Gist", detail: gist };
+    }
+
+    case "upload_gist": {
+      const gist = args.gist as string | undefined;
+      return { label: "Upload Gist", detail: gist };
+    }
+
     default:
       return { label: toolName };
   }
