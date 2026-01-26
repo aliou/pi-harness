@@ -5,3 +5,5 @@ tmp/
 *.tsbuildinfo
 .DS_Store
 .osgrep
+
+pi-*.html
