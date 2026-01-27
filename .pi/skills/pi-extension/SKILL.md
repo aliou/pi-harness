@@ -12,13 +12,14 @@ Manage Pi extensions in the `extensions/` directory of this monorepo.
 ## Workflow
 
 1. **Creating a new extension**: Read `references/structure.md` first, then the relevant component references
-2. **Adding/modifying tools**: Read `references/tools.md`
-3. **Adding hooks**: Read `references/hooks.md`
-4. **Adding interactive commands**: Read `references/commands.md`
-5. **Adding reusable TUI components**: Read `references/components.md`
-6. **Writing documentation**: Read `references/documentation.md`
-7. **Testing manually**: Read `references/testing.md`
-8. **Publishing to npm**: Read `references/publish.md`
+2. **Adding custom providers**: Read `references/providers.md`
+3. **Adding/modifying tools**: Read `references/tools.md`
+4. **Adding hooks**: Read `references/hooks.md`
+5. **Adding interactive commands**: Read `references/commands.md`
+6. **Adding reusable TUI components**: Read `references/components.md`
+7. **Writing documentation**: Read `references/documentation.md`
+8. **Testing manually**: Read `references/testing.md`
+9. **Publishing to npm**: Read `references/publish.md`
 
 ## Key Imports
 
