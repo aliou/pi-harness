@@ -14,6 +14,7 @@ import type { ExtensionAPI } from "@mariozechner/pi-coding-agent";
 // Event channels (duplicated from source hooks for decoupling)
 const TERMINAL_TITLE_EVENT = "ad:terminal-title";
 const NOTIFICATION_EVENT = "ad:notification";
+const GUARDRAILS_DANGEROUS_EVENT = "guardrails:dangerous";
 
 interface TerminalTitleEvent {
   title: string;
@@ -22,6 +23,12 @@ interface TerminalTitleEvent {
 interface NotificationEvent {
   message: string;
   sound?: string;
+}
+
+interface GuardrailsDangerousEvent {
+  command: string;
+  description: string;
+  pattern: string;
 }
 
 /**
@@ -93,5 +100,15 @@ export default function (pi: ExtensionAPI) {
     if (event.sound) {
       playSound(event.sound);
     }
+  });
+
+  // Subscribe to guardrails dangerous command events
+  pi.events.on(GUARDRAILS_DANGEROUS_EVENT, (data: unknown) => {
+    if (!hasUI) return;
+
+    const event = data as GuardrailsDangerousEvent;
+    const message = `Dangerous command detected: ${event.description}`;
+    sendSystemNotification(message);
+    playSound("/System/Library/Sounds/Ping.aiff");
   });
 }
