@@ -11,13 +11,14 @@ Manage Pi extensions in the `extensions/` directory of this monorepo.
 
 ## Workflow
 
-1. **Creating a new extension**: Read `refs/structure.md` first, then the relevant component refs
-2. **Adding/modifying tools**: Read `refs/tools.md`
-3. **Adding hooks**: Read `refs/hooks.md`
-4. **Adding interactive commands**: Read `refs/commands.md`
-5. **Adding reusable TUI components**: Read `refs/components.md`
-6. **Writing documentation**: Read `refs/documentation.md`
-7. **Publishing to npm**: Read `refs/publish.md`
+1. **Creating a new extension**: Read `references/structure.md` first, then the relevant component references
+2. **Adding/modifying tools**: Read `references/tools.md`
+3. **Adding hooks**: Read `references/hooks.md`
+4. **Adding interactive commands**: Read `references/commands.md`
+5. **Adding reusable TUI components**: Read `references/components.md`
+6. **Writing documentation**: Read `references/documentation.md`
+7. **Testing manually**: Read `references/testing.md`
+8. **Publishing to npm**: Read `references/publish.md`
 
 ## Key Imports
 
@@ -49,11 +50,12 @@ import { StringEnum } from "@mariozechner/pi-ai";
 
 ## Checklist
 
-- [ ] Create directory structure (`refs/structure.md`)
-- [ ] Implement tools (`refs/tools.md`)
-- [ ] Add hooks if needed (`refs/hooks.md`)
-- [ ] Add commands if needed (`refs/commands.md`)
-- [ ] Write extension README (`refs/documentation.md`)
-- [ ] Update root README (`refs/documentation.md`)
+- [ ] Create directory structure (`references/structure.md`)
+- [ ] Implement tools (`references/tools.md`)
+- [ ] Add hooks if needed (`references/hooks.md`)
+- [ ] Add commands if needed (`references/commands.md`)
+- [ ] Write extension README (`references/documentation.md`)
+- [ ] Update root README (`references/documentation.md`)
 - [ ] Run `pnpm typecheck`
-- [ ] Create package.json if publishing (`refs/publish.md`)
+- [ ] Create test scenarios (`references/testing.md`)
+- [ ] Create package.json if publishing (`references/publish.md`)
