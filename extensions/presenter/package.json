@@ -1,4 +1,6 @@
 {
+  "name": "@aliou/pi-presenter",
+  "private": true,
   "pi": {
     "extensions": [
       "./index.ts"
