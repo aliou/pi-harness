@@ -2,7 +2,7 @@
   "name": "@aliou/pi-custom-providers",
   "version": "0.1.0",
   "type": "module",
-  "private": false,
+  "private": true,
   "keywords": [
     "pi-package",
     "pi-extension",
