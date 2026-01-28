@@ -50,6 +50,20 @@
 
           pre-commit.settings.hooks = {
             treefmt.enable = true;
+            biome-check = {
+              enable = true;
+              name = "biome check";
+              entry = "${pkgs.biome}/bin/biome check --write";
+              files = "\\.(ts|tsx|json)$";
+              pass_filenames = false;
+            };
+            typecheck = {
+              enable = true;
+              name = "typecheck";
+              entry = "${pkgs.pnpm_10}/bin/pnpm run typecheck";
+              files = "\\.tsx?$";
+              pass_filenames = false;
+            };
           };
 
           devShells.default = pkgs.mkShell {
