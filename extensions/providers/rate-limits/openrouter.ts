@@ -127,15 +127,9 @@ export async function fetchOpenRouterRateLimits(
         const data =
           (payload.data as Record<string, unknown> | undefined) ?? payload;
         const limit = toNumber(data.limit);
-        const usageDaily = getUsageValue(data, "usage_daily");
-        const usageWeekly = getUsageValue(data, "usage_weekly");
-        const usageMonthly = getUsageValue(data, "usage_monthly");
+        const limitReset = data.limit_reset as string | undefined;
 
-        if (
-          usageDaily === null &&
-          usageWeekly === null &&
-          usageMonthly === null
-        ) {
+        if (!limitReset) {
           return {
             provider: providerName,
             status: "unknown",
@@ -149,31 +143,38 @@ export async function fetchOpenRouterRateLimits(
         }
 
         const now = new Date();
-        const dailyWindow = buildWindow(
-          "Daily window",
-          usageDaily,
-          limit,
-          getNextUtcDayBoundary(now),
-          24 * 60 * 60,
-        );
-        const weeklyWindow = buildWindow(
-          "Weekly window",
-          usageWeekly,
-          limit,
-          getNextUtcWeekBoundary(now),
-          7 * 24 * 60 * 60,
-        );
-        const monthlyWindow = buildWindow(
-          "Monthly window",
-          usageMonthly,
-          limit,
-          getNextUtcMonthBoundary(now),
-          getMonthWindowSeconds(now),
-        );
+        let window: RateLimitWindow | null = null;
 
-        windows = [dailyWindow, weeklyWindow, monthlyWindow].filter(
-          (window): window is RateLimitWindow => window !== null,
-        );
+        if (limitReset === "daily") {
+          const usage = getUsageValue(data, "usage_daily");
+          window = buildWindow(
+            "Daily window",
+            usage,
+            limit,
+            getNextUtcDayBoundary(now),
+            24 * 60 * 60,
+          );
+        } else if (limitReset === "weekly") {
+          const usage = getUsageValue(data, "usage_weekly");
+          window = buildWindow(
+            "Weekly window",
+            usage,
+            limit,
+            getNextUtcWeekBoundary(now),
+            7 * 24 * 60 * 60,
+          );
+        } else if (limitReset === "monthly") {
+          const usage = getUsageValue(data, "usage_monthly");
+          window = buildWindow(
+            "Monthly window",
+            usage,
+            limit,
+            getNextUtcMonthBoundary(now),
+            getMonthWindowSeconds(now),
+          );
+        }
+
+        windows = window ? [window] : [];
       } catch {
         error = "Invalid response";
       }
