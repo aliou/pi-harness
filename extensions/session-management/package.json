@@ -1,0 +1,9 @@
+{
+  "name": "@aliou/pi-session-management",
+  "private": true,
+  "pi": {
+    "extensions": [
+      "./index.ts"
+    ]
+  }
+}

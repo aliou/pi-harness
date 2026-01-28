@@ -1,0 +1,9 @@
+{
+  "name": "@aliou/pi-specialized-subagents",
+  "private": true,
+  "pi": {
+    "extensions": [
+      "./index.ts"
+    ]
+  }
+}

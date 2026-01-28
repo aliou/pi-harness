@@ -1,0 +1,9 @@
+{
+  "name": "@aliou/pi-defaults",
+  "private": true,
+  "pi": {
+    "extensions": [
+      "./index.ts"
+    ]
+  }
+}
