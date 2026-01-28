@@ -104,6 +104,47 @@ export interface GitHubComment {
   updated_at: string;
 }
 
+/** GitHub PR review comment (inline on code) */
+export interface GitHubReviewComment {
+  id: number;
+  body: string;
+  user: GitHubUser;
+  path: string;
+  line: number | null;
+  original_line: number | null;
+  side: "LEFT" | "RIGHT";
+  diff_hunk: string;
+  created_at: string;
+  updated_at: string;
+  in_reply_to_id?: number;
+  pull_request_review_id: number | null;
+}
+
+/** GitHub PR review */
+export interface GitHubReview {
+  id: number;
+  user: GitHubUser;
+  body: string | null;
+  state:
+    | "APPROVED"
+    | "CHANGES_REQUESTED"
+    | "COMMENTED"
+    | "DISMISSED"
+    | "PENDING";
+  submitted_at: string;
+  html_url: string;
+}
+
+/** GitHub compare response */
+export interface GitHubCompareResponse {
+  status: "diverged" | "ahead" | "behind" | "identical";
+  ahead_by: number;
+  behind_by: number;
+  total_commits: number;
+  commits: GitHubCommit[];
+  files: GitHubCommitFile[];
+}
+
 /** GitHub code search result item */
 export interface GitHubCodeSearchItem {
   name: string;
@@ -781,6 +822,313 @@ export class GitHubClient {
       const author = commit.author?.login || commit.commit.author.name;
 
       markdown += `- **${shortSha}** (${date}) - ${author}: ${message}\n`;
+    }
+
+    return markdown;
+  }
+
+  /** List issues and/or PRs in a repository */
+  async listIssues(
+    owner: string,
+    repo: string,
+    options?: {
+      state?: "open" | "closed" | "all";
+      labels?: string;
+      sort?: "created" | "updated" | "comments";
+      direction?: "asc" | "desc";
+      type?: "issue" | "pr" | "all";
+      author?: string;
+      assignee?: string;
+      milestone?: string;
+      per_page?: number;
+      page?: number;
+    },
+    signal?: AbortSignal,
+  ): Promise<string> {
+    const params: Record<string, string> = {
+      state: options?.state ?? "open",
+      sort: options?.sort ?? "created",
+      direction: options?.direction ?? "desc",
+      per_page: String(options?.per_page ?? 30),
+      page: String(options?.page ?? 1),
+    };
+    if (options?.labels) {
+      params.labels = options.labels;
+    }
+    if (options?.assignee) {
+      params.assignee = options.assignee;
+    }
+    if (options?.milestone) {
+      params.milestone = options.milestone;
+    }
+
+    const issues = await this.get<GitHubIssue[]>(
+      `/repos/${owner}/${repo}/issues`,
+      params,
+      signal,
+    );
+
+    // GitHub Issues API returns both issues and PRs. PRs have a pull_request key.
+    const typeFilter = options?.type ?? "all";
+    const authorFilter = options?.author;
+
+    const filtered = issues.filter((issue) => {
+      const isPr = "pull_request" in issue;
+      if (typeFilter === "issue" && isPr) return false;
+      if (typeFilter === "pr" && !isPr) return false;
+      if (authorFilter && issue.user.login !== authorFilter) return false;
+      return true;
+    });
+
+    const stateLabel = options?.state ?? "open";
+    const typeLabel =
+      typeFilter === "issue"
+        ? "Issues"
+        : typeFilter === "pr"
+          ? "Pull Requests"
+          : "Issues & PRs";
+
+    let markdown = `# ${typeLabel} - ${owner}/${repo}\n\n`;
+    markdown += `**State:** ${stateLabel}\n`;
+    if (options?.labels) {
+      markdown += `**Labels:** ${options.labels}\n`;
+    }
+    if (authorFilter) {
+      markdown += `**Author:** ${authorFilter}\n`;
+    }
+    if (options?.assignee) {
+      markdown += `**Assignee:** ${options.assignee}\n`;
+    }
+    markdown += `**Showing:** ${filtered.length} results\n\n`;
+
+    if (filtered.length === 0) {
+      markdown += `_No matching items found._\n`;
+      return markdown;
+    }
+
+    for (const issue of filtered) {
+      const isPr = "pull_request" in issue;
+      const prefix = isPr ? "PR" : "Issue";
+      const labels =
+        issue.labels.length > 0
+          ? ` [${issue.labels.map((l) => l.name).join(", ")}]`
+          : "";
+      const date = issue.created_at.split("T")[0];
+      markdown += `- **#${issue.number}** (${prefix}) ${issue.title}${labels} - @${issue.user.login} (${date})\n`;
+    }
+
+    return markdown;
+  }
+
+  /** Get PR diff (changed files with patches) */
+  async getPullRequestDiff(
+    owner: string,
+    repo: string,
+    prNumber: number,
+    signal?: AbortSignal,
+  ): Promise<string> {
+    const files = await this.get<GitHubCommitFile[]>(
+      `/repos/${owner}/${repo}/pulls/${prNumber}/files`,
+      { per_page: "100" },
+      signal,
+    );
+
+    // Also fetch PR metadata for context
+    const pr = await this.get<GitHubPullRequest>(
+      `/repos/${owner}/${repo}/pulls/${prNumber}`,
+      undefined,
+      signal,
+    );
+
+    let state = pr.state;
+    if (pr.merged_at) {
+      state = "merged";
+    }
+
+    let markdown = `# PR #${pr.number} Diff: ${pr.title}\n\n`;
+    markdown += `**State:** ${state}${pr.draft ? " (draft)" : ""}\n`;
+    markdown += `**Branch:** \`${pr.head.ref}\` -> \`${pr.base.ref}\`\n`;
+    markdown += `**Stats:** +${pr.additions} -${pr.deletions} in ${pr.changed_files} files\n`;
+    markdown += `**URL:** ${pr.html_url}\n\n`;
+
+    markdown += `## Changed Files (${files.length})\n\n`;
+
+    for (const file of files) {
+      const statusIcon =
+        file.status === "added"
+          ? "[+]"
+          : file.status === "removed"
+            ? "[-]"
+            : file.status === "renamed"
+              ? "[R]"
+              : "[M]";
+
+      markdown += `### ${statusIcon} ${file.filename}\n\n`;
+
+      if (file.previous_filename) {
+        markdown += `_Renamed from: ${file.previous_filename}_\n\n`;
+      }
+
+      markdown += `**Status:** ${file.status} (+${file.additions} -${file.deletions})\n\n`;
+
+      if (file.patch) {
+        markdown += `\`\`\`diff\n${file.patch}\n\`\`\`\n\n`;
+      }
+    }
+
+    return markdown;
+  }
+
+  /** Get PR review comments (inline code comments) */
+  async getPullRequestReviews(
+    owner: string,
+    repo: string,
+    prNumber: number,
+    signal?: AbortSignal,
+  ): Promise<string> {
+    // Fetch reviews and inline comments in parallel
+    const [reviews, reviewComments] = await Promise.all([
+      this.get<GitHubReview[]>(
+        `/repos/${owner}/${repo}/pulls/${prNumber}/reviews`,
+        { per_page: "100" },
+        signal,
+      ),
+      this.get<GitHubReviewComment[]>(
+        `/repos/${owner}/${repo}/pulls/${prNumber}/comments`,
+        { per_page: "100" },
+        signal,
+      ),
+    ]);
+
+    // Also fetch PR metadata for context
+    const pr = await this.get<GitHubPullRequest>(
+      `/repos/${owner}/${repo}/pulls/${prNumber}`,
+      undefined,
+      signal,
+    );
+
+    let markdown = `# PR #${pr.number} Reviews: ${pr.title}\n\n`;
+    markdown += `**Branch:** \`${pr.head.ref}\` -> \`${pr.base.ref}\`\n`;
+    markdown += `**URL:** ${pr.html_url}\n\n`;
+
+    // Reviews summary
+    if (reviews.length > 0) {
+      markdown += `## Reviews (${reviews.length})\n\n`;
+      for (const review of reviews) {
+        const stateIcon =
+          review.state === "APPROVED"
+            ? "[APPROVED]"
+            : review.state === "CHANGES_REQUESTED"
+              ? "[CHANGES REQUESTED]"
+              : review.state === "COMMENTED"
+                ? "[COMMENTED]"
+                : review.state === "DISMISSED"
+                  ? "[DISMISSED]"
+                  : "[PENDING]";
+        markdown += `### @${review.user.login} ${stateIcon}\n\n`;
+        markdown += `**Submitted:** ${review.submitted_at}\n\n`;
+        if (review.body) {
+          markdown += `${review.body}\n\n`;
+        }
+        markdown += `---\n\n`;
+      }
+    } else {
+      markdown += `## Reviews\n\n_No reviews yet._\n\n`;
+    }
+
+    // Inline review comments
+    if (reviewComments.length > 0) {
+      // Group by file
+      const byFile = new Map<string, GitHubReviewComment[]>();
+      for (const comment of reviewComments) {
+        const existing = byFile.get(comment.path) ?? [];
+        existing.push(comment);
+        byFile.set(comment.path, existing);
+      }
+
+      markdown += `## Inline Comments (${reviewComments.length})\n\n`;
+
+      for (const [filePath, comments] of byFile) {
+        markdown += `### ${filePath}\n\n`;
+        for (const comment of comments) {
+          const line = comment.line ?? comment.original_line;
+          const lineInfo = line ? ` (line ${line})` : "";
+          const replyInfo = comment.in_reply_to_id ? " (reply)" : "";
+          markdown += `#### @${comment.user.login}${lineInfo}${replyInfo} - ${comment.created_at}\n\n`;
+          if (comment.diff_hunk) {
+            markdown += `\`\`\`diff\n${comment.diff_hunk}\n\`\`\`\n\n`;
+          }
+          markdown += `${comment.body}\n\n`;
+          markdown += `---\n\n`;
+        }
+      }
+    } else {
+      markdown += `## Inline Comments\n\n_No inline comments._\n\n`;
+    }
+
+    return markdown;
+  }
+
+  /** Compare two branches/refs */
+  async compareRefs(
+    owner: string,
+    repo: string,
+    base: string,
+    head: string,
+    signal?: AbortSignal,
+  ): Promise<string> {
+    const data = await this.get<GitHubCompareResponse>(
+      `/repos/${owner}/${repo}/compare/${base}...${head}`,
+      undefined,
+      signal,
+    );
+
+    let markdown = `# Compare: ${base}...${head}\n\n`;
+    markdown += `**Repository:** ${owner}/${repo}\n`;
+    markdown += `**Status:** ${data.status}\n`;
+    markdown += `**Ahead by:** ${data.ahead_by} commits\n`;
+    markdown += `**Behind by:** ${data.behind_by} commits\n`;
+    markdown += `**Total commits:** ${data.total_commits}\n`;
+    markdown += `**Files changed:** ${data.files.length}\n\n`;
+
+    // Commits
+    if (data.commits.length > 0) {
+      markdown += `## Commits (${data.commits.length})\n\n`;
+      for (const commit of data.commits) {
+        const shortSha = commit.sha.substring(0, 7);
+        const message = commit.commit.message.split("\n")[0];
+        const date = commit.commit.author.date.split("T")[0];
+        const author = commit.author?.login || commit.commit.author.name;
+        markdown += `- **${shortSha}** (${date}) - ${author}: ${message}\n`;
+      }
+      markdown += `\n`;
+    }
+
+    // Files changed
+    if (data.files.length > 0) {
+      markdown += `## Files Changed (${data.files.length})\n\n`;
+      for (const file of data.files) {
+        const statusIcon =
+          file.status === "added"
+            ? "[+]"
+            : file.status === "removed"
+              ? "[-]"
+              : file.status === "renamed"
+                ? "[R]"
+                : "[M]";
+
+        markdown += `### ${statusIcon} ${file.filename}\n\n`;
+
+        if (file.previous_filename) {
+          markdown += `_Renamed from: ${file.previous_filename}_\n\n`;
+        }
+
+        markdown += `**Status:** ${file.status} (+${file.additions} -${file.deletions})\n\n`;
+
+        if (file.patch) {
+          markdown += `\`\`\`diff\n${file.patch}\n\`\`\`\n\n`;
+        }
+      }
     }
 
     return markdown;

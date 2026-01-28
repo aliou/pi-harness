@@ -79,7 +79,11 @@ When you need to research a package like \`@mariozechner/pi-coding-agent\` or \`
 - Search code across repositories
 - Search commits by message, author, or path
 - View commit diffs
-- Fetch issues and PRs with comments
+- List/filter issues and PRs in a repository
+- Fetch individual issues and PRs with comments
+- View PR diffs (changed files with patches)
+- View PR reviews and inline code comments
+- Compare branches, tags, or commits
 `;
 
 const parameters = Type.Object({
