@@ -94,7 +94,7 @@ export function setupExecutePlanCommand(pi: ExtensionAPI) {
       if (hasSessionMessages(ctx)) {
         const choice = await ctx.ui.select(
           "Session has existing messages. Where should the plan execute?",
-          ["Execute in current session", "Create new linked session"],
+          ["Create new linked session", "Execute in current session"],
         );
 
         if (choice === undefined) {
