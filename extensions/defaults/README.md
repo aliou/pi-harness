@@ -21,6 +21,16 @@ Automatically syncs Pi's theme with macOS system appearance (dark/light mode).
 - Switches to `dark` or `light` theme automatically
 - Stops monitoring when session ends
 
+### Subdirectory AGENTS.md discovery
+
+Pi's built-in discovery only loads AGENTS.md files from the cwd and its ancestors. This hook fills the gap: when the agent reads a file, it checks for AGENTS.md files in the directories between cwd and the file being read, and injects their content alongside the tool result.
+
+- Only triggers on `read` tool results (not bash, etc.)
+- Deduplicates per session (each AGENTS.md injected at most once)
+- Resets on session start/switch
+- Skips cwd's own AGENTS.md (already loaded by Pi)
+- Falls back to home directory as boundary if file is outside cwd
+
 ### Custom header
 
 Pi logo with version number.
