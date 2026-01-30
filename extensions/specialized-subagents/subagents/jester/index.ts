@@ -1,5 +1,5 @@
 /**
- * Jester subagent - answers from training data only, no tools.
+ * Jester subagent - generates random, creative, and unexpected content. No tools.
  */
 
 import type {
@@ -24,23 +24,25 @@ import type { JesterDetails, JesterInput } from "./types";
 export const JESTER_GUIDANCE = `
 ## Jester
 
-Use jester for quick, playful, high-variance answers from the model's training only.
+Use jester when you need to generate random data, creative content, or unexpected outputs.
 
 **When to use:**
-- Brainstorming
-- Generating surprising ideas
-- Quick explanations with a bit of personality
+- Generating lists of random names, sentences, or text
+- Creating placeholder data or test fixtures
+- Brainstorming unusual ideas
+- Producing varied, creative content
 
 **When NOT to use:**
 - Anything requiring web research, up-to-date facts, or codebase inspection
+- Deterministic or factual outputs
 
 **Input:**
-- \`question\`: the prompt/question to answer
+- \`question\`: description of what random data to generate
 `;
 
 const parameters = Type.Object({
   question: Type.String({
-    description: "Question to answer (no tools; from training data only)",
+    description: "Description of what random data to generate (no tools)",
   }),
 });
 
@@ -52,7 +54,7 @@ export function createJesterTool(): ToolDefinition<
     name: "jester",
     label: "Jester",
     description:
-      "High-variance answers from training data only. No tools, no browsing, no files.",
+      "Generate random, creative, and unexpected content. No tools, no browsing, no files.",
     parameters,
 
     async execute(
@@ -97,8 +99,9 @@ export function createJesterTool(): ToolDefinition<
           },
         });
 
-        // Temperature is not configurable through createAgentSession today.
-        // To maximize randomness, we lean on prompt instructions instead.
+        // Note: Temperature/topK are not yet exposed through createAgentSession API.
+        // To maximize randomness, we rely on prompt engineering and model selection.
+        // Using Haiku for speed; randomness comes from varied system instructions.
         const userMessage = question;
 
         const result = await executeSubagent(

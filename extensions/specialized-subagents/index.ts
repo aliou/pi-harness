@@ -5,6 +5,7 @@ import { createLookoutTool, LOOKOUT_GUIDANCE } from "./subagents/lookout";
 import { createOracleTool, ORACLE_GUIDANCE } from "./subagents/oracle";
 import { createReviewerTool, REVIEWER_GUIDANCE } from "./subagents/reviewer";
 import { createScoutTool, SCOUT_GUIDANCE } from "./subagents/scout";
+import { createWorkerTool, WORKER_GUIDANCE } from "./subagents/worker";
 
 /**
  * Specialized Subagents Extension
@@ -14,7 +15,8 @@ import { createScoutTool, SCOUT_GUIDANCE } from "./subagents/scout";
  * - lookout: Local codebase search by functionality/concept (uses osgrep)
  * - oracle: Expert AI advisor for complex reasoning and planning
  * - reviewer: Code review feedback on diffs
- * - jester: No-tools, training-data-only answers (high variance)
+ * - jester: Random data generator (no tools, high variance)
+ * - worker: Focused implementation agent for well-defined tasks on specific files
  *
  * Also provides standalone tools:
  * - web_fetch: Fetch URL content as markdown (no LLM)
@@ -46,6 +48,7 @@ const SUBAGENT_GUIDANCES = [
   ORACLE_GUIDANCE,
   REVIEWER_GUIDANCE,
   JESTER_GUIDANCE,
+  WORKER_GUIDANCE,
 ];
 
 export default function (pi: ExtensionAPI) {
@@ -64,6 +67,7 @@ export default function (pi: ExtensionAPI) {
   pi.registerTool(createOracleTool());
   pi.registerTool(createReviewerTool());
   pi.registerTool(createJesterTool());
+  pi.registerTool(createWorkerTool());
 
   // Register standalone tools
   pi.registerTool(createWebFetchTool());
