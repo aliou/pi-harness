@@ -1,8 +1,8 @@
 import { writeFileSync } from "node:fs";
 import type { ExtensionAPI } from "@mariozechner/pi-coding-agent";
+import { copyToClipboard } from "@mariozechner/pi-coding-agent";
 import { showExportOptions } from "../components/export-options";
 import { exportToMarkdown, getExportPath } from "../lib/markdown-exporter";
-import { copyToClipboard } from "../utils";
 
 export function setupSessionCommands(pi: ExtensionAPI) {
   pi.registerCommand("session:copy-path", {
