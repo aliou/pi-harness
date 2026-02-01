@@ -1,6 +1,6 @@
 import type { Theme } from "@mariozechner/pi-coding-agent";
 import type { Component } from "@mariozechner/pi-tui";
-import { TruncatedText } from "@mariozechner/pi-tui";
+import { visibleWidth, wrapTextWithAnsi } from "@mariozechner/pi-tui";
 import type { SubagentToolCall } from "../../lib/types";
 import { getSpinnerFrame, INDICATOR } from "../../lib/ui/spinner";
 
@@ -50,8 +50,20 @@ export class ToolCallList implements Component {
 
       const { label, detail } = this.formatter(tc);
       const text = detail ? `${th.bold(label)} ${detail}` : th.bold(label);
-      const line = new TruncatedText(`  ${indicator} ${text}`);
-      lines.push(...line.render(width));
+
+      const prefix = `  ${indicator} `;
+      const prefixWidth = visibleWidth(prefix);
+      const textWidth = Math.max(1, width - prefixWidth);
+      const wrappedTextLines = wrapTextWithAnsi(text, textWidth);
+      const indent = " ".repeat(prefixWidth);
+
+      for (let i = 0; i < wrappedTextLines.length; i++) {
+        if (i === 0) {
+          lines.push(prefix + wrappedTextLines[i]);
+        } else {
+          lines.push(indent + wrappedTextLines[i]);
+        }
+      }
     }
 
     return lines;

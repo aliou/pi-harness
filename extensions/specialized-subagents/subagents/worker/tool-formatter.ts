@@ -26,12 +26,7 @@ export function formatWorkerToolCall(tc: SubagentToolCall): {
     }
     case "bash": {
       const command = args.command as string | undefined;
-      const truncated = command
-        ? command.length > 60
-          ? `${command.slice(0, 60)}...`
-          : command
-        : "...";
-      return { label: "Bash", detail: truncated };
+      return { label: "Bash", detail: command ?? "..." };
     }
     default:
       return {
