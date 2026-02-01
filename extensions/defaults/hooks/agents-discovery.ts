@@ -12,10 +12,6 @@ import type {
   ExtensionAPI,
   ExtensionContext,
 } from "@mariozechner/pi-coding-agent";
-import {
-  AGENTS_DISCOVERY_MESSAGE_TYPE,
-  type AgentsDiscoveryDetails,
-} from "../components/agents-discovery";
 import type { AgentsDiscoveryManager } from "../lib/agents-discovery";
 
 type TextContent = { type: "text"; text: string };
@@ -63,12 +59,13 @@ export function setupAgentsDiscoveryHook(
       path.relative(manager.cwd, f.path),
     );
 
-    pi.sendMessage({
-      customType: AGENTS_DISCOVERY_MESSAGE_TYPE,
-      content: relativePaths.join(", "),
-      display: true,
-      details: { files: relativePaths } satisfies AgentsDiscoveryDetails,
-    });
+    // Notify UI without adding to agent context (appendEntry doesn't go to LLM)
+    if (ctx.hasUI) {
+      ctx.ui.notify(
+        `Loaded subdirectory context: ${relativePaths.join(", ")}`,
+        "info",
+      );
+    }
 
     const baseContent = event.content ?? [];
     return { content: [...baseContent, ...additions], details: event.details };

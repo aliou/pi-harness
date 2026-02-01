@@ -20,7 +20,35 @@ export class AgentsDiscoveryManager {
     this.cwdAgentsPath = path.join(this.currentCwd, AGENTS_FILENAME);
     this.homeDir = this.resolvePath(os.homedir(), process.cwd());
     this.loadedAgents.clear();
+
+    // Mark cwd AGENTS.md as loaded (already in system prompt)
     this.loadedAgents.add(this.cwdAgentsPath);
+
+    // Mark global AGENTS.md as loaded (already in system prompt)
+    const globalAgentsPath = path.join(
+      this.homeDir,
+      ".pi",
+      "agent",
+      AGENTS_FILENAME,
+    );
+    if (fs.existsSync(globalAgentsPath)) {
+      this.loadedAgents.add(
+        this.resolvePath(globalAgentsPath, this.currentCwd),
+      );
+    }
+
+    // Mark ancestor AGENTS.md files as loaded (already in system prompt)
+    // Walk up from cwd to root, matching Pi's loadProjectContextFiles logic
+    let dir = path.dirname(this.currentCwd);
+    while (dir !== path.dirname(dir)) {
+      const ancestorAgentsPath = path.join(dir, AGENTS_FILENAME);
+      if (fs.existsSync(ancestorAgentsPath)) {
+        this.loadedAgents.add(
+          this.resolvePath(ancestorAgentsPath, this.currentCwd),
+        );
+      }
+      dir = path.dirname(dir);
+    }
   }
 
   /**
