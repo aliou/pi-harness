@@ -299,7 +299,7 @@ Pass relevant skills (e.g., 'ios-26', 'drizzle-orm') to provide specialized cont
     },
 
     renderCall(args, theme) {
-      const fields: ToolPreviewField[] = [{ label: "Task", value: args.task }];
+      const fields: ToolPreviewField[] = [];
       if (args.files?.length) {
         fields.push({
           label: "Files",

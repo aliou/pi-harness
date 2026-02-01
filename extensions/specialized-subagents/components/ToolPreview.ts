@@ -42,7 +42,7 @@ export class ToolPreview implements Component {
 
     // Fields: label prefix + wrapped value
     for (const field of this.config.fields) {
-      const prefix = `  ${th.fg("muted", `${field.label}: `)}`;
+      const prefix = `${th.fg("muted", `${field.label}: `)}`;
       const text = new Text(prefix + field.value, 0, 0);
       lines.push(...text.render(width));
     }
