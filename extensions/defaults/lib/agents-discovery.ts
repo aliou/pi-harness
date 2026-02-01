@@ -22,7 +22,15 @@ export class AgentsDiscoveryManager {
     this.loadedAgents.clear();
 
     // Mark cwd AGENTS.md as loaded (already in system prompt)
-    this.loadedAgents.add(this.cwdAgentsPath);
+    // Resolve to handle symlinks (cwdAgentsPath field stays unresolved for
+    // the fast filter in findAgentsFiles).
+    if (fs.existsSync(this.cwdAgentsPath)) {
+      this.loadedAgents.add(
+        this.resolvePath(this.cwdAgentsPath, this.currentCwd),
+      );
+    } else {
+      this.loadedAgents.add(this.cwdAgentsPath);
+    }
 
     // Mark global AGENTS.md as loaded (already in system prompt)
     const globalAgentsPath = path.join(
@@ -77,10 +85,11 @@ export class AgentsDiscoveryManager {
     const discovered: DiscoveredFile[] = [];
 
     for (const agentsPath of candidates) {
-      if (this.loadedAgents.has(agentsPath)) continue;
+      const resolved = this.resolvePath(agentsPath, this.currentCwd);
+      if (this.loadedAgents.has(resolved)) continue;
 
       const content = await fs.promises.readFile(agentsPath, "utf-8");
-      this.loadedAgents.add(agentsPath);
+      this.loadedAgents.add(resolved);
       discovered.push({ path: agentsPath, content });
     }
 
