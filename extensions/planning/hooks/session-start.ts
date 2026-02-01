@@ -42,10 +42,7 @@ export function setupSessionStartHook(pi: ExtensionAPI) {
           `${inProgress} plan${inProgress > 1 ? "s" : ""} in progress`,
         );
       }
-      ctx.ui.notify(
-        `${parts.join(", ")}. Run /plan:edit or /plan:execute to see them.`,
-        "info",
-      );
+      ctx.ui.notify(`${parts.join(", ")}. Run /plan:list to see them.`, "info");
     }
   });
 }

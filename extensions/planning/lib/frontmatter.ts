@@ -2,6 +2,8 @@
  * Frontmatter parsing and manipulation
  */
 
+import { parse, stringify } from "yaml";
+
 /**
  * Parse YAML frontmatter from markdown content
  * Returns empty object if no frontmatter found
@@ -14,79 +16,23 @@ export function parseFrontmatter(
     return null;
   }
 
-  const yaml = match[1];
-  const result: Record<string, unknown> = {};
+  const yamlContent = match[1];
+  const parsed = parse(yamlContent);
 
-  // Simple YAML parser for our needs (key: value, arrays, quoted strings)
-  const lines = yaml.split(/\r?\n/);
-  let currentKey: string | null = null;
-  let currentArray: unknown[] = [];
-
-  for (const line of lines) {
-    // Array item
-    if (line.match(/^\s*-\s+(.+)$/)) {
-      const value = line.match(/^\s*-\s+(.+)$/)?.[1]?.trim() ?? "";
-      currentArray.push(value);
-      continue;
-    }
-
-    // If we were building an array, save it
-    if (currentKey && currentArray.length > 0) {
-      result[currentKey] = currentArray;
-      currentKey = null;
-      currentArray = [];
-    }
-
-    // Key-value pair
-    const kvMatch = line.match(/^(\w+):\s*(.*)$/);
-    if (kvMatch) {
-      const key = kvMatch[1] ?? "";
-      const value = kvMatch[2]?.trim() ?? "";
-
-      if (value === "") {
-        // Empty value, might be starting an array
-        currentKey = key;
-        currentArray = [];
-      } else if (value === "[]") {
-        // Empty array
-        result[key] = [];
-      } else {
-        // Regular value
-        result[key] = value;
-      }
-    }
+  // Return null if parsing didn't produce an object
+  if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) {
+    return null;
   }
 
-  // Save any remaining array
-  if (currentKey && currentArray.length > 0) {
-    result[currentKey] = currentArray;
-  }
-
-  return result;
+  return parsed as Record<string, unknown>;
 }
 
 /**
  * Convert frontmatter object to YAML string
  */
 export function stringifyFrontmatter(data: Record<string, unknown>): string {
-  const lines: string[] = [];
-
-  for (const [key, value] of Object.entries(data)) {
-    if (Array.isArray(value)) {
-      if (value.length === 0) {
-        lines.push(`${key}: []`);
-      } else {
-        lines.push(`${key}:`);
-        for (const item of value) {
-          lines.push(`  - ${item}`);
-        }
-      }
-    } else {
-      lines.push(`${key}: ${value}`);
-    }
-  }
-
-  return `---\n${lines.join("\n")}\n---`;
+  const yamlContent = stringify(data);
+  return `---\n${yamlContent}---`;
 }
 
 /**

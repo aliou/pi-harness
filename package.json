@@ -28,7 +28,8 @@
     "release": "pnpm changeset publish"
   },
   "dependencies": {
-    "better-sqlite3": "^12.6.2"
+    "better-sqlite3": "^12.6.2",
+    "yaml": "^2.8.2"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.0.0",
