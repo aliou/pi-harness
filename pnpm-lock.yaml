@@ -51,6 +51,15 @@ importers:
         specifier: ^5.7.0
         version: 5.9.3
 
+  extensions/apple-fm:
+    dependencies:
+      '@mariozechner/pi-ai':
+        specifier: 0.50.4
+        version: 0.50.4(ws@8.19.0)(zod@3.25.76)
+      '@mariozechner/pi-coding-agent':
+        specifier: 0.50.4
+        version: 0.50.4(ws@8.19.0)(zod@3.25.76)
+
   extensions/defaults: {}
 
   extensions/guardrails:

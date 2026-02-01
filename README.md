@@ -90,6 +90,16 @@ Save and execute implementation plans. `/plan:save` creates a structured plan fr
 
 Session management utilities. Copy session path to clipboard. Future: summarization of previous sessions, cross-session context.
 
+## Providers
+
+Extensions that register custom model providers.
+
+### [apple-fm](extensions/apple-fm/)
+
+Apple Foundation Model provider. Wraps Apple's on-device ~3B model via a bundled Swift CLI bridge. Free, offline, private. Best for lightweight tasks (title generation, summarization) -- 4,096 token context window.
+
+Requires macOS 26+ and Apple Silicon.
+
 ## Monitoring
 
 Extensions that track session health and API usage.

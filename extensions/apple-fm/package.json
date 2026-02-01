@@ -1,0 +1,35 @@
+{
+  "name": "@aliou/pi-apple-fm",
+  "version": "0.1.0",
+  "type": "module",
+  "private": true,
+  "keywords": [
+    "pi-package",
+    "pi-extension",
+    "pi",
+    "apple",
+    "foundation-models"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/aliou/pi-extensions"
+  },
+  "pi": {
+    "extensions": [
+      "./index.ts"
+    ]
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "files": [
+    "*.ts",
+    "bin/apple-fm-bridge",
+    "bridge/",
+    "README.md"
+  ],
+  "peerDependencies": {
+    "@mariozechner/pi-ai": "0.50.4",
+    "@mariozechner/pi-coding-agent": "0.50.4"
+  }
+}
