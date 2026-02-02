@@ -140,6 +140,7 @@ export async function executeSubagent(
     if (event.type === "tool_execution_start") {
       toolsHaveStarted = true;
       toolsHaveCompleted = false;
+      finalResponse = "";
       const toolCall: SubagentToolCall = {
         toolCallId: event.toolCallId,
         toolName: event.toolName,
