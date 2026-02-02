@@ -7,6 +7,12 @@ Commands for turning conversations into implementation plans and managing saved 
 - **Command**: `/plan:save` - creates a structured plan from the current conversation
 - **Command**: `/plan:list` - lists saved plans with options to execute, edit, or archive
 
+## Tools
+
+### `ask_user`
+
+Gather user input during task execution through structured multiple-choice questions. Present 1-4 questions at once, each with 2-4 predefined options. Users can always choose "Other" to provide custom text. Supports single-select or multi-select mode.
+
 ## Usage
 
 ### Creating Plans

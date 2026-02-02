@@ -31,6 +31,7 @@ The extension will fail to load if any required variables are missing.
 | Oracle | AI advisor powered by GPT-5 for complex reasoning, code reviews, architecture planning, and debugging. | None |
 | Reviewer | Code review agent that analyzes diffs and returns structured feedback. Parses diff descriptions, focuses on security/performance/style, and flags issues with priority levels. | None |
 | Jester | Generates random, creative, and unexpected content. Useful for creating test data, placeholder content, random names/sentences, or brainstorming unusual ideas. No tools. | None |
+| Worker | Focused implementation agent for well-defined tasks on specific files. Reads, edits, writes files and runs bash for verification. Sandboxed to provided files. | None |
 
 ## Standalone Tools
 
