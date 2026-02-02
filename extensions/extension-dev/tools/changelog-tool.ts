@@ -7,9 +7,13 @@ import type {
   Theme,
   ToolRenderResultOptions,
 } from "@mariozechner/pi-coding-agent";
+import { VERSION } from "@mariozechner/pi-coding-agent";
 import { Text } from "@mariozechner/pi-tui";
 import { type Static, Type } from "@sinclair/typebox";
 import { findPiInstallation } from "./utils";
+
+const GITHUB_RAW_CHANGELOG_URL =
+  "https://raw.githubusercontent.com/badlogic/pi-mono/main/packages/coding-agent/CHANGELOG.md";
 
 const ChangelogParams = Type.Object({
   version: Type.Optional(
@@ -32,12 +36,11 @@ interface ChangelogDetails {
   success: boolean;
   message: string;
   changelog?: ChangelogEntry;
-  installPath?: string;
+  source?: "local" | "github";
 }
 
 type ExecuteResult = AgentToolResult<ChangelogDetails>;
 
-// Helper function to parse changelog
 function parseChangelog(
   changelogContent: string,
   requestedVersion?: string,
@@ -55,7 +58,6 @@ function parseChangelog(
       lineEnd: number;
     }> = [];
 
-    // Find version headers (## [version] or ## version or # [version] etc.)
     for (let i = 0; i < lines.length; i++) {
       const line = lines[i];
       if (!line) continue;
@@ -64,10 +66,9 @@ function parseChangelog(
         .match(/^#+\s*(?:\[([^\]]+)\]|([^[\s]+))/);
       if (versionMatch) {
         const version = versionMatch[1] || versionMatch[2];
-        // Skip non-version headers (like "Unreleased", "Overview", etc.)
         if (version && /^v?\d+\.\d+/.test(version)) {
           versionEntries.push({
-            version: version,
+            version,
             content: "",
             lineStart: i,
             lineEnd: -1,
@@ -76,7 +77,6 @@ function parseChangelog(
       }
     }
 
-    // Set end lines for each version entry
     for (let i = 0; i < versionEntries.length; i++) {
       const entry = versionEntries[i];
       if (!entry) continue;
@@ -84,11 +84,9 @@ function parseChangelog(
       const nextStart = nextEntry ? nextEntry.lineStart : lines.length;
       entry.lineEnd = nextStart;
 
-      // Extract content for this version
       const contentLines = lines.slice(entry.lineStart + 1, entry.lineEnd);
       const rawContent = contentLines.join("\n").trim();
 
-      // Check if content is effectively empty (only whitespace, horizontal rules, or very short)
       const cleanContent = rawContent
         .replace(/^-+$|^=+$|^\*+$|^#+$/gm, "")
         .trim();
@@ -109,7 +107,6 @@ function parseChangelog(
 
     const allVersions = versionEntries.map((entry) => entry.version);
 
-    // If specific version requested, find it
     if (requestedVersion) {
       const normalizedRequested = requestedVersion.replace(/^v/, "");
       const entry = versionEntries.find(
@@ -129,15 +126,13 @@ function parseChangelog(
           },
           message: `Found changelog for version ${entry.version}`,
         };
-      } else {
-        return {
-          success: false,
-          message: `Version ${requestedVersion} not found in changelog. Available versions: ${allVersions.join(", ")}`,
-        };
       }
+      return {
+        success: false,
+        message: `Version ${requestedVersion} not found in changelog. Available versions: ${allVersions.join(", ")}`,
+      };
     }
 
-    // Return latest version (first entry)
     const latest = versionEntries[0];
     if (!latest) {
       return {
@@ -162,12 +157,40 @@ function parseChangelog(
   }
 }
 
+/** Check if the requested version is newer than the installed VERSION. */
+function isNewerThanInstalled(requestedVersion: string): boolean {
+  const normalize = (v: string) => v.replace(/^v/, "");
+  const req = normalize(requestedVersion);
+  const installed = normalize(VERSION);
+  if (req === installed) return false;
+
+  const reqParts = req.split(".").map(Number);
+  const instParts = installed.split(".").map(Number);
+  for (let i = 0; i < Math.max(reqParts.length, instParts.length); i++) {
+    const r = reqParts[i] ?? 0;
+    const inst = instParts[i] ?? 0;
+    if (r > inst) return true;
+    if (r < inst) return false;
+  }
+  return false;
+}
+
+async function fetchGithubChangelog(): Promise<string | null> {
+  try {
+    const res = await fetch(GITHUB_RAW_CHANGELOG_URL);
+    if (!res.ok) return null;
+    return await res.text();
+  } catch {
+    return null;
+  }
+}
+
 export function setupChangelogTool(pi: ExtensionAPI) {
   pi.registerTool<typeof ChangelogParams, ChangelogDetails>({
     name: "pi_changelog",
     label: "Pi Changelog",
     description:
-      "Get changelog entries from the Pi installation. Returns latest version by default, or specify a version parameter.",
+      "Get changelog entries for Pi. Returns latest version by default, or specify a version. Fetches from GitHub if the requested version is newer than the installed Pi.",
 
     parameters: ChangelogParams,
 
@@ -179,6 +202,58 @@ export function setupChangelogTool(pi: ExtensionAPI) {
       _ctx: ExtensionContext,
     ): Promise<ExecuteResult> {
       try {
+        // If a specific version is requested and it's newer than installed,
+        // fetch from GitHub directly -- the local changelog won't have it.
+        if (params.version && isNewerThanInstalled(params.version)) {
+          const githubContent = await fetchGithubChangelog();
+          if (!githubContent) {
+            return {
+              content: [
+                {
+                  type: "text",
+                  text: `Version ${params.version} is newer than installed (${VERSION}) and GitHub fetch failed.`,
+                },
+              ],
+              details: {
+                success: false,
+                message: `Version ${params.version} is newer than installed (${VERSION}) and GitHub fetch failed.`,
+              },
+            };
+          }
+
+          const parseResult = parseChangelog(githubContent, params.version);
+          if (!parseResult.success || !parseResult.changelog) {
+            return {
+              content: [{ type: "text", text: parseResult.message }],
+              details: {
+                success: false,
+                message: parseResult.message,
+                source: "github",
+              },
+            };
+          }
+
+          let message = `${parseResult.message} (from GitHub)`;
+          message += `\n\n## ${parseResult.changelog.version}\n\n${parseResult.changelog.content}`;
+          if (
+            parseResult.changelog.allVersions &&
+            parseResult.changelog.allVersions.length > 1
+          ) {
+            message += `\n\nAll available versions: ${parseResult.changelog.allVersions.join(", ")}`;
+          }
+
+          return {
+            content: [{ type: "text", text: message }],
+            details: {
+              success: true,
+              message: `${parseResult.message} (from GitHub)`,
+              changelog: parseResult.changelog,
+              source: "github",
+            },
+          };
+        }
+
+        // Otherwise read from local installation.
         const piPath = findPiInstallation();
         if (!piPath) {
           return {
@@ -195,36 +270,19 @@ export function setupChangelogTool(pi: ExtensionAPI) {
           };
         }
 
-        // Look for changelog files
-        const changelogPaths = [
-          path.join(piPath, "CHANGELOG.md"),
-          path.join(piPath, "CHANGELOG.MD"),
-          path.join(piPath, "changelog.md"),
-          path.join(piPath, "Changelog.md"),
-          path.join(piPath, "HISTORY.md"),
-          path.join(piPath, "RELEASES.md"),
-        ];
+        const changelogPath = path.join(piPath, "CHANGELOG.md");
 
-        let changelogPath: string | null = null;
-        for (const candidatePath of changelogPaths) {
-          if (fs.existsSync(candidatePath)) {
-            changelogPath = candidatePath;
-            break;
-          }
-        }
-
-        if (!changelogPath) {
+        if (!fs.existsSync(changelogPath)) {
           return {
             content: [
               {
                 type: "text",
-                text: `No changelog file found in Pi installation at ${piPath}`,
+                text: `No CHANGELOG.md found in Pi installation at ${piPath}`,
               },
             ],
             details: {
               success: false,
-              message: `No changelog file found in Pi installation at ${piPath}`,
-              installPath: piPath,
+              message: `No CHANGELOG.md found at ${changelogPath}`,
             },
           };
         }
@@ -232,39 +290,19 @@ export function setupChangelogTool(pi: ExtensionAPI) {
         const changelogContent = fs.readFileSync(changelogPath, "utf-8");
         const parseResult = parseChangelog(changelogContent, params.version);
 
-        if (!parseResult.success) {
+        if (!parseResult.success || !parseResult.changelog) {
           return {
             content: [{ type: "text", text: parseResult.message }],
             details: {
               success: false,
               message: parseResult.message,
-              installPath: piPath,
             },
           };
         }
 
         const { changelog } = parseResult;
-        if (!changelog) {
-          return {
-            content: [{ type: "text", text: "No changelog data found" }],
-            details: {
-              success: false,
-              message: "No changelog data found",
-              installPath: piPath,
-            },
-          };
-        }
-
-        const isEmptyEntry = changelog.content.startsWith(
-          "[Empty changelog entry",
-        );
-        let message = `${parseResult.message} (from ${changelogPath})`;
+        let message = parseResult.message;
         message += `\n\n## ${changelog.version}\n\n${changelog.content}`;
-
-        if (isEmptyEntry) {
-          message +=
-            "\n\nNOTE: This version has no changelog details. This is the complete information available for this version.";
-        }
 
         if (changelog.allVersions && changelog.allVersions.length > 1) {
           message += `\n\nAll available versions: ${changelog.allVersions.join(", ")}`;
@@ -274,9 +312,9 @@ export function setupChangelogTool(pi: ExtensionAPI) {
           content: [{ type: "text", text: message }],
           details: {
             success: true,
-            message: `${parseResult.message} (from ${changelogPath})`,
+            message: parseResult.message,
             changelog,
-            installPath: piPath,
+            source: "local",
           },
         };
       } catch (error) {
@@ -324,23 +362,16 @@ export function setupChangelogTool(pi: ExtensionAPI) {
       }
 
       const lines: string[] = [];
-      lines.push(theme.fg("success", `✓ ${details.message}`));
+      const sourceTag =
+        details.source === "github" ? theme.fg("muted", " (github)") : "";
+      lines.push(theme.fg("success", details.message) + sourceTag);
       lines.push("");
-
       lines.push(theme.fg("accent", `Version: ${details.changelog.version}`));
       lines.push("");
 
-      // Split changelog content into lines and format
       const changelogLines = details.changelog.content.split("\n");
-      const isEmptyEntry = details.changelog.content.startsWith(
-        "[Empty changelog entry",
-      );
-
       for (const line of changelogLines) {
-        if (isEmptyEntry) {
-          // Highlight empty entries clearly
-          lines.push(theme.fg("warning", theme.italic(line)));
-        } else if (line.trim().startsWith("###")) {
+        if (line.trim().startsWith("###")) {
           lines.push(theme.fg("warning", line));
         } else if (line.trim().startsWith("##")) {
           lines.push(theme.fg("accent", line));

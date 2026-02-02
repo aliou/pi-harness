@@ -45,7 +45,7 @@ import { StringEnum } from "@mariozechner/pi-ai";
 
 ## Reference Extensions
 
-- [extensions/meta/](../../../extensions/meta/) - Simple extension with multiple tools
+- [extensions/extension-dev/](../../../extensions/extension-dev/) - Extension with tools and prompts, published to npm
 - [extensions/processes/](../../../extensions/processes/) - Complex extension with tools, hooks, commands, and state management
 - [extensions/presenter/](../../../extensions/presenter/) - Notification presentation (OSC, sounds)
 

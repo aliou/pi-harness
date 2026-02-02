@@ -110,13 +110,15 @@ Extensions that provide custom tools for external automation.
 
 macOS UI automation via Accessibility. Query UI elements, click, type, scroll, run actions. Requires AXorcist CLI and Accessibility permissions.
 
-## Introspection
+## Development
 
-Extensions that help understand Pi itself.
+Extensions for developing and maintaining Pi extensions.
 
-### [meta](extensions/meta/)
+### [extension-dev](extensions/extension-dev/)
 
-Pi introspection tools. Query current version, read documentation, view changelog.
+Pi extension development tools and update workflow. Detects package manager, queries current version, reads documentation, views changelog, and provides a guided prompt for updating extensions to new Pi releases.
+
+[npm](https://www.npmjs.com/package/@aliou/pi-extension-dev)
 
 ## Development
 

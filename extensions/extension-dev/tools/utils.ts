@@ -1,19 +1,20 @@
 import * as fs from "node:fs";
 import * as path from "node:path";
+import type { ExtensionContext } from "@mariozechner/pi-coding-agent";
 
-// Helper function to find the currently running Pi installation directory
+/**
+ * Find the currently running Pi installation directory by resolving the
+ * pi-coding-agent package location.
+ */
 export function findPiInstallation(): string | null {
   try {
-    // Try to resolve the main Pi module to find where it's actually loaded from
     const piModulePath = require.resolve(
       "@mariozechner/pi-coding-agent/package.json",
     );
     return path.dirname(piModulePath);
   } catch (_error) {
-    // Fallback: check process.argv to find the running script path
     const scriptPath = process.argv[1];
     if (scriptPath) {
-      // Walk up from script path to find Pi installation
       let currentDir = path.dirname(scriptPath);
 
       while (currentDir !== path.dirname(currentDir)) {
@@ -35,4 +36,27 @@ export function findPiInstallation(): string | null {
 
     return null;
   }
+}
+
+/**
+ * Resolve ExtensionContext from execute args, compatible with Pi 0.50.x and
+ * 0.51.0+.
+ *
+ * Pi 0.50.x: execute(id, params, onUpdate, ctx, signal)
+ * Pi 0.51.0+: execute(id, params, signal, onUpdate, ctx)
+ *
+ * When compiled against 0.51.0+, the typed params are (signal, onUpdate, ctx).
+ * On 0.50.x at runtime, `signal` actually receives the onUpdate callback
+ * (a function), `onUpdate` receives ctx, and `ctx` receives signal.
+ */
+export function resolveCtx(
+  signal: AbortSignal | undefined,
+  onUpdate: unknown,
+  ctx: ExtensionContext,
+): ExtensionContext {
+  // AbortSignal is never callable; a function here means we got onUpdate (0.50.x)
+  if (typeof signal === "function") {
+    return onUpdate as ExtensionContext;
+  }
+  return ctx;
 }

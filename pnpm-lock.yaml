@@ -56,6 +56,18 @@ importers:
 
   extensions/defaults: {}
 
+  extensions/extension-dev:
+    dependencies:
+      '@mariozechner/pi-coding-agent':
+        specifier: '>=0.50.0'
+        version: 0.51.0(ws@8.19.0)(zod@3.25.76)
+      '@mariozechner/pi-tui':
+        specifier: 0.51.0
+        version: 0.51.0
+      '@sinclair/typebox':
+        specifier: ^0.34.41
+        version: 0.34.47
+
   extensions/guardrails:
     dependencies:
       '@mariozechner/pi-coding-agent':
@@ -66,8 +78,6 @@ importers:
         version: 0.51.0
 
   extensions/mac-app: {}
-
-  extensions/meta: {}
 
   extensions/neovim: {}
 
