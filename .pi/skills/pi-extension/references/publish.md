@@ -48,6 +48,8 @@ If the extension uses `@aliou/tui-utils`, vendor it into the published output. D
 
 ## Create a Changeset
 
+Changesets must be placed in the root `.changeset/` directory, not inside the extension directory. This is a changesets convention -- the CI workflow only looks at root `.changeset/` for pending version bumps.
+
 1. Run `pnpm changeset`
 2. Select the package and bump type:
    - First publish: `minor` (0.0.1 -> 0.1.0)
