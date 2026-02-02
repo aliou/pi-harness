@@ -2,7 +2,7 @@
  * Lookout subagent types.
  */
 
-import type { SubagentToolCall, SubagentUsage } from "../../lib/types";
+import type { BaseSubagentDetails } from "../../lib/types";
 
 /** Input parameters for the lookout subagent */
 export interface LookoutInput {
@@ -15,30 +15,9 @@ export interface LookoutInput {
 }
 
 /** Details structure for lookout tool rendering */
-export interface LookoutDetails {
+export interface LookoutDetails extends BaseSubagentDetails {
   /** The search query */
   query: string;
-  /** Requested skill names (from input) */
-  skills?: string[];
-  /** Number of skills successfully resolved */
-  skillsResolved?: number;
-  /** Skill names that were not found */
-  skillsNotFound?: string[];
-  /** Tool calls made by the subagent */
-  toolCalls: SubagentToolCall[];
-  /** Current spinner frame for animation */
-  spinnerFrame: number;
-  /** The lookout's response (for final result) */
-  response?: string;
-  /** Whether the request was aborted */
-  aborted?: boolean;
-  /** Error message if failed */
-  error?: string;
-  /** Usage stats from the subagent */
-  usage?: SubagentUsage;
-
-  /** Resolved model used for this run (provider + model id) */
-  resolvedModel?: { provider: string; id: string };
   /** Working directory for relative path display */
   cwd?: string;
 }

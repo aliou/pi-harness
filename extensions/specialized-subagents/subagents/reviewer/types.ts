@@ -2,7 +2,7 @@
  * Reviewer subagent types.
  */
 
-import type { SubagentToolCall, SubagentUsage } from "../../lib/types";
+import type { BaseSubagentDetails } from "../../lib/types";
 
 /** Input parameters for the reviewer subagent */
 export interface ReviewerInput {
@@ -17,34 +17,13 @@ export interface ReviewerInput {
 }
 
 /** Details structure for reviewer tool rendering */
-export interface ReviewerDetails {
+export interface ReviewerDetails extends BaseSubagentDetails {
   /** Diff scope */
   diff: string;
   /** Optional focus area */
   focus?: string;
   /** Optional context */
   context?: string;
-  /** Requested skill names (from input) */
-  skills?: string[];
-  /** Number of skills successfully resolved */
-  skillsResolved?: number;
-  /** Skill names that were not found */
-  skillsNotFound?: string[];
-  /** Tool calls made by the subagent */
-  toolCalls: SubagentToolCall[];
-  /** Current spinner frame for animation */
-  spinnerFrame: number;
-  /** The review response (for final result) */
-  response?: string;
-  /** Whether the request was aborted */
-  aborted?: boolean;
-  /** Error message if failed */
-  error?: string;
-  /** Usage stats from the subagent */
-  usage?: SubagentUsage;
-
-  /** Resolved model used for this run (provider + model id) */
-  resolvedModel?: { provider: string; id: string };
   /** Working directory for relative path display */
   cwd?: string;
 }

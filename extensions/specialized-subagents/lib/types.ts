@@ -111,3 +111,49 @@ export type OnTextUpdate = (delta: string, accumulated: string) => void;
 
 /** Callback for tool execution updates */
 export type OnToolUpdate = (toolCalls: SubagentToolCall[]) => void;
+
+// ---------------------------------------------------------------------------
+// Shared detail interfaces - composed into BaseSubagentDetails
+// ---------------------------------------------------------------------------
+
+/** Skill resolution state for rendering */
+export interface SubagentSkillDetails {
+  /** Requested skill names (from input) */
+  skills?: string[];
+  /** Number of skills successfully resolved */
+  skillsResolved?: number;
+  /** Skill names that were not found */
+  skillsNotFound?: string[];
+}
+
+/** Tool call tracking state for rendering */
+export interface SubagentToolCallDetails {
+  /** Tool calls made by the subagent */
+  toolCalls: SubagentToolCall[];
+  /** Current spinner frame for animation */
+  spinnerFrame: number;
+}
+
+/** Response / completion state for rendering */
+export interface SubagentResponseDetails {
+  /** The subagent's final response */
+  response?: string;
+  /** Whether the request was aborted */
+  aborted?: boolean;
+  /** Error message if failed */
+  error?: string;
+  /** Usage stats from the subagent */
+  usage?: SubagentUsage;
+  /** Resolved model used for this run (provider + model id) */
+  resolvedModel?: { provider: string; id: string };
+}
+
+/**
+ * Base details shared by all subagent tool renderers.
+ *
+ * Each subagent's Details type extends this with its own input-specific fields.
+ */
+export interface BaseSubagentDetails
+  extends SubagentSkillDetails,
+    SubagentToolCallDetails,
+    SubagentResponseDetails {}

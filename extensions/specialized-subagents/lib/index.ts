@@ -46,11 +46,15 @@ export { shortenPath } from "./paths";
 export { type ResolveSkillsResult, resolveSkillsByName } from "./skills";
 // Types
 export type {
+  BaseSubagentDetails,
   OnTextUpdate,
   OnToolUpdate,
   SubagentConfig,
+  SubagentResponseDetails,
   SubagentResult,
+  SubagentSkillDetails,
   SubagentToolCall,
+  SubagentToolCallDetails,
   SubagentUsage,
 } from "./types";
 // UI

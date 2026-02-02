@@ -2,7 +2,7 @@
  * Scout subagent types.
  */
 
-import type { SubagentToolCall, SubagentUsage } from "../../lib/types";
+import type { BaseSubagentDetails } from "../../lib/types";
 
 /** Input parameters for the scout subagent */
 export interface ScoutInput {
@@ -19,7 +19,7 @@ export interface ScoutInput {
 }
 
 /** Details structure for scout tool rendering */
-export interface ScoutDetails {
+export interface ScoutDetails extends BaseSubagentDetails {
   /** URL input */
   url?: string;
   /** Query input */
@@ -28,25 +28,4 @@ export interface ScoutDetails {
   repo?: string;
   /** Prompt input */
   prompt?: string;
-  /** Requested skill names (from input) */
-  skills?: string[];
-  /** Number of skills successfully resolved */
-  skillsResolved?: number;
-  /** Skill names that were not found */
-  skillsNotFound?: string[];
-  /** Tool calls made by the subagent */
-  toolCalls: SubagentToolCall[];
-  /** Current spinner frame for animation */
-  spinnerFrame: number;
-  /** The scout's response (for final result) */
-  response?: string;
-  /** Whether the request was aborted */
-  aborted?: boolean;
-  /** Error message if failed */
-  error?: string;
-  /** Usage stats from the subagent */
-  usage?: SubagentUsage;
-
-  /** Resolved model used for this run (provider + model id) */
-  resolvedModel?: { provider: string; id: string };
 }

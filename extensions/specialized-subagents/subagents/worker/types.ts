@@ -2,7 +2,7 @@
  * Worker subagent types.
  */
 
-import type { SubagentToolCall, SubagentUsage } from "../../lib/types";
+import type { BaseSubagentDetails } from "../../lib/types";
 
 /** Input parameters for the worker subagent */
 export interface WorkerInput {
@@ -19,7 +19,7 @@ export interface WorkerInput {
 }
 
 /** Details structure for worker tool rendering */
-export interface WorkerDetails {
+export interface WorkerDetails extends BaseSubagentDetails {
   /** Short task description (display only) */
   task: string;
   /** Full instructions sent to the worker */
@@ -28,26 +28,6 @@ export interface WorkerDetails {
   files: string[];
   /** Context input */
   context?: string;
-  /** Requested skill names (from input) */
-  skills?: string[];
-  /** Number of skills successfully resolved */
-  skillsResolved?: number;
-  /** Skill names that were not found */
-  skillsNotFound?: string[];
-  /** Tool calls made by the subagent */
-  toolCalls: SubagentToolCall[];
-  /** Current spinner frame for animation */
-  spinnerFrame: number;
-  /** The worker's response (for final result) */
-  response?: string;
-  /** Whether the request was aborted */
-  aborted?: boolean;
-  /** Error message if failed */
-  error?: string;
-  /** Usage stats from the subagent */
-  usage?: SubagentUsage;
-  /** Resolved model used for this run (provider + model id) */
-  resolvedModel?: { provider: string; id: string };
   /** Working directory for relative path display */
   cwd?: string;
 }
