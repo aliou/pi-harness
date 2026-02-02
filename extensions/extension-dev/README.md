@@ -2,6 +2,17 @@
 
 Tools and commands for developing and updating Pi extensions.
 
+## Demo
+
+
+
+https://github.com/user-attachments/assets/44a96009-0653-4803-8590-d5a8a5131f4c
+
+<small>
+  <a href="https://assets.aliou.me/pi-extensions/2026-02-02-pi-extension-dev-demo.mp4">Non sped-up version</a>
+</small>
+
+
 ## Installation
 
 ```bash
