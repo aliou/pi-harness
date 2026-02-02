@@ -40,6 +40,8 @@ export {
 } from "./logging";
 // Model resolution
 export { resolveModel } from "./model-resolver";
+// Path utilities
+export { shortenPath } from "./paths";
 // Skills
 export { type ResolveSkillsResult, resolveSkillsByName } from "./skills";
 // Types

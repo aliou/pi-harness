@@ -1,6 +1,7 @@
 import type { Theme } from "@mariozechner/pi-coding-agent";
 import type { Component } from "@mariozechner/pi-tui";
 import { TruncatedText } from "@mariozechner/pi-tui";
+import { shortenPath } from "../../lib/paths";
 
 /**
  * Renders:
@@ -12,6 +13,7 @@ export class FileList implements Component {
   constructor(
     private files: string[],
     private theme: Theme,
+    private cwd?: string,
   ) {}
 
   handleInput(_data: string): boolean {
@@ -27,7 +29,8 @@ export class FileList implements Component {
     const lines: string[] = [];
     lines.push(th.fg("muted", "Files:"));
     for (const f of this.files) {
-      const line = new TruncatedText(`  ${f}`);
+      const display = shortenPath(f, this.cwd);
+      const line = new TruncatedText(`  ${display}`);
       lines.push(...line.render(width));
     }
     return lines;

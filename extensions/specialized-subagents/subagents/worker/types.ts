@@ -48,4 +48,6 @@ export interface WorkerDetails {
   usage?: SubagentUsage;
   /** Resolved model used for this run (provider + model id) */
   resolvedModel?: { provider: string; id: string };
+  /** Working directory for relative path display */
+  cwd?: string;
 }

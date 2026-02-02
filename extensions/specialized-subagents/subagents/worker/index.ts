@@ -40,7 +40,7 @@ import type { SubagentToolCall } from "../../lib/types";
 import { pluralize } from "../../lib/ui/stats";
 import { MODEL } from "./config";
 import { WORKER_SYSTEM_PROMPT } from "./system-prompt";
-import { formatWorkerToolCall } from "./tool-formatter";
+import { createWorkerToolFormatter } from "./tool-formatter";
 import type { WorkerDetails, WorkerInput } from "./types";
 
 /** System prompt guidance for worker tool usage */
@@ -172,6 +172,7 @@ Pass relevant skills (e.g., 'ios-26', 'drizzle-orm') to provide specialized cont
             toolCalls: [],
             spinnerFrame: 0,
             error,
+            cwd: ctx.cwd,
           },
         };
       }
@@ -192,6 +193,7 @@ Pass relevant skills (e.g., 'ios-26', 'drizzle-orm') to provide specialized cont
             toolCalls: [],
             spinnerFrame: 0,
             error,
+            cwd: ctx.cwd,
           },
         };
       }
@@ -219,6 +221,7 @@ Pass relevant skills (e.g., 'ios-26', 'drizzle-orm') to provide specialized cont
               toolCalls: currentToolCalls,
               spinnerFrame,
               resolvedModel,
+              cwd: ctx.cwd,
             },
           });
         }
@@ -243,6 +246,7 @@ Pass relevant skills (e.g., 'ios-26', 'drizzle-orm') to provide specialized cont
             toolCalls: currentToolCalls,
             spinnerFrame,
             resolvedModel,
+            cwd: ctx.cwd,
           },
         });
 
@@ -294,6 +298,7 @@ Pass relevant skills (e.g., 'ios-26', 'drizzle-orm') to provide specialized cont
                 toolCalls: currentToolCalls,
                 spinnerFrame,
                 resolvedModel,
+                cwd: ctx.cwd,
               },
             });
           },
@@ -315,6 +320,7 @@ Pass relevant skills (e.g., 'ios-26', 'drizzle-orm') to provide specialized cont
                 toolCalls: currentToolCalls,
                 spinnerFrame,
                 resolvedModel,
+                cwd: ctx.cwd,
               },
             });
           },
@@ -340,6 +346,7 @@ Pass relevant skills (e.g., 'ios-26', 'drizzle-orm') to provide specialized cont
               aborted: true,
               usage: result.usage,
               resolvedModel,
+              cwd: ctx.cwd,
             },
           };
         }
@@ -363,6 +370,7 @@ Pass relevant skills (e.g., 'ios-26', 'drizzle-orm') to provide specialized cont
               error: result.error,
               usage: result.usage,
               resolvedModel,
+              cwd: ctx.cwd,
             },
           };
         }
@@ -392,6 +400,7 @@ Pass relevant skills (e.g., 'ios-26', 'drizzle-orm') to provide specialized cont
               error,
               usage: result.usage,
               resolvedModel,
+              cwd: ctx.cwd,
             },
           };
         }
@@ -412,6 +421,7 @@ Pass relevant skills (e.g., 'ios-26', 'drizzle-orm') to provide specialized cont
             response: result.content,
             usage: result.usage,
             resolvedModel,
+            cwd: ctx.cwd,
           },
         };
       } finally {
@@ -462,6 +472,7 @@ Pass relevant skills (e.g., 'ios-26', 'drizzle-orm') to provide specialized cont
         resolvedModel,
         files,
         instructions,
+        cwd,
       } = details;
 
       // Counts
@@ -475,6 +486,7 @@ Pass relevant skills (e.g., 'ios-26', 'drizzle-orm') to provide specialized cont
 
       // Build fields based on state
       const fields: ToolDetailsField[] = [];
+      const formatToolCall = createWorkerToolFormatter(cwd);
 
       // Instructions
       fields.push(new MarkdownField("Instructions", instructions, theme));
@@ -493,18 +505,13 @@ Pass relevant skills (e.g., 'ios-26', 'drizzle-orm') to provide specialized cont
         fields.push({ label: "Error", value: error });
       } else if (response) {
         // Done state
-        fields.push(new FileList(files, theme));
-        fields.push(new ToolCallList(toolCalls, formatWorkerToolCall, theme));
+        fields.push(new FileList(files, theme, cwd));
+        fields.push(new ToolCallList(toolCalls, formatToolCall, theme));
         fields.push(new MarkdownResponse(response, theme));
       } else {
         // Running state
         fields.push(
-          new ToolCallList(
-            toolCalls,
-            formatWorkerToolCall,
-            theme,
-            spinnerFrame,
-          ),
+          new ToolCallList(toolCalls, formatToolCall, theme, spinnerFrame),
         );
       }
 

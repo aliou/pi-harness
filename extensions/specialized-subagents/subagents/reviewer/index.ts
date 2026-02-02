@@ -33,7 +33,7 @@ import { executeSubagent, resolveModel, resolveSkillsByName } from "../../lib";
 import type { SubagentToolCall } from "../../lib/types";
 import { MODEL } from "./config";
 import { REVIEWER_SYSTEM_PROMPT } from "./system-prompt";
-import { formatReviewerToolCall } from "./tool-formatter";
+import { createReviewerToolFormatter } from "./tool-formatter";
 import { createReviewerTools } from "./tools";
 import type { ReviewerDetails, ReviewerInput } from "./types";
 
@@ -151,6 +151,7 @@ Pass relevant skills (e.g., 'ios-26', 'drizzle-orm') to provide specialized cont
             toolCalls: [],
             spinnerFrame: 0,
             error,
+            cwd: ctx.cwd,
           },
         };
       }
@@ -178,6 +179,7 @@ Pass relevant skills (e.g., 'ios-26', 'drizzle-orm') to provide specialized cont
               toolCalls: currentToolCalls,
               spinnerFrame,
               resolvedModel,
+              cwd: ctx.cwd,
             },
           });
         }
@@ -201,6 +203,7 @@ Pass relevant skills (e.g., 'ios-26', 'drizzle-orm') to provide specialized cont
             toolCalls: currentToolCalls,
             spinnerFrame,
             resolvedModel,
+            cwd: ctx.cwd,
           },
         });
 
@@ -247,6 +250,7 @@ Pass relevant skills (e.g., 'ios-26', 'drizzle-orm') to provide specialized cont
                 toolCalls: currentToolCalls,
                 spinnerFrame,
                 resolvedModel,
+                cwd: ctx.cwd,
               },
             });
           },
@@ -267,6 +271,7 @@ Pass relevant skills (e.g., 'ios-26', 'drizzle-orm') to provide specialized cont
                 toolCalls: currentToolCalls,
                 spinnerFrame,
                 resolvedModel,
+                cwd: ctx.cwd,
               },
             });
           },
@@ -291,6 +296,7 @@ Pass relevant skills (e.g., 'ios-26', 'drizzle-orm') to provide specialized cont
               aborted: true,
               usage: result.usage,
               resolvedModel,
+              cwd: ctx.cwd,
             },
           };
         }
@@ -313,6 +319,7 @@ Pass relevant skills (e.g., 'ios-26', 'drizzle-orm') to provide specialized cont
               error: result.error,
               usage: result.usage,
               resolvedModel,
+              cwd: ctx.cwd,
             },
           };
         }
@@ -341,6 +348,7 @@ Pass relevant skills (e.g., 'ios-26', 'drizzle-orm') to provide specialized cont
               error,
               usage: result.usage,
               resolvedModel,
+              cwd: ctx.cwd,
             },
           };
         }
@@ -360,6 +368,7 @@ Pass relevant skills (e.g., 'ios-26', 'drizzle-orm') to provide specialized cont
             response: result.content,
             usage: result.usage,
             resolvedModel,
+            cwd: ctx.cwd,
           },
         };
       } finally {
@@ -406,6 +415,7 @@ Pass relevant skills (e.g., 'ios-26', 'drizzle-orm') to provide specialized cont
         error,
         usage,
         resolvedModel,
+        cwd,
       } = details;
 
       const footer = new SubagentFooter(theme, {
@@ -416,6 +426,7 @@ Pass relevant skills (e.g., 'ios-26', 'drizzle-orm') to provide specialized cont
 
       // Build fields based on state
       const fields: ToolDetailsField[] = [];
+      const formatToolCall = createReviewerToolFormatter(cwd);
 
       if (aborted) {
         fields.push({ label: "Status", value: "Aborted" });
@@ -423,22 +434,13 @@ Pass relevant skills (e.g., 'ios-26', 'drizzle-orm') to provide specialized cont
         fields.push({ label: "Error", value: error });
       } else if (response) {
         // Done state
-        fields.push(
-          new ToolCallSummary(toolCalls, formatReviewerToolCall, theme),
-        );
-        fields.push(
-          new FailedToolCalls(toolCalls, formatReviewerToolCall, theme),
-        );
+        fields.push(new ToolCallSummary(toolCalls, formatToolCall, theme));
+        fields.push(new FailedToolCalls(toolCalls, formatToolCall, theme));
         fields.push(new MarkdownResponse(response, theme));
       } else {
         // Running state
         fields.push(
-          new ToolCallList(
-            toolCalls,
-            formatReviewerToolCall,
-            theme,
-            spinnerFrame,
-          ),
+          new ToolCallList(toolCalls, formatToolCall, theme, spinnerFrame),
         );
       }
 

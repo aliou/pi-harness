@@ -35,7 +35,7 @@ import { executeSubagent, resolveModel, resolveSkillsByName } from "../../lib";
 import type { SubagentToolCall } from "../../lib/types";
 import { MODEL } from "./config";
 import { LOOKOUT_SYSTEM_PROMPT } from "./system-prompt";
-import { formatLookoutToolCall } from "./tool-formatter";
+import { createLookoutToolFormatter } from "./tool-formatter";
 import { createLookoutTools } from "./tools";
 import type { LookoutDetails, LookoutInput } from "./types";
 
@@ -136,6 +136,7 @@ Pass relevant skills (e.g., 'ios-26', 'drizzle-orm') to provide specialized cont
             toolCalls: [],
             spinnerFrame: 0,
             error,
+            cwd: customCwd ?? ctx.cwd,
           },
         };
       }
@@ -164,6 +165,7 @@ Pass relevant skills (e.g., 'ios-26', 'drizzle-orm') to provide specialized cont
               toolCalls: currentToolCalls,
               spinnerFrame,
               resolvedModel,
+              cwd: workingDir,
             },
           });
         }
@@ -185,6 +187,7 @@ Pass relevant skills (e.g., 'ios-26', 'drizzle-orm') to provide specialized cont
             toolCalls: currentToolCalls,
             spinnerFrame,
             resolvedModel,
+            cwd: workingDir,
           },
         });
 
@@ -227,6 +230,7 @@ Pass relevant skills (e.g., 'ios-26', 'drizzle-orm') to provide specialized cont
                 toolCalls: currentToolCalls,
                 spinnerFrame,
                 resolvedModel,
+                cwd: workingDir,
               },
             });
           },
@@ -245,6 +249,7 @@ Pass relevant skills (e.g., 'ios-26', 'drizzle-orm') to provide specialized cont
                 toolCalls: currentToolCalls,
                 spinnerFrame,
                 resolvedModel,
+                cwd: workingDir,
               },
             });
           },
@@ -267,6 +272,7 @@ Pass relevant skills (e.g., 'ios-26', 'drizzle-orm') to provide specialized cont
               aborted: true,
               usage: result.usage,
               resolvedModel,
+              cwd: workingDir,
             },
           };
         }
@@ -287,6 +293,7 @@ Pass relevant skills (e.g., 'ios-26', 'drizzle-orm') to provide specialized cont
               error: result.error,
               usage: result.usage,
               resolvedModel,
+              cwd: workingDir,
             },
           };
         }
@@ -313,6 +320,7 @@ Pass relevant skills (e.g., 'ios-26', 'drizzle-orm') to provide specialized cont
               error,
               usage: result.usage,
               resolvedModel,
+              cwd: workingDir,
             },
           };
         }
@@ -330,6 +338,7 @@ Pass relevant skills (e.g., 'ios-26', 'drizzle-orm') to provide specialized cont
             response: result.content,
             usage: result.usage,
             resolvedModel,
+            cwd: workingDir,
           },
         };
       } finally {
@@ -377,6 +386,7 @@ Pass relevant skills (e.g., 'ios-26', 'drizzle-orm') to provide specialized cont
         error,
         usage,
         resolvedModel,
+        cwd,
       } = details;
 
       const footer = new SubagentFooter(theme, {
@@ -387,6 +397,7 @@ Pass relevant skills (e.g., 'ios-26', 'drizzle-orm') to provide specialized cont
 
       // Build fields based on state
       const fields: ToolDetailsField[] = [];
+      const formatToolCall = createLookoutToolFormatter(cwd);
 
       if (aborted) {
         fields.push({ label: "Status", value: "Aborted" });
@@ -394,22 +405,13 @@ Pass relevant skills (e.g., 'ios-26', 'drizzle-orm') to provide specialized cont
         fields.push({ label: "Error", value: error });
       } else if (response) {
         // Done state
-        fields.push(
-          new ToolCallSummary(toolCalls, formatLookoutToolCall, theme),
-        );
-        fields.push(
-          new FailedToolCalls(toolCalls, formatLookoutToolCall, theme),
-        );
+        fields.push(new ToolCallSummary(toolCalls, formatToolCall, theme));
+        fields.push(new FailedToolCalls(toolCalls, formatToolCall, theme));
         fields.push(new MarkdownResponse(response, theme));
       } else {
         // Running state
         fields.push(
-          new ToolCallList(
-            toolCalls,
-            formatLookoutToolCall,
-            theme,
-            spinnerFrame,
-          ),
+          new ToolCallList(toolCalls, formatToolCall, theme, spinnerFrame),
         );
 
         // Show indexing progress when collapsed
