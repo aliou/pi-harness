@@ -167,9 +167,9 @@ Pass relevant skills (e.g., 'ios-26', 'drizzle-orm') to provide specialized cont
     async execute(
       _toolCallId: string,
       args: ScoutInput,
+      signal: AbortSignal | undefined,
       onUpdate: AgentToolUpdateCallback<ScoutDetails> | undefined,
       ctx: ExtensionContext,
-      signal?: AbortSignal,
     ) {
       const { url, query, repo, prompt, skills: skillNames } = args;
 
@@ -499,5 +499,5 @@ export async function executeScout(
   signal?: AbortSignal,
 ): Promise<AgentToolResult<ScoutDetails>> {
   const tool = createScoutTool();
-  return tool.execute("direct", input, onUpdate, ctx, signal);
+  return tool.execute("direct", input, signal, onUpdate, ctx);
 }

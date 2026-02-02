@@ -66,9 +66,9 @@ export function createJesterTool(): ToolDefinition<
     async execute(
       _toolCallId: string,
       args: JesterInput,
+      signal: AbortSignal | undefined,
       onUpdate: AgentToolUpdateCallback<JesterDetails> | undefined,
       ctx: ExtensionContext,
-      signal?: AbortSignal,
     ): Promise<AgentToolResult<JesterDetails>> {
       const { question } = args;
 
@@ -258,5 +258,5 @@ export async function executeJester(
   signal?: AbortSignal,
 ): Promise<AgentToolResult<JesterDetails>> {
   const tool = createJesterTool();
-  return tool.execute("direct", input, onUpdate, ctx, signal);
+  return tool.execute("direct", input, signal, onUpdate, ctx);
 }

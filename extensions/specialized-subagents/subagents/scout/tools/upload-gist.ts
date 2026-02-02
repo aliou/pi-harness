@@ -33,9 +33,9 @@ Note: Gists are flat - subdirectories and hidden files are ignored.`,
   async execute(
     _toolCallId: string,
     args: { gist: string; directory: string },
+    signal: AbortSignal | undefined,
     _onUpdate: unknown,
     _ctx: unknown,
-    signal?: AbortSignal,
   ) {
     const gistId = extractGistId(args.gist);
     const { directory } = args;

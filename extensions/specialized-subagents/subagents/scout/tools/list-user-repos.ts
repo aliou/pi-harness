@@ -66,9 +66,9 @@ Requires: GITHUB_TOKEN environment variable`,
       per_page?: number;
       page?: number;
     },
+    signal: AbortSignal | undefined,
     _onUpdate: unknown,
     _ctx: unknown,
-    signal?: AbortSignal,
   ) {
     const {
       username,

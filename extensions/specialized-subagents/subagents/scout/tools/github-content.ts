@@ -89,9 +89,9 @@ Requires: GITHUB_TOKEN environment variable`,
   async execute(
     _toolCallId: string,
     args: { repo: string; path?: string; ref?: string },
+    signal: AbortSignal | undefined,
     _onUpdate: unknown,
     _ctx: unknown,
-    signal?: AbortSignal,
   ) {
     const { repo: repoInput, path, ref } = args;
     const client = createGitHubClient();

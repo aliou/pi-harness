@@ -35,9 +35,9 @@ Requires: GITHUB_TOKEN environment variable`,
   async execute(
     _toolCallId: string,
     args: { query: string; repo?: string },
+    signal: AbortSignal | undefined,
     _onUpdate: unknown,
     _ctx: unknown,
-    signal?: AbortSignal,
   ) {
     const { query, repo } = args;
     const client = createGitHubClient();

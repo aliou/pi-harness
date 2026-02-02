@@ -266,7 +266,7 @@ Query with natural language questions, not keywords. More words = better results
 Returns file paths, line ranges, roles (ORCHESTRATION = logic, DEFINITION = types), and relevance scores.`,
     parameters,
 
-    async execute(_toolCallId, args, onUpdate, _ctx, signal) {
+    async execute(_toolCallId, args, signal, onUpdate, _ctx) {
       const { query, maxResults = 10 } = args as SemanticSearchParams;
 
       try {

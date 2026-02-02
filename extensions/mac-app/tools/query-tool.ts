@@ -65,9 +65,9 @@ export function setupMacAppQueryTool(pi: ExtensionAPI) {
     async execute(
       _toolCallId: string,
       params: QueryParamsType,
+      signal: AbortSignal | undefined,
       _onUpdate: unknown,
       ctx: ExtensionContext,
-      signal?: AbortSignal,
     ): Promise<ExecuteResult> {
       try {
         const payload = buildQueryPayload(params.app, params.locator, params);

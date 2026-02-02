@@ -75,9 +75,9 @@ Requires: EXA_API_KEY environment variable`,
   async execute(
     _toolCallId: string,
     args: { query: string; numResults?: number },
+    signal: AbortSignal | undefined,
     _onUpdate: unknown,
     _ctx: unknown,
-    signal?: AbortSignal,
   ) {
     const { query, numResults = 10 } = args;
 

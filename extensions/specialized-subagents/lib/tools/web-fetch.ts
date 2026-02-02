@@ -56,9 +56,9 @@ Requires: LINKUP_API_KEY environment variable`,
     async execute(
       _toolCallId: string,
       args: { url: string; renderJs?: boolean },
+      signal: AbortSignal | undefined,
       _onUpdate: unknown,
       _ctx: unknown,
-      signal?: AbortSignal,
     ) {
       const { url, renderJs = true } = args;
       const startTime = Date.now();

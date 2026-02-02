@@ -26,9 +26,9 @@ Use to clarify requirements, preferences, or implementation choices.`,
     async execute(
       _toolCallId: string,
       params: Static<typeof AskUserQuestionParams>,
+      _signal: AbortSignal | undefined,
       _onUpdate: unknown,
       ctx: ExtensionContext,
-      _signal?: AbortSignal,
     ) {
       return executeAskUserQuestion(ctx, params);
     },

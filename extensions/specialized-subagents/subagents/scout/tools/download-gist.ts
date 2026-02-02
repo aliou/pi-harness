@@ -66,9 +66,9 @@ Usage:
   async execute(
     _toolCallId: string,
     args: { gist: string },
+    signal: AbortSignal | undefined,
     _onUpdate: unknown,
     _ctx: unknown,
-    signal?: AbortSignal,
   ) {
     const gistId = extractGistId(args.gist);
 

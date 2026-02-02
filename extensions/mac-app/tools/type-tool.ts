@@ -57,9 +57,9 @@ export function setupMacAppTypeTool(pi: ExtensionAPI) {
     async execute(
       _toolCallId: string,
       params: TypeParamsType,
+      signal: AbortSignal | undefined,
       _onUpdate: unknown,
       ctx: ExtensionContext,
-      signal?: AbortSignal,
     ): Promise<ExecuteResult> {
       try {
         const payload = buildTypePayload(

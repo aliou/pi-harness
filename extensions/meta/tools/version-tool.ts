@@ -34,9 +34,9 @@ export function setupVersionTool(pi: ExtensionAPI) {
     async execute(
       _toolCallId: string,
       _params: VersionParamsType,
+      _signal: AbortSignal | undefined,
       _onUpdate: unknown,
       _ctx: ExtensionContext,
-      _signal?: AbortSignal,
     ): Promise<ExecuteResult> {
       try {
         const piPath = findPiInstallation();

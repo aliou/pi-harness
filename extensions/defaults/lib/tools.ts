@@ -18,7 +18,7 @@ export function setupTools(pi: ExtensionAPI): void {
 
   pi.registerTool({
     ...nativeRead,
-    async execute(toolCallId, params, onUpdate, ctx, signal) {
+    async execute(toolCallId, params, signal, onUpdate, ctx) {
       const { path } = params as {
         path: string;
         offset?: number;

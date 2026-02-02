@@ -139,9 +139,9 @@ Pass relevant skills (e.g., 'ios-26', 'drizzle-orm') to provide specialized cont
     async execute(
       _toolCallId: string,
       args: WorkerInput,
+      signal: AbortSignal | undefined,
       onUpdate: AgentToolUpdateCallback<WorkerDetails> | undefined,
       ctx: ExtensionContext,
-      signal?: AbortSignal,
     ) {
       const { task, instructions, files, context, skills: skillNames } = args;
 
@@ -521,5 +521,5 @@ export async function executeWorker(
   signal?: AbortSignal,
 ): Promise<AgentToolResult<WorkerDetails>> {
   const tool = createWorkerTool();
-  return tool.execute("direct", input, onUpdate, ctx, signal);
+  return tool.execute("direct", input, signal, onUpdate, ctx);
 }

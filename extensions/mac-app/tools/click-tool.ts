@@ -54,9 +54,9 @@ export function setupMacAppClickTool(pi: ExtensionAPI) {
     async execute(
       _toolCallId: string,
       params: ClickParamsType,
+      signal: AbortSignal | undefined,
       _onUpdate: unknown,
       ctx: ExtensionContext,
-      signal?: AbortSignal,
     ): Promise<ExecuteResult> {
       try {
         const payload = buildClickPayload(

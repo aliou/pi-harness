@@ -147,7 +147,7 @@ Use this tool when you need to know what the user is currently looking at in the
 
     parameters: NvimContextParams,
 
-    async execute(_toolCallId, params, _onUpdate, ctx, signal) {
+    async execute(_toolCallId, params, signal, _onUpdate, ctx) {
       let socket: string | null = null;
 
       // If we have a stored socket, check if its lockfile still exists

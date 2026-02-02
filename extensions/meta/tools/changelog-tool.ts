@@ -174,9 +174,9 @@ export function setupChangelogTool(pi: ExtensionAPI) {
     async execute(
       _toolCallId: string,
       params: ChangelogParamsType,
+      _signal: AbortSignal | undefined,
       _onUpdate: unknown,
       _ctx: ExtensionContext,
-      _signal?: AbortSignal,
     ): Promise<ExecuteResult> {
       try {
         const piPath = findPiInstallation();

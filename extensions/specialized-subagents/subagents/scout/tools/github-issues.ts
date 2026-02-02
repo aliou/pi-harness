@@ -120,9 +120,9 @@ Requires: GITHUB_TOKEN environment variable`,
       direction?: string;
       per_page?: number;
     },
+    signal: AbortSignal | undefined,
     _onUpdate: unknown,
     _ctx: unknown,
-    signal?: AbortSignal,
   ) {
     const { repo: repoInput, ...rest } = args;
     const client = createGitHubClient();

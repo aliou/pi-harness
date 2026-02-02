@@ -54,9 +54,9 @@ export function setupMacAppScrollToTool(pi: ExtensionAPI) {
     async execute(
       _toolCallId: string,
       params: ScrollToParamsType,
+      signal: AbortSignal | undefined,
       _onUpdate: unknown,
       ctx: ExtensionContext,
-      signal?: AbortSignal,
     ): Promise<ExecuteResult> {
       try {
         const payload = buildScrollToPayload(

@@ -54,9 +54,9 @@ export function setupMacAppFocusTool(pi: ExtensionAPI) {
     async execute(
       _toolCallId: string,
       params: FocusParamsType,
+      signal: AbortSignal | undefined,
       _onUpdate: unknown,
       ctx: ExtensionContext,
-      signal?: AbortSignal,
     ): Promise<ExecuteResult> {
       try {
         const payload = buildFocusPayload(params.app, params);

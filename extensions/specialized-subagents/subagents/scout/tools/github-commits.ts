@@ -103,9 +103,9 @@ Requires: GITHUB_TOKEN environment variable`,
       path?: string;
       sha?: string;
     },
+    signal: AbortSignal | undefined,
     _onUpdate: unknown,
     _ctx: unknown,
-    signal?: AbortSignal,
   ) {
     const { repo: repoInput, query, author, path, sha } = args;
     const client = createGitHubClient();

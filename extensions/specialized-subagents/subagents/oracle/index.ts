@@ -140,9 +140,9 @@ Pass relevant skills (e.g., 'ios-26', 'drizzle-orm') to provide specialized cont
     async execute(
       _toolCallId: string,
       args: OracleInput,
+      signal: AbortSignal | undefined,
       onUpdate: AgentToolUpdateCallback<OracleDetails> | undefined,
       ctx: ExtensionContext,
-      signal?: AbortSignal,
     ) {
       const { task, context, files, skills: skillNames } = args;
 
@@ -386,5 +386,5 @@ export async function executeOracle(
   signal?: AbortSignal,
 ): Promise<AgentToolResult<OracleDetails>> {
   const tool = createOracleTool();
-  return tool.execute("direct", input, onUpdate, ctx, signal);
+  return tool.execute("direct", input, signal, onUpdate, ctx);
 }

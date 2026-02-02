@@ -58,9 +58,9 @@ export function setupGetCurrentTimeTool(pi: ExtensionAPI) {
     async execute(
       _toolCallId: string,
       params: GetCurrentTimeParamsType,
+      _signal: AbortSignal | undefined,
       _onUpdate: unknown,
       _ctx: ExtensionContext,
-      _signal?: AbortSignal,
     ): Promise<ExecuteResult> {
       const now = new Date();
       const format = params.format || "iso8601";

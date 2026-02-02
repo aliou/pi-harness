@@ -119,9 +119,9 @@ Pass relevant skills (e.g., 'ios-26', 'drizzle-orm') to provide specialized cont
     async execute(
       _toolCallId: string,
       args: ReviewerInput,
+      signal: AbortSignal | undefined,
       onUpdate: AgentToolUpdateCallback<ReviewerDetails> | undefined,
       ctx: ExtensionContext,
-      signal?: AbortSignal,
     ) {
       const { diff, focus, context, skills: skillNames } = args;
 
@@ -455,5 +455,5 @@ export async function executeReviewer(
   signal?: AbortSignal,
 ): Promise<AgentToolResult<ReviewerDetails>> {
   const tool = createReviewerTool();
-  return tool.execute("direct", input, onUpdate, ctx, signal);
+  return tool.execute("direct", input, signal, onUpdate, ctx);
 }

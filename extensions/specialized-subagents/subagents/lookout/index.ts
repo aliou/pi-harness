@@ -106,9 +106,9 @@ Pass relevant skills (e.g., 'ios-26', 'drizzle-orm') to provide specialized cont
     async execute(
       _toolCallId: string,
       args: LookoutInput,
+      signal: AbortSignal | undefined,
       onUpdate: AgentToolUpdateCallback<LookoutDetails> | undefined,
       ctx: ExtensionContext,
-      signal?: AbortSignal,
     ) {
       const { query, cwd: customCwd, skills: skillNames } = args;
 
@@ -426,5 +426,5 @@ export async function executeLookout(
   signal?: AbortSignal,
 ): Promise<AgentToolResult<LookoutDetails>> {
   const tool = createLookoutTool();
-  return tool.execute("direct", input, onUpdate, ctx, signal);
+  return tool.execute("direct", input, signal, onUpdate, ctx);
 }
