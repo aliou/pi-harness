@@ -888,10 +888,7 @@ export function setupUsageCommand(pi: ExtensionAPI): void {
 
       // RPC fallback
       if (result === undefined) {
-        cmdCtx.ui.notify(
-          "/providers:usage requires interactive mode",
-          "info",
-        );
+        cmdCtx.ui.notify("/providers:usage requires interactive mode", "info");
       }
     },
   });
