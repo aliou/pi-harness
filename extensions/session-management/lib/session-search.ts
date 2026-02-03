@@ -8,7 +8,7 @@
 import { execFile } from "node:child_process";
 import { readFileSync, statSync } from "node:fs";
 import { homedir } from "node:os";
-import { join } from "node:path";
+import { join, resolve } from "node:path";
 import { promisify } from "node:util";
 
 const execFileAsync = promisify(execFile);
@@ -85,8 +85,12 @@ export function getSessionsDir(): string {
  * "/Users/foo/code" -> "--Users-foo-code--"
  */
 export function encodeCwd(cwd: string): string {
+  // Resolve to absolute path first to normalize ".." and "." segments.
+  // Uses resolve() not realpathSync() because Pi stores sessions using the
+  // logical path, not the symlink target.
+  const resolved = resolve(cwd);
   // Strip leading slash, replace all slashes with hyphens
-  const stripped = cwd.replace(/^[/\\]/, "");
+  const stripped = resolved.replace(/^[/\\]/, "");
   const encoded = stripped.replace(/[/\\]/g, "-");
   return `--${encoded}--`;
 }
