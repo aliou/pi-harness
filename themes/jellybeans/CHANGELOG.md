@@ -1,5 +1,11 @@
 # @aliou/pi-theme-jellybeans
 
+## 0.1.2
+
+### Patch Changes
+
+- b5c4cd1: Update demo video and image URLs for the Pi package browser.
+
 ## 0.1.1
 
 ### Patch Changes

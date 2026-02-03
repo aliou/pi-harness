@@ -1,5 +1,11 @@
 # @aliou/pi-extension-dev
 
+## 0.2.0
+
+### Minor Changes
+
+- 4ac87a8: Add demo-setup skill and /setup-demo prompt for creating extension demo environments.
+
 ## 0.1.1
 
 ### Patch Changes
