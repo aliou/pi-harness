@@ -1,5 +1,6 @@
 import type { ExtensionAPI } from "@mariozechner/pi-coding-agent";
 import { setupSessionCommands } from "./commands";
+import { setupProtectSessionsDirHook } from "./hooks/protect-sessions-dir";
 import {
   FIND_SESSIONS_GUIDANCE,
   READ_SESSION_GUIDANCE,
@@ -9,6 +10,7 @@ import {
 const SESSION_TOOLS_GUIDANCES = [FIND_SESSIONS_GUIDANCE, READ_SESSION_GUIDANCE];
 
 export default function (pi: ExtensionAPI) {
+  setupProtectSessionsDirHook(pi);
   setupSessionTools(pi);
   setupSessionCommands(pi);
 
