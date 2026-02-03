@@ -140,7 +140,7 @@ export function registerSystemPromptCommand(pi: ExtensionAPI) {
 
       const { textWithoutSkills, skills } = parseSkills(systemPrompt);
 
-      await ctx.ui.custom((tui, theme, _keybindings, done) => {
+      const result = await ctx.ui.custom((tui, theme, _keybindings, done) => {
         return new TextViewer(
           "System Prompt",
           (width, t) => buildContent(textWithoutSkills, skills, width, t),
@@ -149,6 +149,11 @@ export function registerSystemPromptCommand(pi: ExtensionAPI) {
           () => done(undefined),
         );
       });
+
+      // RPC fallback
+      if (result === undefined) {
+        ctx.ui.notify("/system-prompt requires interactive mode", "info");
+      }
     },
   });
 }

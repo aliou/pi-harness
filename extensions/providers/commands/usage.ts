@@ -877,7 +877,7 @@ export function setupUsageCommand(pi: ExtensionAPI): void {
       }
 
       const authStorage = cmdCtx.modelRegistry.authStorage;
-      await cmdCtx.ui.custom((tui, theme, _kb, done) => {
+      const result = await cmdCtx.ui.custom((tui, theme, _kb, done) => {
         return new UsageContainer(
           tui,
           theme,
@@ -885,6 +885,14 @@ export function setupUsageCommand(pi: ExtensionAPI): void {
           () => done(undefined),
         );
       });
+
+      // RPC fallback
+      if (result === undefined) {
+        cmdCtx.ui.notify(
+          "/providers:usage requires interactive mode",
+          "info",
+        );
+      }
     },
   });
 }

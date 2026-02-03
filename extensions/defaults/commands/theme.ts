@@ -31,23 +31,32 @@ export function registerThemeCommand(pi: ExtensionAPI) {
         description: t.path ? "Custom" : "Built-in",
       }));
 
-      const selected = await ctx.ui.custom<string | null>(
-        (_tui, _theme, _keybindings, done) => {
-          return new ThemeSelector(
-            options,
-            currentIndex,
-            (value) => {
-              ctx.ui.setTheme(value);
-              done(value);
-            },
-            () => {
-              ctx.ui.setTheme(originalTheme);
-              done(null);
-            },
-            (value) => ctx.ui.setTheme(value),
-          );
-        },
-      );
+      let selected: string | null | undefined = await ctx.ui.custom<
+        string | null
+      >((_tui, _theme, _keybindings, done) => {
+        return new ThemeSelector(
+          options,
+          currentIndex,
+          (value) => {
+            ctx.ui.setTheme(value);
+            done(value);
+          },
+          () => {
+            ctx.ui.setTheme(originalTheme);
+            done(null);
+          },
+          (value) => ctx.ui.setTheme(value),
+        );
+      });
+
+      // RPC fallback: use select dialog
+      if (selected === undefined) {
+        const themeNames = allThemes.map((t) => t.name);
+        selected = await ctx.ui.select("Select theme", themeNames);
+        if (selected) {
+          ctx.ui.setTheme(selected);
+        }
+      }
 
       if (selected) {
         ctx.ui.notify(`Theme: ${selected}`, "info");

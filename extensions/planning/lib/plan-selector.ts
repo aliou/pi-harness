@@ -34,6 +34,19 @@ export async function selectPlan(
       new PlanSelector(tui, theme, { plans, onArchive }, done),
   );
 
+  // RPC fallback: use select dialog
+  if (result === undefined) {
+    const planLabels = plans.map(
+      (p) => `${p.date || "????"} ${p.title?.trim() || p.slug}`,
+    );
+    const selected = await ctx.ui.select("Select plan", planLabels);
+    if (selected) {
+      const index = planLabels.indexOf(selected);
+      return plans[index] ?? null;
+    }
+    return null;
+  }
+
   return result?.selected ?? null;
 }
 

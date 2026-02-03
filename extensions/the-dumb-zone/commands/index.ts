@@ -209,7 +209,7 @@ export function setupDumbZoneCommands(pi: ExtensionAPI): void {
         compacted,
       };
 
-      await ctx.ui.custom<void>(
+      const result = await ctx.ui.custom<void>(
         (_tui, theme, _keybindings, done) => {
           return new DumbZoneStatusOverlay(theme, data, () => done(undefined));
         },
@@ -223,6 +223,20 @@ export function setupDumbZoneCommands(pi: ExtensionAPI): void {
           },
         },
       );
+
+      // RPC fallback
+      if (result === undefined) {
+        const pct = Math.round(data.utilization * 100);
+        const zone =
+          data.utilization >= data.criticalThreshold
+            ? "CRITICAL"
+            : data.utilization >= data.dangerThreshold
+              ? "DANGER"
+              : data.utilization >= data.warningThreshold
+                ? "WARNING"
+                : "OK";
+        ctx.ui.notify(`Context: ${pct}% (${zone})`, "info");
+      }
     },
   });
 }

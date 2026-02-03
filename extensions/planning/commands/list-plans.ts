@@ -148,6 +148,12 @@ async function editPlan(
     },
   );
 
+  // RPC fallback: editor requires interactive TUI
+  if (exitCode === undefined) {
+    ctx.ui.notify("Editing plans requires interactive mode", "info");
+    return;
+  }
+
   if (exitCode !== 0) {
     ctx.ui.notify("Editor exited with errors", "error");
     return;
