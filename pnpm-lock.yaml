@@ -56,9 +56,6 @@ importers:
 
   extensions/defaults:
     dependencies:
-      '@aliou/sh':
-        specifier: github:aliou/sh#v0.1.0
-        version: https://codeload.github.com/aliou/sh/tar.gz/505141ab1d180435ae795a7307237b2ee506ffb4
       '@mariozechner/pi-coding-agent':
         specifier: '>=0.51.0'
         version: 0.51.0(ws@8.19.0)(zod@3.25.76)
@@ -74,6 +71,9 @@ importers:
 
   extensions/guardrails:
     dependencies:
+      '@aliou/pi-utils-settings':
+        specifier: workspace:*
+        version: link:../../packages/settings
       '@aliou/sh':
         specifier: github:aliou/sh#v0.1.0
         version: https://codeload.github.com/aliou/sh/tar.gz/505141ab1d180435ae795a7307237b2ee506ffb4
@@ -126,6 +126,15 @@ importers:
         specifier: '>=0.51.0'
         version: 0.51.0(ws@8.19.0)(zod@3.25.76)
 
+  extensions/settings-test:
+    dependencies:
+      '@aliou/pi-utils-settings':
+        specifier: workspace:*
+        version: link:../../packages/settings
+      '@mariozechner/pi-coding-agent':
+        specifier: '>=0.51.0'
+        version: 0.51.0(ws@8.19.0)(zod@3.25.76)
+
   extensions/specialized-subagents:
     dependencies:
       '@mariozechner/pi-coding-agent':
@@ -133,6 +142,24 @@ importers:
         version: 0.51.0(ws@8.19.0)(zod@3.25.76)
 
   extensions/the-dumb-zone:
+    dependencies:
+      '@mariozechner/pi-coding-agent':
+        specifier: '>=0.51.0'
+        version: 0.51.0(ws@8.19.0)(zod@3.25.76)
+
+  extensions/toolchain:
+    dependencies:
+      '@aliou/pi-utils-settings':
+        specifier: workspace:*
+        version: link:../../packages/settings
+      '@aliou/sh':
+        specifier: github:aliou/sh#v0.1.0
+        version: https://codeload.github.com/aliou/sh/tar.gz/505141ab1d180435ae795a7307237b2ee506ffb4
+      '@mariozechner/pi-coding-agent':
+        specifier: '>=0.51.0'
+        version: 0.51.0(ws@8.19.0)(zod@3.25.76)
+
+  packages/settings:
     dependencies:
       '@mariozechner/pi-coding-agent':
         specifier: '>=0.51.0'
@@ -1256,6 +1283,7 @@ packages:
   glob@11.1.0:
     resolution: {integrity: sha512-vuNwKSaKiqm7g0THUBu2x7ckSs3XJLXE+2ssL7/MfTGPLLcrJQ/4Uq1CjPTtO5cCIiRxqvN6Twy1qOwhL0Xjcw==}
     engines: {node: 20 || >=22}
+    deprecated: Old versions of glob are not supported, and contain widely publicized security vulnerabilities, which have been fixed in the current version. Please update. Support for old versions may be purchased (at exorbitant rates) by contacting i@izs.me
     hasBin: true
 
   globby@11.1.0:

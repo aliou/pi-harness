@@ -1,0 +1,27 @@
+{
+  "name": "@aliou/pi-utils-settings",
+  "version": "0.0.1",
+  "type": "module",
+  "private": false,
+  "license": "MIT",
+  "description": "Shared settings UI and config loader for pi extensions",
+  "exports": {
+    ".": "./index.ts"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/aliou/pi-extensions",
+    "directory": "packages/settings"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "files": [
+    "*.ts",
+    "components",
+    "README.md"
+  ],
+  "peerDependencies": {
+    "@mariozechner/pi-coding-agent": ">=0.51.0"
+  }
+}
