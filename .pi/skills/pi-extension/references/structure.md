@@ -8,6 +8,8 @@ This covers the standalone repository structure for a Pi extension. This is the 
 my-extension/
   src/
     index.ts              # Entry point (default export)
+    config.ts             # Config schema (types) + loader + defaults
+    client.ts             # API client (if wrapping a third-party API)
     tools/
       my-tool.ts          # One file per tool
     commands/
@@ -17,8 +19,8 @@ my-extension/
     providers/
       index.ts             # Provider registration
       models.ts            # Model definitions
-    types.ts               # Shared types
-    client.ts              # API client (if wrapping a third-party API)
+    utils/                 # Internal helpers (matching, parsing, etc.)
+      my-helper.ts
   package.json
   tsconfig.json
   biome.json               # Linting/formatting (optional)
@@ -28,6 +30,14 @@ my-extension/
 ```
 
 Not every extension needs every directory. A simple extension with one tool might only have `src/index.ts` and `src/tools/my-tool.ts`.
+
+### Organization principles
+
+- **`index.ts` and `config.ts`** stay at root. These are the two core files every non-trivial extension has.
+- **Tools, commands, components, providers, hooks** each get their own directory. One file per tool/command/component.
+- **Config types live in `config.ts`**, not a separate `types.ts` or `config-schema.ts`. The config file exports both the types (user-facing schema, resolved schema) and the config loader instance.
+- **Utility/helper files** go in `utils/`. This includes pattern matching, shell parsing, event helpers, migrations, etc. Anything that is not a tool, command, component, provider, or hook.
+- **No separate `types.ts`** unless the extension has shared types unrelated to config (rare). Config types are the most common shared types, and they belong in `config.ts`.
 
 ## package.json
 
@@ -171,15 +181,22 @@ import { myTool } from "./tools/my-tool.js";
 
 ## Monorepo Variant
 
-In a monorepo with pnpm workspaces, the structure differs slightly:
+In a monorepo with pnpm workspaces, the structure differs slightly. There is no `src/` directory; the entry point and config live directly in the package root.
 
 ```
 extensions/
   my-extension/
     index.ts              # Entry point (no src/ directory)
-    tools/
+    config.ts             # Config schema (types) + loader + defaults
     commands/
+      settings-command.ts
+    hooks/
+      my-hook.ts
     components/
+      my-editor.ts
+    utils/
+      matching.ts
+      shell-utils.ts
     package.json
 ```
 
@@ -188,3 +205,4 @@ Key differences from standalone:
 - `"pi": { "extensions": ["./index.ts"] }` instead of `["./src/index.ts"]`.
 - Uses `peerDependencies` (resolved by workspace root).
 - Shared `tsconfig` from a workspace package.
+- Same organization principles apply: config types in `config.ts`, helpers in `utils/`, one directory per feature category.

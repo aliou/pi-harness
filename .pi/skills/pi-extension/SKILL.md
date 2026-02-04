@@ -76,8 +76,8 @@ When implementing, look at these existing extensions for patterns:
 
 **Monorepo extensions (simpler structure):**
 - `extensions/defaults/` in this repo: Simple tool registration (get_current_time).
-- `extensions/guardrails/` in this repo: Event hooks (tool_call blocking).
-- `extensions/toolchain/` in this repo: Bash spawn hooks (command rewriting via `createBashTool`) combined with tool_call blockers.
+- `extensions/guardrails/` in this repo: Event hooks (tool_call blocking). Has `hooks/`, `commands/`, `components/`, `utils/` directories with config types in `config.ts`.
+- `extensions/toolchain/` in this repo: Bash spawn hooks (command rewriting via `createBashTool`) combined with tool_call blockers. Has `blockers/`, `rewriters/`, `commands/`, `utils/` directories.
 - `extensions/processes/` in this repo: Multi-action tool with StringEnum parameters.
 
 ## Critical Rules
