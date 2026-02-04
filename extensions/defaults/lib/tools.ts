@@ -36,7 +36,7 @@ export function setupTools(pi: ExtensionAPI): void {
           ctx.ui.notify(`read called on directory: ${path}`, "info");
 
           // Delegate to native ls when reading a directory
-          return nativeLs.execute(toolCallId, { path }, signal);
+          return nativeLs.execute(toolCallId, { path }, signal, onUpdate);
         }
       } catch {
         // Path does not exist or cannot be accessed - let nativeRead handle the error
