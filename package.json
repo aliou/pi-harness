@@ -51,6 +51,7 @@
       "@mariozechner/pi-tui": "$@mariozechner/pi-coding-agent"
     },
     "onlyBuiltDependencies": [
+      "@aliou/sh",
       "better-sqlite3"
     ]
   },

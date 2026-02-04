@@ -6,6 +6,9 @@
       "./index.ts"
     ]
   },
+  "dependencies": {
+    "@aliou/sh": "github:aliou/sh#v0.1.0"
+  },
   "peerDependencies": {
     "@mariozechner/pi-coding-agent": ">=0.51.0"
   }

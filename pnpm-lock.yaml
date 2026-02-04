@@ -54,75 +54,100 @@ importers:
         specifier: ^5.7.0
         version: 5.9.3
 
-  extensions/defaults: {}
+  extensions/defaults:
+    dependencies:
+      '@aliou/sh':
+        specifier: github:aliou/sh#v0.1.0
+        version: https://codeload.github.com/aliou/sh/tar.gz/505141ab1d180435ae795a7307237b2ee506ffb4
+      '@mariozechner/pi-coding-agent':
+        specifier: '>=0.51.0'
+        version: 0.51.0(ws@8.19.0)(zod@3.25.76)
 
   extensions/extension-dev:
     dependencies:
       '@mariozechner/pi-coding-agent':
-        specifier: '>=0.50.0'
+        specifier: '>=0.51.0'
         version: 0.51.0(ws@8.19.0)(zod@3.25.76)
-      '@mariozechner/pi-tui':
-        specifier: 0.51.0
-        version: 0.51.0
       '@sinclair/typebox':
         specifier: ^0.34.41
         version: 0.34.47
 
   extensions/guardrails:
     dependencies:
+      '@aliou/sh':
+        specifier: github:aliou/sh#v0.1.0
+        version: https://codeload.github.com/aliou/sh/tar.gz/505141ab1d180435ae795a7307237b2ee506ffb4
       '@mariozechner/pi-coding-agent':
-        specifier: 0.51.0
+        specifier: '>=0.51.0'
         version: 0.51.0(ws@8.19.0)(zod@3.25.76)
-      '@mariozechner/pi-tui':
-        specifier: 0.51.0
-        version: 0.51.0
 
-  extensions/mac-app: {}
+  extensions/mac-app:
+    dependencies:
+      '@mariozechner/pi-coding-agent':
+        specifier: '>=0.51.0'
+        version: 0.51.0(ws@8.19.0)(zod@3.25.76)
 
-  extensions/neovim: {}
+  extensions/neovim:
+    dependencies:
+      '@mariozechner/pi-coding-agent':
+        specifier: '>=0.51.0'
+        version: 0.51.0(ws@8.19.0)(zod@3.25.76)
 
-  extensions/planning: {}
+  extensions/planning:
+    dependencies:
+      '@mariozechner/pi-coding-agent':
+        specifier: '>=0.51.0'
+        version: 0.51.0(ws@8.19.0)(zod@3.25.76)
 
-  extensions/presenter: {}
+  extensions/presenter:
+    dependencies:
+      '@mariozechner/pi-coding-agent':
+        specifier: '>=0.51.0'
+        version: 0.51.0(ws@8.19.0)(zod@3.25.76)
 
   extensions/processes:
     dependencies:
-      '@mariozechner/pi-ai':
-        specifier: 0.51.0
-        version: 0.51.0(ws@8.19.0)(zod@3.25.76)
       '@mariozechner/pi-coding-agent':
-        specifier: 0.51.0
+        specifier: '>=0.51.0'
         version: 0.51.0(ws@8.19.0)(zod@3.25.76)
-      '@mariozechner/pi-tui':
-        specifier: 0.51.0
-        version: 0.51.0
       '@sinclair/typebox':
         specifier: ^0.34.41
         version: 0.34.47
 
   extensions/providers:
     dependencies:
-      '@mariozechner/pi-ai':
-        specifier: 0.51.0
-        version: 0.51.0(ws@8.19.0)(zod@3.25.76)
       '@mariozechner/pi-coding-agent':
-        specifier: 0.51.0
+        specifier: '>=0.51.0'
         version: 0.51.0(ws@8.19.0)(zod@3.25.76)
-      '@mariozechner/pi-tui':
-        specifier: 0.51.0
-        version: 0.51.0
 
-  extensions/session-management: {}
+  extensions/session-management:
+    dependencies:
+      '@mariozechner/pi-coding-agent':
+        specifier: '>=0.51.0'
+        version: 0.51.0(ws@8.19.0)(zod@3.25.76)
 
-  extensions/specialized-subagents: {}
+  extensions/specialized-subagents:
+    dependencies:
+      '@mariozechner/pi-coding-agent':
+        specifier: '>=0.51.0'
+        version: 0.51.0(ws@8.19.0)(zod@3.25.76)
 
-  extensions/the-dumb-zone: {}
+  extensions/the-dumb-zone:
+    dependencies:
+      '@mariozechner/pi-coding-agent':
+        specifier: '>=0.51.0'
+        version: 0.51.0(ws@8.19.0)(zod@3.25.76)
 
   packages/tsconfig: {}
 
   themes/jellybeans: {}
 
 packages:
+
+  '@aliou/sh@https://codeload.github.com/aliou/sh/tar.gz/505141ab1d180435ae795a7307237b2ee506ffb4':
+    resolution: {tarball: https://codeload.github.com/aliou/sh/tar.gz/505141ab1d180435ae795a7307237b2ee506ffb4}
+    version: 0.1.0
+    engines: {node: '>=22'}
 
   '@anthropic-ai/sdk@0.71.2':
     resolution: {integrity: sha512-TGNDEUuEstk/DKu0/TflXAEt+p+p/WhTlFzEnoosvbaDU2LTjm42igSdlL0VijrKpWejtOKxX0b8A7uc+XiSAQ==}
@@ -1842,6 +1867,8 @@ packages:
     resolution: {integrity: sha512-gzUt/qt81nXsFGKIFcC3YnfEAx5NkunCfnDlvuBSSFS02bcXu4Lmea0AFIUwbLWxWPx3d9p8S5QoaujKcNQxcQ==}
 
 snapshots:
+
+  '@aliou/sh@https://codeload.github.com/aliou/sh/tar.gz/505141ab1d180435ae795a7307237b2ee506ffb4': {}
 
   '@anthropic-ai/sdk@0.71.2(zod@3.25.76)':
     dependencies:
