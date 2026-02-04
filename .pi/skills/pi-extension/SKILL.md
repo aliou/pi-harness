@@ -89,6 +89,7 @@ When implementing, look at these existing extensions for patterns:
 6. **Tool naming**: Prefix with API name for third-party integrations (`linkup_web_search`). No prefix for internal tools (`get_current_time`).
 7. **peerDependencies**: Use `>=CURRENT_VERSION` range, not `*`.
 8. **Check existing components**: Before creating a new TUI component, check if `pi-tui` or `pi-coding-agent` already exports one that fits.
+9. **Never use `homedir()` for pi paths**: Use the SDK helpers from `@mariozechner/pi-coding-agent` instead. They respect the `PI_CODING_AGENT_DIR` env var which is used for testing and custom setups. Key functions: `getAgentDir()`, `getSettingsPath()`, `getSessionsDir()`, `getPromptsDir()`, `getToolsDir()`, `getCustomThemesDir()`, `getModelsPath()`, `getAuthPath()`, `getBinDir()`, `getDebugLogPath()`. All exported from the main package entry point.
 
 ## Checklist
 
@@ -103,4 +104,5 @@ Before considering an extension complete:
 - [ ] Fire-and-forget methods (notify, setStatus, etc.) are used without hasUI guards.
 - [ ] Missing API keys produce a notification, not a crash.
 - [ ] `pnpm typecheck` passes.
+- [ ] No `homedir()` calls for pi paths -- uses SDK helpers (`getAgentDir()`, etc.).
 - [ ] README documents tools, commands, env vars.
