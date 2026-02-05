@@ -1,5 +1,11 @@
 # @aliou/pi-toolchain
 
+## 0.2.0
+
+### Minor Changes
+
+- 7a3f659: Add memory scope for ephemeral settings overrides
+
 ## 0.1.2
 
 ### Patch Changes
