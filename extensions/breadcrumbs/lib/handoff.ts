@@ -36,28 +36,26 @@ export interface HandoffResult {
  * The model extracts relevant context from the session -- it does not
  * generate instructions. The user's goal guides what to extract.
  */
-const EXTRACTION_SYSTEM_PROMPT = `You are a context extraction assistant. Given a conversation history and a goal for a new session, extract relevant context.
+const EXTRACTION_SYSTEM_PROMPT = `You are a context extraction assistant. Given a conversation history and a goal for a new session, extract the FINAL STATE of what was accomplished.
 
-Your job is to EXTRACT information, not generate instructions. Focus on facts, decisions, and state.
+CRITICAL: Focus on WHERE THINGS ENDED UP, not the journey. If something was planned then implemented, report it as IMPLEMENTED. If something was discussed then decided against, report the final decision. The new session needs to know the current state, not the full history.
 
 Return your response in this exact format:
 
 ## Relevant Files
 
-List file paths that are relevant to the goal, one per line prefixed with "- ".
-Only include files that were actually mentioned or modified in the conversation.
+List file paths relevant to the goal (that exist or were created), one per line prefixed with "- ".
 
 ## Context
 
-Write a concise summary of relevant context including:
-- What was implemented and how
-- Key decisions made and their rationale
-- Important technical details (APIs, data structures, patterns)
-- Commands that were run (build, test, etc.)
-- Constraints, caveats, or open questions
-- What worked and what did not
+Summarize the FINAL STATE:
+- What IS implemented (not "was discussed" or "needs to be done")
+- Final decisions made (not alternatives that were rejected)
+- Current technical details (APIs, data structures, patterns IN USE)
+- What works and what is broken RIGHT NOW
+- Any remaining open questions or next steps
 
-Omit anything irrelevant to the stated goal. Be specific and factual.`;
+Be factual and specific. Prioritize the END of the conversation over the beginning.`;
 
 /**
  * Execute a handoff: extract context from the current session and create
