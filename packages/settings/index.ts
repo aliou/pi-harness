@@ -22,6 +22,7 @@ export {
   ConfigLoader,
   type ConfigStore,
   type Migration,
+  type Scope,
 } from "./config-loader";
 export {
   displayToStorageValue,

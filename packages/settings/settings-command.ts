@@ -1,7 +1,7 @@
 /**
  * Settings command registration helper.
  *
- * Creates a /{name}:settings command with Local/Global tabs.
+ * Creates a /{name}:settings command with tabs for each enabled scope.
  * Changes are tracked in memory. Ctrl+S saves, Esc exits without saving.
  */
 
@@ -12,10 +12,19 @@ import {
   SectionedSettings,
   type SettingsSection,
 } from "./components/sectioned-settings";
-import type { ConfigStore } from "./config-loader";
-import { displayToStorageValue, setNestedValue } from "./helpers";
+import type { ConfigStore, Scope } from "./config-loader";
+import {
+  displayToStorageValue,
+  getNestedValue,
+  setNestedValue,
+} from "./helpers";
 
-type Tab = "local" | "global";
+/** Display labels for each scope */
+const SCOPE_LABELS: Record<Scope, string> = {
+  global: "Global",
+  local: "Local",
+  memory: "Memory",
+};
 
 export interface SettingsCommandOptions<
   TConfig extends object,
@@ -36,11 +45,18 @@ export interface SettingsCommandOptions<
    * Use ctx.setDraft in submenu onSave callbacks to store changes
    * in the draft. All changes (toggles, enums, submenus) are only
    * persisted to disk on Ctrl+S.
+   *
+   * For memory scope, tabConfig is null when no overrides exist yet.
+   * Use resolved values as display values in that case.
    */
   buildSections: (
     tabConfig: TConfig | null,
     resolved: TResolved,
-    ctx: { setDraft: (config: TConfig) => void },
+    ctx: {
+      setDraft: (config: TConfig) => void;
+      scope: Scope;
+      isInherited: (path: string) => boolean;
+    },
   ) => SettingsSection[];
   /**
    * Custom change handler. Receives the setting ID, new display value,
@@ -100,7 +116,7 @@ export function registerSettingsCommand<
   } = options;
   const description =
     options.commandDescription ??
-    `Configure ${commandName.split(":")[0]} (local/global)`;
+    `Configure ${commandName.split(":")[0]} settings`;
   const extensionLabel = commandName.split(":")[0] ?? title;
 
   pi.registerCommand(commandName, {
@@ -108,34 +124,50 @@ export function registerSettingsCommand<
     handler: async (_args, ctx) => {
       if (!ctx.hasUI) return;
 
-      let activeTab: Tab = configStore.hasConfig("project")
-        ? "local"
-        : "global";
+      const enabledScopes = configStore.getEnabledScopes();
+      if (enabledScopes.length === 0) {
+        ctx.ui.notify("No scopes configured", "error");
+        return;
+      }
+
+      // Default to first scope with existing config, else first enabled scope
+      // Safe: we check enabledScopes.length > 0 above
+      let activeScope: Scope =
+        enabledScopes.find((s) => configStore.hasConfig(s)) ??
+        (enabledScopes[0] as Scope);
 
       await ctx.ui.custom((tui, theme, _kb, done) => {
         let settings: SectionedSettings | null = null;
         let currentSections: SettingsSection[] = [];
         const settingsTheme = getSettingsListTheme();
 
-        // Per-tab draft configs. null = no changes from disk.
-        const drafts: Record<Tab, TConfig | null> = {
-          local: null,
-          global: null,
-        };
+        // Per-scope draft configs. null = no changes from disk/memory.
+        const drafts: Partial<Record<Scope, TConfig | null>> = {};
+        for (const scope of enabledScopes) {
+          drafts[scope] = null;
+        }
 
         // --- Helpers ---
 
-        function tabScope(): "global" | "project" {
-          return activeTab === "local" ? "project" : "global";
+        /** Get the effective config for the active scope (draft or stored). */
+        function getTabConfig(): TConfig | null {
+          return drafts[activeScope] ?? configStore.getRawConfig(activeScope);
         }
 
-        /** Get the effective config for the active tab (draft or disk). */
-        function getTabConfig(): TConfig | null {
-          return drafts[activeTab] ?? configStore.getRawConfig(tabScope());
+        /**
+         * For memory scope: check if a path has a value in memory config.
+         * If not, it's inherited from lower-priority scopes.
+         */
+        function isInherited(path: string): boolean {
+          if (activeScope !== "memory") return false;
+          const memoryConfig =
+            drafts.memory ?? configStore.getRawConfig("memory");
+          if (!memoryConfig) return true; // No memory config = all inherited
+          return getNestedValue(memoryConfig, path) === undefined;
         }
 
         function isDirty(): boolean {
-          return drafts.local !== null || drafts.global !== null;
+          return enabledScopes.some((scope) => drafts[scope] !== null);
         }
 
         function getSections(): SettingsSection[] {
@@ -143,8 +175,10 @@ export function registerSettingsCommand<
           const resolved = configStore.getConfig();
           currentSections = buildSections(tabConfig, resolved, {
             setDraft: (config) => {
-              drafts[activeTab] = config;
+              drafts[activeScope] = config;
             },
+            scope: activeScope,
+            isInherited,
           });
           return currentSections;
         }
@@ -154,13 +188,13 @@ export function registerSettingsCommand<
           tui.requestRender();
         }
 
-        function buildSettingsComponent(tab: Tab): SectionedSettings {
+        function buildSettingsComponent(scope: Scope): SectionedSettings {
           return new SectionedSettings(
             getSections(),
             15,
             settingsTheme,
             (id, newValue) => {
-              handleChange(tab, id, newValue);
+              handleChange(scope, id, newValue);
             },
             () => done(undefined),
             { enableSearch: true, hintSuffix: "Ctrl+S to save" },
@@ -169,14 +203,23 @@ export function registerSettingsCommand<
 
         // --- Change handler (in-memory only) ---
 
-        function handleChange(tab: Tab, id: string, newValue: string): void {
+        function handleChange(
+          scope: Scope,
+          id: string,
+          newValue: string,
+        ): void {
           // Submenu items handle their own saving.
           if (isSubmenuItem(currentSections, id)) {
             refresh();
             return;
           }
 
-          const current = getTabConfig();
+          // For memory scope with no existing config, start from merged config
+          let current = getTabConfig();
+          if (scope === "memory" && current === null) {
+            current = configStore.getConfig() as unknown as TConfig;
+          }
+
           const handler = onSettingChange ?? defaultChangeHandler;
           const updated = handler(
             id,
@@ -186,7 +229,7 @@ export function registerSettingsCommand<
           if (!updated) return;
 
           // Store in draft, don't write to disk yet.
-          drafts[tab] = updated;
+          drafts[scope] = updated;
           tui.requestRender();
         }
 
@@ -195,25 +238,27 @@ export function registerSettingsCommand<
         async function save(): Promise<void> {
           let saved = false;
 
-          for (const tab of ["local", "global"] as const) {
-            const draft = drafts[tab];
+          for (const scope of enabledScopes) {
+            const draft = drafts[scope];
             if (!draft) continue;
 
-            const scope = tab === "local" ? "project" : "global";
             try {
               await configStore.save(scope, draft);
-              drafts[tab] = null;
+              drafts[scope] = null;
               saved = true;
             } catch (error) {
-              ctx.ui.notify(`Failed to save ${tab}: ${error}`, "error");
+              ctx.ui.notify(
+                `Failed to save ${SCOPE_LABELS[scope]}: ${error}`,
+                "error",
+              );
             }
           }
 
           if (saved) {
             ctx.ui.notify(`${extensionLabel}: saved`, "info");
             if (onSave) await onSave();
-            // Rebuild with fresh disk data.
-            settings = buildSettingsComponent(activeTab);
+            // Rebuild with fresh data.
+            settings = buildSettingsComponent(activeScope);
           }
 
           tui.requestRender();
@@ -222,30 +267,37 @@ export function registerSettingsCommand<
         // --- Tab rendering ---
 
         function renderTabs(): string[] {
-          const dirtyMark = (tab: Tab) => (drafts[tab] ? " *" : "");
+          // Single scope = no tabs needed
+          if (enabledScopes.length === 1) {
+            return [""];
+          }
 
-          const localLabel =
-            activeTab === "local"
-              ? theme.bg(
-                  "selectedBg",
-                  theme.fg("accent", ` Local${dirtyMark("local")} `),
-                )
-              : theme.fg("dim", ` Local${dirtyMark("local")} `);
-          const globalLabel =
-            activeTab === "global"
-              ? theme.bg(
-                  "selectedBg",
-                  theme.fg("accent", ` Global${dirtyMark("global")} `),
-                )
-              : theme.fg("dim", ` Global${dirtyMark("global")} `);
+          const tabLabels = enabledScopes.map((scope) => {
+            const label = SCOPE_LABELS[scope];
+            const dirtyMark = drafts[scope] ? " *" : "";
+            const fullLabel = ` ${label}${dirtyMark} `;
 
-          return ["", `  ${localLabel}  ${globalLabel}`, ""];
+            if (scope === activeScope) {
+              return theme.bg("selectedBg", theme.fg("accent", fullLabel));
+            }
+            return theme.fg("dim", fullLabel);
+          });
+
+          return ["", `  ${tabLabels.join("  ")}`, ""];
         }
 
         function handleTabSwitch(data: string): boolean {
+          // Single scope = no tab switching
+          if (enabledScopes.length <= 1) return false;
+
           if (matchesKey(data, Key.tab) || matchesKey(data, Key.shift("tab"))) {
-            activeTab = activeTab === "local" ? "global" : "local";
-            settings = buildSettingsComponent(activeTab);
+            const currentIndex = enabledScopes.indexOf(activeScope);
+            const direction = matchesKey(data, Key.shift("tab")) ? -1 : 1;
+            const nextIndex =
+              (currentIndex + direction + enabledScopes.length) %
+              enabledScopes.length;
+            activeScope = enabledScopes[nextIndex] as Scope;
+            settings = buildSettingsComponent(activeScope);
             tui.requestRender();
             return true;
           }
@@ -254,7 +306,7 @@ export function registerSettingsCommand<
 
         // --- Init ---
 
-        settings = buildSettingsComponent(activeTab);
+        settings = buildSettingsComponent(activeScope);
 
         return {
           render(width: number) {
