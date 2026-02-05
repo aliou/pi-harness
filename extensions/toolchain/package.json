@@ -1,6 +1,6 @@
 {
   "name": "@aliou/pi-toolchain",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "license": "MIT",
   "type": "module",
   "private": false,
@@ -32,7 +32,7 @@
     "README.md"
   ],
   "dependencies": {
-    "@aliou/pi-utils-settings": "^0.1.0",
+    "@aliou/pi-utils-settings": "^0.2.0",
     "@aliou/sh": "^0.1.0"
   },
   "peerDependencies": {
