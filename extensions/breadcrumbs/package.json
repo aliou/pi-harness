@@ -7,7 +7,7 @@
     ]
   },
   "dependencies": {
-    "@aliou/pi-utils-settings": "^0.1.0"
+    "@aliou/pi-utils-settings": "^0.2.0"
   },
   "peerDependencies": {
     "@mariozechner/pi-coding-agent": ">=0.51.0"

@@ -1,6 +1,6 @@
 {
   "name": "@aliou/pi-guardrails",
-  "version": "0.6.1",
+  "version": "0.6.2",
   "type": "module",
   "private": false,
   "keywords": [
@@ -32,7 +32,7 @@
     "README.md"
   ],
   "dependencies": {
-    "@aliou/pi-utils-settings": "^0.1.0",
+    "@aliou/pi-utils-settings": "^0.2.0",
     "@aliou/sh": "^0.1.0"
   },
   "peerDependencies": {
