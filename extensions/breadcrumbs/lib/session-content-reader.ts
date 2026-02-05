@@ -41,8 +41,17 @@ export function readRawSessionContent(
 }
 
 /**
+ * Maximum characters for session content to avoid overwhelming the extraction LLM.
+ * ~100k chars is roughly 25k tokens, leaving room for the extraction prompt.
+ */
+const MAX_SESSION_CONTENT_CHARS = 100_000;
+
+/**
  * Read the current session file and return a text representation
  * of the conversation, filtering out system prompts and tool definitions.
+ *
+ * For large sessions, only the most recent messages are included (up to
+ * MAX_SESSION_CONTENT_CHARS). A note is prepended indicating truncation.
  *
  * Returns null if:
  * - No session file exists (ephemeral session)
@@ -100,7 +109,34 @@ export function readCurrentSessionContent(
   }
 
   if (lines.length === 0) return null;
-  return lines.join("\n\n---\n\n");
+
+  // Join and check size
+  const separator = "\n\n---\n\n";
+  let content = lines.join(separator);
+
+  // If content is too large, keep only the most recent messages
+  if (content.length > MAX_SESSION_CONTENT_CHARS) {
+    const truncatedLines: string[] = [];
+    let totalLength = 0;
+
+    // Work backwards from the end (most recent messages)
+    for (let i = lines.length - 1; i >= 0; i--) {
+      const line = lines[i]!;
+      const lineLength = line.length + separator.length;
+
+      if (totalLength + lineLength > MAX_SESSION_CONTENT_CHARS) {
+        break;
+      }
+
+      truncatedLines.unshift(line);
+      totalLength += lineLength;
+    }
+
+    const truncationNote = `[Session truncated: showing last ${truncatedLines.length} of ${lines.length} messages to fit context limit]\n\n---\n\n`;
+    content = truncationNote + truncatedLines.join(separator);
+  }
+
+  return content;
 }
 
 /**
