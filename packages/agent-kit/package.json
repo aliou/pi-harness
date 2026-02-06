@@ -1,0 +1,26 @@
+{
+  "name": "@aliou/pi-agent-kit",
+  "version": "0.1.0",
+  "type": "module",
+  "private": true,
+  "description": "Shared subagent executor, model resolver, types, and components for pi extensions",
+  "exports": {
+    ".": "./index.ts"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/aliou/pi-extensions",
+    "directory": "packages/agent-kit"
+  },
+  "files": [
+    "*.ts",
+    "components",
+    "README.md"
+  ],
+  "peerDependencies": {
+    "@mariozechner/pi-ai": ">=0.8.0",
+    "@mariozechner/pi-agent-core": ">=0.8.0",
+    "@mariozechner/pi-coding-agent": ">=0.51.0",
+    "@mariozechner/pi-tui": ">=0.8.0"
+  }
+}

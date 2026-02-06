@@ -165,6 +165,21 @@ importers:
         specifier: '>=0.51.0'
         version: 0.51.0(ws@8.19.0)(zod@3.25.76)
 
+  packages/agent-kit:
+    dependencies:
+      '@mariozechner/pi-agent-core':
+        specifier: 0.51.0
+        version: 0.51.0(ws@8.19.0)(zod@3.25.76)
+      '@mariozechner/pi-ai':
+        specifier: 0.51.0
+        version: 0.51.0(ws@8.19.0)(zod@3.25.76)
+      '@mariozechner/pi-coding-agent':
+        specifier: '>=0.51.0'
+        version: 0.51.0(ws@8.19.0)(zod@3.25.76)
+      '@mariozechner/pi-tui':
+        specifier: 0.51.0
+        version: 0.51.0
+
   packages/settings:
     dependencies:
       '@mariozechner/pi-coding-agent':
@@ -1288,6 +1303,7 @@ packages:
 
   glob@10.5.0:
     resolution: {integrity: sha512-DfXN8DfhJ7NH3Oe7cFmu3NCu1wKbkReJ8TorzSAFbSKrlNaQSKfIzqYqVY8zlbs2NLBbWpRiU52GX2PbaBVNkg==}
+    deprecated: Old versions of glob are not supported, and contain widely publicized security vulnerabilities, which have been fixed in the current version. Please update. Support for old versions may be purchased (at exorbitant rates) by contacting i@izs.me
     hasBin: true
 
   glob@11.1.0:
