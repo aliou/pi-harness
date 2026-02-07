@@ -63,11 +63,11 @@ importers:
   extensions/breadcrumbs:
     dependencies:
       '@aliou/pi-agent-kit':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../../packages/agent-kit
       '@aliou/pi-utils-settings':
-        specifier: ^0.2.0
-        version: 0.2.0(@mariozechner/pi-coding-agent@0.51.0(ws@8.19.0)(zod@3.25.76))
+        specifier: workspace:^
+        version: link:../../packages/settings
       '@mariozechner/pi-coding-agent':
         specifier: '>=0.51.0'
         version: 0.51.0(ws@8.19.0)(zod@3.25.76)
@@ -90,8 +90,8 @@ importers:
   extensions/guardrails:
     dependencies:
       '@aliou/pi-utils-settings':
-        specifier: ^0.2.0
-        version: 0.2.0(@mariozechner/pi-coding-agent@0.51.0(ws@8.19.0)(zod@3.25.76))
+        specifier: workspace:^
+        version: link:../../packages/settings
       '@aliou/sh':
         specifier: ^0.1.0
         version: 0.1.0
@@ -114,8 +114,8 @@ importers:
   extensions/planning:
     dependencies:
       '@aliou/pi-utils-settings':
-        specifier: 0.2.0
-        version: 0.2.0(@mariozechner/pi-coding-agent@0.51.0(ws@8.19.0)(zod@3.25.76))
+        specifier: workspace:^
+        version: link:../../packages/settings
       '@mariozechner/pi-coding-agent':
         specifier: '>=0.51.0'
         version: 0.51.0(ws@8.19.0)(zod@3.25.76)
@@ -144,8 +144,8 @@ importers:
   extensions/subagents:
     dependencies:
       '@aliou/pi-utils-settings':
-        specifier: ^0.2.0
-        version: 0.2.0(@mariozechner/pi-coding-agent@0.51.0(ws@8.19.0)(zod@3.25.76))
+        specifier: workspace:^
+        version: link:../../packages/settings
       '@mariozechner/pi-coding-agent':
         specifier: '>=0.51.0'
         version: 0.51.0(ws@8.19.0)(zod@3.25.76)
@@ -159,8 +159,8 @@ importers:
   extensions/toolchain:
     dependencies:
       '@aliou/pi-utils-settings':
-        specifier: ^0.2.0
-        version: 0.2.0(@mariozechner/pi-coding-agent@0.51.0(ws@8.19.0)(zod@3.25.76))
+        specifier: workspace:^
+        version: link:../../packages/settings
       '@aliou/sh':
         specifier: ^0.1.0
         version: 0.1.0
