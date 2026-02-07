@@ -1,5 +1,11 @@
 # @aliou/pi-utils-settings
 
+## 0.2.1
+
+### Patch Changes
+
+- b79b592: Fix search filter to match on section labels, not just item labels. When a section label matches the query, all items in that section are shown.
+
 ## 0.2.0
 
 ### Minor Changes
