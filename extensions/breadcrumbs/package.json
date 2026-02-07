@@ -7,7 +7,7 @@
     ]
   },
   "dependencies": {
-    "@aliou/pi-agent-kit": "workspace:*",
+    "@aliou/pi-agent-kit": "^0.1.0",
     "@aliou/pi-utils-settings": "^0.2.0"
   },
   "peerDependencies": {
