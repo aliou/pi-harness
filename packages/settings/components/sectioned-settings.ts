@@ -328,6 +328,9 @@ export class SectionedSettings implements Component {
   /**
    * Apply search filter to entries without resetting the cursor.
    * Used by updateSections() to preserve selection.
+   *
+   * Matches on both item labels and section labels. When a section label
+   * matches, all items in that section are included.
    */
   private filterEntries(query: string): void {
     if (!query) {
@@ -335,29 +338,49 @@ export class SectionedSettings implements Component {
       return;
     }
 
+    const q = query.toLowerCase();
     const filtered: FlatEntry[] = [];
     let currentSection: FlatEntry | null = null;
+    let sectionLabelMatches = false;
     let sectionHasMatch = false;
+    let sectionItems: FlatEntry[] = [];
+
+    const flushSection = () => {
+      if (sectionLabelMatches && currentSection) {
+        // Section label matched: include header + all items
+        filtered.push(currentSection);
+        filtered.push(...sectionItems);
+      } else if (sectionHasMatch && currentSection) {
+        // Only some items matched: include header + matched items
+        filtered.push(currentSection);
+        for (const item of sectionItems) {
+          if (item.item && item.item.label.toLowerCase().includes(q)) {
+            filtered.push(item);
+          }
+        }
+      }
+    };
 
     for (const entry of this.flatEntries) {
       if (entry.type === "section") {
+        flushSection();
         currentSection = entry;
-        sectionHasMatch = false;
+        sectionLabelMatches = (entry.sectionLabel ?? "")
+          .toLowerCase()
+          .includes(q);
+        sectionHasMatch = sectionLabelMatches;
+        sectionItems = [];
         continue;
       }
 
       if (entry.item) {
-        const label = entry.item.label.toLowerCase();
-        const q = query.toLowerCase();
-        if (label.includes(q)) {
-          if (currentSection && !sectionHasMatch) {
-            filtered.push(currentSection);
-            sectionHasMatch = true;
-          }
-          filtered.push(entry);
+        sectionItems.push(entry);
+        if (entry.item.label.toLowerCase().includes(q)) {
+          sectionHasMatch = true;
         }
       }
     }
+    flushSection();
 
     this.filteredEntries = filtered;
   }
