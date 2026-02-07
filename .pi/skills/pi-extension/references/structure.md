@@ -206,3 +206,18 @@ Key differences from standalone:
 - Uses `peerDependencies` (resolved by workspace root).
 - Shared `tsconfig` from a workspace package.
 - Same organization principles apply: config types in `config.ts`, helpers in `utils/`, one directory per feature category.
+
+### Workspace dependencies
+
+When an extension depends on another workspace package (e.g., `@aliou/pi-utils-settings`, `@aliou/pi-agent-kit`), use the `workspace:^` protocol instead of a version range:
+
+```json
+{
+  "dependencies": {
+    "@aliou/pi-utils-settings": "workspace:^",
+    "@aliou/sh": "^0.1.0"
+  }
+}
+```
+
+Use `workspace:^` only for packages that live in this monorepo (under `packages/` or `extensions/`). External published packages like `@aliou/sh` keep regular version ranges.

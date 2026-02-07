@@ -81,3 +81,26 @@ nix develop -c pnpm install
 nix develop -c pnpm typecheck
 nix develop -c pnpm lint
 ```
+
+### Workspace dependencies
+
+Extensions and packages that depend on other workspace packages must use `workspace:^` in their `package.json`. This tells pnpm to resolve the dependency from the local workspace instead of the npm registry.
+
+```json
+{
+  "dependencies": {
+    "@aliou/pi-utils-settings": "workspace:^"
+  }
+}
+```
+
+The root `package.json` keeps real version ranges (e.g., `^0.2.0`) because pi installs this repository via npm, which does not understand the `workspace:` protocol. A postinstall script (`scripts/resolve-workspace-deps.mjs`) symlinks unpublished workspace packages into `node_modules` for that case.
+
+### Pre-commit hooks
+
+The Nix dev shell installs pre-commit hooks automatically. These run on every commit:
+
+- **biome check** - Linting and formatting for `.ts` and `.json` files.
+- **treefmt** - Formatting via treefmt.
+- **lockfile check** - Verifies `pnpm-lock.yaml` is up to date (runs when any `package.json`, `pnpm-lock.yaml`, or `pnpm-workspace.yaml` changes).
+- **typecheck** - Runs `pnpm typecheck` when `.ts` files change.
