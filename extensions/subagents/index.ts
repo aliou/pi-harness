@@ -6,7 +6,11 @@ import { createJesterTool, JESTER_GUIDANCE } from "./subagents/jester";
 import { createLookoutTool, LOOKOUT_GUIDANCE } from "./subagents/lookout";
 import { createOracleTool, ORACLE_GUIDANCE } from "./subagents/oracle";
 import { createReviewerTool, REVIEWER_GUIDANCE } from "./subagents/reviewer";
-import { createScoutTool, SCOUT_GUIDANCE } from "./subagents/scout";
+import {
+  createScoutTool,
+  executeScout,
+  SCOUT_GUIDANCE,
+} from "./subagents/scout";
 import { createWorkerTool, WORKER_GUIDANCE } from "./subagents/worker";
 
 /**
@@ -93,6 +97,43 @@ export default async function (pi: ExtensionAPI) {
 
   // Register standalone tools
   pi.registerTool(createWebFetchTool());
+
+  // Listen for cross-extension scout calls
+  pi.events.on("scout:execute", (data: unknown) => {
+    const payload = data as {
+      input: { prompt: string; query?: string };
+      resolve: (result: unknown) => void;
+    };
+
+    const ctx: import("@mariozechner/pi-coding-agent").ExtensionContext = {
+      ui: {} as never,
+      hasUI: false,
+      cwd: process.cwd(),
+      sessionManager: {} as never,
+      modelRegistry: {} as never,
+      model: undefined,
+      isIdle: () => true,
+      abort: () => {},
+      hasPendingMessages: () => false,
+      shutdown: () => {},
+      getContextUsage: () => undefined,
+      compact: () => {},
+      getSystemPrompt: () => "",
+    };
+
+    executeScout(payload.input, ctx)
+      .then((result) => {
+        const first = result.content[0];
+        const text =
+          first?.type === "text"
+            ? (first as { type: "text"; text: string }).text
+            : "";
+        payload.resolve({ content: text });
+      })
+      .catch(() => {
+        payload.resolve(null);
+      });
+  });
 
   // Inject subagent guidance into system prompt
   pi.on("before_agent_start", async (event) => {
