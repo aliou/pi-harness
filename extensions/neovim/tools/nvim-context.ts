@@ -26,26 +26,27 @@ interface NvimContext {
   selection?: {
     start: { line: number; col: number };
     end: { line: number; col: number };
+    text: string;
   };
   filetype: string;
-  content?: string;
+  modified: boolean;
 }
 
 interface DiagnosticItem {
-  lnum: number;
+  line: number;
   col: number;
-  severity: number;
   message: string;
+  severity: "error" | "warning" | "info" | "hint";
   source?: string;
 }
 
 type DiagnosticsResult = DiagnosticItem[];
 
 interface CurrentFunctionResult {
-  name?: string;
-  type?: string;
-  start_line?: number;
-  end_line?: number;
+  name: string;
+  type: "function" | "method" | "class" | "module";
+  start_line: number;
+  end_line: number;
 }
 
 interface SplitInfo {
@@ -94,20 +95,18 @@ function formatPath(filePath: string, cwd: string): string {
 }
 
 /**
- * Get severity label for LSP diagnostic severity.
+ * Map severity string to a theme color name.
  */
-function severityLabel(severity: number): string {
+function severityColor(
+  severity: DiagnosticItem["severity"],
+): "error" | "warning" | "dim" {
   switch (severity) {
-    case 1:
+    case "error":
       return "error";
-    case 2:
+    case "warning":
       return "warning";
-    case 3:
-      return "info";
-    case 4:
-      return "hint";
     default:
-      return "unknown";
+      return "dim";
   }
 }
 
@@ -340,10 +339,9 @@ Use this tool when you need to know what the user is currently looking at in the
                 "dim",
                 `${sel.start.line}:${sel.start.col} - ${sel.end.line}:${sel.end.col}`,
               );
-            }
-            if (nvimCtx.content) {
-              text += `\n${theme.fg("muted", "Content:")}\n`;
-              text += theme.fg("dim", nvimCtx.content);
+              if (sel.text) {
+                text += `\n${theme.fg("dim", sel.text)}`;
+              }
             }
           }
 
@@ -356,8 +354,8 @@ Use this tool when you need to know what the user is currently looking at in the
             return new Text(theme.fg("success", "No diagnostics"), 0, 0);
           }
 
-          const errors = diags.filter((d) => d.severity === 1).length;
-          const warnings = diags.filter((d) => d.severity === 2).length;
+          const errors = diags.filter((d) => d.severity === "error").length;
+          const warnings = diags.filter((d) => d.severity === "warning").length;
           const others = diags.length - errors - warnings;
 
           let text = "";
@@ -378,15 +376,11 @@ Use this tool when you need to know what the user is currently looking at in the
 
           if (expanded) {
             for (const diag of diags) {
-              const sev = severityLabel(diag.severity);
-              const sevColor =
-                diag.severity === 1
-                  ? "error"
-                  : diag.severity === 2
-                    ? "warning"
-                    : "dim";
-              text += `\n${theme.fg("dim", `L${diag.lnum}:${diag.col}`)} `;
-              text += theme.fg(sevColor, `[${sev}]`);
+              text += `\n${theme.fg("dim", `L${diag.line}:${diag.col}`)} `;
+              text += theme.fg(
+                severityColor(diag.severity),
+                `[${diag.severity}]`,
+              );
               text += ` ${theme.fg("muted", diag.message)}`;
               if (diag.source) {
                 text += theme.fg("dim", ` (${diag.source})`);
@@ -404,15 +398,9 @@ Use this tool when you need to know what the user is currently looking at in the
           }
 
           let text = theme.fg("accent", fn.name);
-          if (fn.type) {
-            text += theme.fg("muted", ` (${fn.type})`);
-          }
+          text += theme.fg("muted", ` (${fn.type})`);
 
-          if (
-            expanded &&
-            fn.start_line !== undefined &&
-            fn.end_line !== undefined
-          ) {
+          if (expanded) {
             text += `\n${theme.fg("dim", `Lines ${fn.start_line}-${fn.end_line}`)}`;
           }
 
