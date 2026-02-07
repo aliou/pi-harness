@@ -1,5 +1,20 @@
 # @aliou/pi-toolchain
 
+## 0.3.0
+
+### Minor Changes
+
+- 523fe5e: Add a new `preventDockerSecrets` blocker feature to reduce accidental secret exfiltration from Docker containers.
+
+  When enabled, toolchain blocks:
+
+  - `docker inspect` (can expose `Config.Env`)
+  - `docker exec ... env`
+  - `docker exec ... printenv`
+  - `docker exec ... cat /proc/<pid>/environ`
+
+  The feature is opt-in and defaults to `false`.
+
 ## 0.2.1
 
 ### Patch Changes
