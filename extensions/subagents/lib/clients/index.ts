@@ -17,11 +17,3 @@ export {
   type ParsedGitHubUrl,
   parseGitHubUrl,
 } from "./github";
-
-export {
-  createLinkupClient,
-  LinkupClient,
-  type LinkupFetchOptions,
-  type LinkupFetchResponse,
-  type LinkupImage,
-} from "./linkup";

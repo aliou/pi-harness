@@ -1,7 +1,6 @@
 import type { ExtensionAPI } from "@mariozechner/pi-coding-agent";
 import { registerSubagentsSettings } from "./commands/settings-command";
 import { configLoader } from "./config";
-import { createWebFetchTool } from "./lib/tools";
 import { createJesterTool, JESTER_GUIDANCE } from "./subagents/jester";
 import { createLookoutTool, LOOKOUT_GUIDANCE } from "./subagents/lookout";
 import { createOracleTool, ORACLE_GUIDANCE } from "./subagents/oracle";
@@ -24,17 +23,11 @@ import { createWorkerTool, WORKER_GUIDANCE } from "./subagents/worker";
  * - jester: Random data generator (no tools, high variance)
  * - worker: Focused implementation agent for well-defined tasks on specific files
  *
- * Also provides standalone tools:
- * - web_fetch: Fetch URL content as markdown (no LLM)
  */
 
 /** Check required API keys, throw if missing */
 function checkApiKeys(): string[] {
   const missing: string[] = [];
-
-  if (!process.env.LINKUP_API_KEY) {
-    missing.push("LINKUP_API_KEY");
-  }
 
   if (!process.env.SCOUT_GITHUB_TOKEN) {
     missing.push("SCOUT_GITHUB_TOKEN");
@@ -90,9 +83,6 @@ export default async function (pi: ExtensionAPI) {
   pi.registerTool(createReviewerTool());
   pi.registerTool(createJesterTool());
   pi.registerTool(createWorkerTool());
-
-  // Register standalone tools
-  pi.registerTool(createWebFetchTool());
 
   // Listen for cross-extension scout calls
   pi.events.on("scout:execute", (data: unknown) => {
