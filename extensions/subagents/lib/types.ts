@@ -26,6 +26,9 @@ export interface SubagentConfig {
   /** Skills to load into system prompt */
   skills?: Skill[];
 
+  /** Extension paths to load (filesystem, npm:, or git URLs). Resolved by DefaultResourceLoader. */
+  extensionPaths?: string[];
+
   /** Thinking level. Default: "low" */
   thinkingLevel?: ThinkingLevel;
 

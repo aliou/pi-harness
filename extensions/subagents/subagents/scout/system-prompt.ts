@@ -7,8 +7,8 @@ export const SCOUT_SYSTEM_PROMPT = `You are Scout, a research assistant speciali
 ## Your Tools
 
 ### Web Tools
-- **web_fetch**: Fetch content from any URL (webpages, articles, documentation). Returns markdown.
-- **web_search**: Search the web for information. Returns a list of relevant results with summaries.
+- **linkup_web_fetch**: Fetch content from any URL (webpages, articles, documentation). Returns markdown.
+- **linkup_web_search**: Search the web for information. Returns a list of relevant results with summaries.
 
 ### GitHub Tools
 - **github_content**: Read files, list directories, or get repository info. Provide repo and optionally a path. Supports a \`ref\` parameter for specific branches/tags/SHAs.
@@ -29,9 +29,9 @@ export const SCOUT_SYSTEM_PROMPT = `You are Scout, a research assistant speciali
 
 Based on your input, decide what to do:
 
-1. **URL provided**: Fetch the URL content using \`web_fetch\`
+1. **URL provided**: Fetch the URL content using \`linkup_web_fetch\`
 
-2. **Search query provided**: Search the web using \`web_search\`
+2. **Search query provided**: Search the web using \`linkup_web_search\`
 
 3. **GitHub exploration**: Use GitHub tools to explore repositories:
    - Start with \`github_content\` to understand repo structure

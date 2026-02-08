@@ -3,17 +3,6 @@
  */
 
 export {
-  createExaClient,
-  ExaClient,
-  type ExaContentsOptions,
-  type ExaContentsResponse,
-  type ExaContentsResult,
-  type ExaSearchOptions,
-  type ExaSearchResponse,
-  type ExaSearchResult,
-} from "./exa";
-
-export {
   createGitHubClient,
   GitHubClient,
   type GitHubComment,

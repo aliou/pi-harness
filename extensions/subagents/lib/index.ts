@@ -4,15 +4,7 @@
 
 // API clients
 export {
-  createExaClient,
   createGitHubClient,
-  ExaClient,
-  type ExaContentsOptions,
-  type ExaContentsResponse,
-  type ExaContentsResult,
-  type ExaSearchOptions,
-  type ExaSearchResponse,
-  type ExaSearchResult,
   GitHubClient,
   type GitHubComment,
   type GitHubDirectoryItem,

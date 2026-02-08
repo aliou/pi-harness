@@ -36,10 +36,6 @@ function checkApiKeys(): string[] {
     missing.push("LINKUP_API_KEY");
   }
 
-  if (!process.env.EXA_API_KEY) {
-    missing.push("EXA_API_KEY");
-  }
-
   if (!process.env.SCOUT_GITHUB_TOKEN) {
     missing.push("SCOUT_GITHUB_TOKEN");
   }

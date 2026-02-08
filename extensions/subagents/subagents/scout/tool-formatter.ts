@@ -13,8 +13,8 @@ export interface FormattedToolCall {
  * Format a scout tool call for display.
  *
  * Examples:
- * - web_fetch: "Fetch example.com/path"
- * - web_search: "Search 'typescript best practices'"
+ * - linkup_web_fetch: "Fetch example.com/path"
+ * - linkup_web_search: "Search 'typescript best practices'"
  * - github_content: "Content owner/repo/path"
  * - github_search: "Search 'query'"
  * - github_commits: "Commits owner/repo" or "Diff abc1234"
@@ -30,7 +30,7 @@ export function formatScoutToolCall(
   const { toolName, args } = toolCall;
 
   switch (toolName) {
-    case "web_fetch": {
+    case "linkup_web_fetch": {
       const url = args.url as string | undefined;
       if (url) {
         try {
@@ -43,7 +43,7 @@ export function formatScoutToolCall(
       return { label: "Fetch" };
     }
 
-    case "web_search": {
+    case "linkup_web_search": {
       const query = args.query as string | undefined;
       return { label: "Search", detail: query ? `'${query}'` : undefined };
     }
