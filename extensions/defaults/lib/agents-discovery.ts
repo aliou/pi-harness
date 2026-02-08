@@ -114,7 +114,7 @@ export class AgentsDiscoveryManager {
     }
 
     if (this.homeDir && filePath.startsWith(this.homeDir + path.sep)) {
-      return "~" + filePath.slice(this.homeDir.length);
+      return `~${filePath.slice(this.homeDir.length)}`;
     }
 
     return filePath;

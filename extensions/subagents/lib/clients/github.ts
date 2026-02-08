@@ -1172,12 +1172,12 @@ export class GitHubClient {
     for (const file of commit.files) {
       const statusIcon =
         file.status === "added"
-          ? "➕"
+          ? "+"
           : file.status === "removed"
-            ? "➖"
+            ? "-"
             : file.status === "renamed"
-              ? "📝"
-              : "📄";
+              ? "~"
+              : " ";
 
       markdown += `### ${statusIcon} ${file.filename}\n\n`;
 

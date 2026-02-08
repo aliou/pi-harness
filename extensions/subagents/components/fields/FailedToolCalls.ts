@@ -66,7 +66,7 @@ export class FailedToolCalls implements Component {
 
         // Truncate very long errors
         if (errorText.length > 150) {
-          errorText = errorText.slice(0, 147) + "...";
+          errorText = `${errorText.slice(0, 147)}...`;
         }
 
         // Indent error message

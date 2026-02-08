@@ -427,7 +427,7 @@ Pass relevant skills (e.g., 'ios-26', 'drizzle-orm') to provide specialized cont
 
               // Truncate long errors
               if (errorText.length > 120) {
-                errorText = errorText.slice(0, 117) + "...";
+                errorText = `${errorText.slice(0, 117)}...`;
               }
 
               finalContent += `: ${errorText}`;

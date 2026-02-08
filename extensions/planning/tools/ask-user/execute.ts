@@ -129,7 +129,10 @@ function renderQuestionScreen(
   theme: Theme,
 ): string[] {
   const lines: string[] = [];
-  const question = questions[state.currentIndex]!;
+  const question = questions[state.currentIndex];
+  if (!question) {
+    throw new Error(`Invalid current index: ${state.currentIndex}`);
+  }
 
   // Top border with progress
   const progressDots = renderProgressDots(
@@ -191,12 +194,22 @@ function renderQuestionScreen(
   ];
 
   for (let i = 0; i < allOptions.length; i++) {
-    const opt = allOptions[i]!;
+    const opt = allOptions[i];
+    if (!opt) {
+      throw new Error(`Invalid option index: ${i}`);
+    }
     const isHighlighted = i === state.highlightIndex;
+    const currentAnswers = state.answers[state.currentIndex];
+    if (!currentAnswers) {
+      throw new Error(
+        `Invalid current index for answers: ${state.currentIndex}`,
+      );
+    }
     const isSelected = opt.isOther
-      ? state.answers[state.currentIndex]!.some((s) => s.startsWith("Other:"))
-      : state.answers[state.currentIndex]!.includes(opt.label);
+      ? currentAnswers.some((s) => s.startsWith("Other:"))
+      : currentAnswers.includes(opt.label);
 
+    // biome-ignore lint/plugin: UI arrow indicator
     const prefix = isHighlighted ? theme.fg("accent", "▶ ") : "  ";
     const checkbox = question.multiSelect
       ? isSelected
@@ -215,7 +228,10 @@ function renderQuestionScreen(
     const wrappedOption = wrapTextWithAnsi(optionLine, width - 4);
 
     for (let j = 0; j < wrappedOption.length; j++) {
-      const wrappedLine = wrappedOption[j]!;
+      const wrappedLine = wrappedOption[j];
+      if (!wrappedLine) {
+        throw new Error(`Invalid wrapped line index: ${j}`);
+      }
       const paddedLine =
         theme.fg("border", "│") +
         " " +
@@ -268,7 +284,10 @@ function renderOtherInput(
   theme: Theme,
 ): string[] {
   const lines: string[] = [];
-  const question = questions[state.currentIndex]!;
+  const question = questions[state.currentIndex];
+  if (!question) {
+    throw new Error(`Invalid current index: ${state.currentIndex}`);
+  }
 
   // Top border with progress
   const progressDots = renderProgressDots(
@@ -313,7 +332,8 @@ function renderOtherInput(
   const contentWidth = width - 4; // │ + space + ... + space + │
   const beforeCursor = state.otherText.slice(0, state.otherCursorPos);
   const afterCursor = state.otherText.slice(state.otherCursorPos);
-  const cursorChar = afterCursor.length > 0 ? afterCursor[0] : " ";
+  const cursorCharRaw = afterCursor[0];
+  const cursorChar = cursorCharRaw !== undefined ? cursorCharRaw : " ";
   const afterCursorRest = afterCursor.length > 0 ? afterCursor.slice(1) : "";
   const inputDisplay = `${beforeCursor}\x1b[7m${cursorChar}\x1b[27m${afterCursorRest}`;
 
@@ -389,7 +409,10 @@ function renderConfirmScreen(
 
   // Show all answers
   for (let i = 0; i < questions.length; i++) {
-    const q = questions[i]!;
+    const q = questions[i];
+    if (!q) {
+      throw new Error(`Invalid question index: ${i}`);
+    }
     const ans = answers[i] ?? [];
 
     // Question line
@@ -474,7 +497,10 @@ function handleQuestionInput(
   tui: { requestRender: () => void },
   done: (result: ExecuteResult | null) => void,
 ): void {
-  const question = questions[state.currentIndex]!;
+  const question = questions[state.currentIndex];
+  if (!question) {
+    throw new Error(`Invalid current index: ${state.currentIndex}`);
+  }
   const agentOther = question.options.find(
     (opt) => opt.label.toLowerCase() === "other",
   );
@@ -524,18 +550,26 @@ function handleQuestionInput(
   }
 
   if (question.multiSelect && matchesKey(data, Key.space)) {
-    const highlighted = allOptions[state.highlightIndex]!;
+    const highlighted = allOptions[state.highlightIndex];
+    if (!highlighted) {
+      throw new Error(`Invalid highlight index: ${state.highlightIndex}`);
+    }
+
+    const currentAnswers = state.answers[state.currentIndex];
+    if (!currentAnswers) {
+      throw new Error(
+        `Invalid current index for answers: ${state.currentIndex}`,
+      );
+    }
 
     if (highlighted.isOther) {
       // Check if Other is already selected
-      const hasOther = state.answers[state.currentIndex]!.some((s) =>
-        s.startsWith("Other:"),
-      );
+      const hasOther = currentAnswers.some((s) => s.startsWith("Other:"));
       if (hasOther) {
         // Deselect Other
-        state.answers[state.currentIndex] = state.answers[
-          state.currentIndex
-        ]!.filter((s) => !s.startsWith("Other:"));
+        state.answers[state.currentIndex] = currentAnswers.filter(
+          (s) => !s.startsWith("Other:"),
+        );
       } else {
         // Open input for Other
         state.mode = "other-input";
@@ -543,11 +577,11 @@ function handleQuestionInput(
         state.otherCursorPos = 0;
       }
     } else {
-      const idx = state.answers[state.currentIndex]!.indexOf(highlighted.label);
+      const idx = currentAnswers.indexOf(highlighted.label);
       if (idx >= 0) {
-        state.answers[state.currentIndex]!.splice(idx, 1);
+        currentAnswers.splice(idx, 1);
       } else {
-        state.answers[state.currentIndex]!.push(highlighted.label);
+        currentAnswers.push(highlighted.label);
       }
     }
     tui.requestRender();
@@ -555,7 +589,10 @@ function handleQuestionInput(
   }
 
   if (!question.multiSelect && matchesKey(data, Key.enter)) {
-    const highlighted = allOptions[state.highlightIndex]!;
+    const highlighted = allOptions[state.highlightIndex];
+    if (!highlighted) {
+      throw new Error(`Invalid highlight index: ${state.highlightIndex}`);
+    }
 
     if (highlighted.isOther) {
       state.mode = "other-input";
@@ -570,7 +607,13 @@ function handleQuestionInput(
   }
 
   if (question.multiSelect && matchesKey(data, Key.enter)) {
-    if (state.answers[state.currentIndex]!.length === 0) {
+    const currentAnswers = state.answers[state.currentIndex];
+    if (!currentAnswers) {
+      throw new Error(
+        `Invalid current index for answers: ${state.currentIndex}`,
+      );
+    }
+    if (currentAnswers.length === 0) {
       state.answers[state.currentIndex] = ["(none)"];
     }
     moveToNextQuestion(state, questions);
@@ -594,13 +637,22 @@ function handleOtherInput(
   }
 
   if (matchesKey(data, Key.enter)) {
+    const currentAnswers = state.answers[state.currentIndex];
+    if (!currentAnswers) {
+      throw new Error(
+        `Invalid current index for answers: ${state.currentIndex}`,
+      );
+    }
     if (state.otherText.trim()) {
-      state.answers[state.currentIndex]!.push(`Other: ${state.otherText}`);
+      currentAnswers.push(`Other: ${state.otherText}`);
     }
     state.otherText = "";
     state.otherCursorPos = 0;
 
-    const question = questions[state.currentIndex]!;
+    const question = questions[state.currentIndex];
+    if (!question) {
+      throw new Error(`Invalid current index: ${state.currentIndex}`);
+    }
     if (!question.multiSelect) {
       // Single-select: advance to next question
       state.mode = "question";

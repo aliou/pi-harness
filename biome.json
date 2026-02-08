@@ -2,7 +2,8 @@
   "$schema": "https://biomejs.dev/schemas/2.3.11/schema.json",
   "plugins": [
     "./node_modules/@aliou/biome-plugins/plugins/no-inline-imports.grit",
-    "./node_modules/@aliou/biome-plugins/plugins/no-js-import-extension.grit"
+    "./node_modules/@aliou/biome-plugins/plugins/no-js-import-extension.grit",
+    "./node_modules/@aliou/biome-plugins/plugins/no-emojis.grit"
   ],
   "vcs": {
     "enabled": true,
@@ -10,7 +11,7 @@
     "useIgnoreFile": true
   },
   "files": {
-    "includes": ["**/*.ts", "**/*.json"],
+    "includes": ["**/*.ts", "**/*.json", "!archive"],
     "ignoreUnknown": true
   },
   "assist": {
@@ -23,7 +24,11 @@
   "linter": {
     "enabled": true,
     "rules": {
-      "recommended": true
+      "recommended": true,
+      "style": {
+        "noNonNullAssertion": "error",
+        "useTemplate": "error"
+      }
     }
   },
   "formatter": {

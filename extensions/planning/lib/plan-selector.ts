@@ -337,6 +337,7 @@ class PlanSelector implements Component {
     width: number,
     selected: boolean,
   ): string {
+    // biome-ignore lint/plugin: UI arrow indicator
     const prefix = selected ? `${this.theme.fg("accent", "▶")} ` : "  ";
     const treePrefix = buildTreePrefix(
       item.ancestors,
