@@ -1,5 +1,11 @@
 # @aliou/pi-toolchain
 
+## 0.3.1
+
+### Patch Changes
+
+- 2d9a958: update README documentation to match current implementation
+
 ## 0.3.0
 
 ### Minor Changes
