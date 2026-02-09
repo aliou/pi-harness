@@ -1,5 +1,12 @@
 # @aliou/pi-processes
 
+## 0.3.5
+
+### Patch Changes
+
+- 4f298b6: feat(processes): add /processes:stream, /processes:logs, /processes:kill commands with autocomplete; notify on process start
+- 0740c40: feat(processes): add settings support with configurable output, widget, and process list options
+
 ## 0.3.4
 
 ### Patch Changes
