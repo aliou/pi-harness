@@ -1,5 +1,11 @@
 # @aliou/pi-extension-dev
 
+## 0.3.0
+
+### Minor Changes
+
+- 3f22ea6: Update tool return type docs to use `content` blocks instead of `output` string, add error handling section documenting throw-based error reporting.
+
 ## 0.2.1
 
 ### Patch Changes
