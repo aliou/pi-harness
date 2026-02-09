@@ -1,5 +1,12 @@
 # @aliou/pi-toolchain
 
+## 0.3.2
+
+### Patch Changes
+
+- Updated dependencies [756552a]
+  - @aliou/pi-utils-settings@0.3.0
+
 ## 0.3.1
 
 ### Patch Changes

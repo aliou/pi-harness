@@ -1,5 +1,11 @@
 # @aliou/pi-extension-dev
 
+## 0.4.0
+
+### Minor Changes
+
+- 3452b4e: pi_docs and pi_changelog tools now use the built-in expanded/collapsed toggle (Ctrl+O). Collapsed view shows compact summaries, expanded view shows full details. New pi_changelog_versions tool for listing available versions separately.
+
 ## 0.3.0
 
 ### Minor Changes
