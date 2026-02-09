@@ -7,6 +7,7 @@ import type {
   Theme,
   ToolRenderResultOptions,
 } from "@mariozechner/pi-coding-agent";
+import { keyHint } from "@mariozechner/pi-coding-agent";
 import { Text } from "@mariozechner/pi-tui";
 import { Type } from "@sinclair/typebox";
 import { findPiInstallation } from "./utils";
@@ -17,9 +18,8 @@ type DocsParamsType = Record<string, never>;
 interface DocsDetails {
   success: boolean;
   message: string;
-  readme?: string;
+  /** Relative paths from the pi install root, markdown only. */
   docFiles?: string[];
-  examplesDir?: string;
   installPath?: string;
 }
 
@@ -46,7 +46,7 @@ export function setupDocsTool(pi: ExtensionAPI) {
     name: "pi_docs",
     label: "Pi Documentation",
     description:
-      "List all Pi documentation files (README, docs/, examples/) with their full paths",
+      "List Pi markdown documentation files (README, docs/, examples/)",
 
     parameters: DocsParams,
 
@@ -78,60 +78,56 @@ export function setupDocsTool(pi: ExtensionAPI) {
         const docsDir = path.join(piPath, "docs");
         const examplesDir = path.join(piPath, "examples");
 
-        const lines: string[] = [];
         const docFiles: string[] = [];
 
-        // README
-        const hasReadme = fs.existsSync(readmePath);
-        if (hasReadme) {
-          lines.push(`README: ${readmePath}`);
+        if (fs.existsSync(readmePath)) {
+          docFiles.push("README.md");
         }
 
-        // List all files in docs/
         if (fs.existsSync(docsDir)) {
-          const files = listFilesRecursive(docsDir);
-          lines.push("");
-          lines.push(`Documentation files (${docsDir}):`);
-          for (const file of files) {
-            const fullPath = path.join(docsDir, file);
-            docFiles.push(fullPath);
-            lines.push(`  ${file}`);
+          for (const file of listFilesRecursive(docsDir)) {
+            if (file.endsWith(".md")) {
+              docFiles.push(`docs/${file}`);
+            }
           }
         }
 
-        // Examples directory
-        const hasExamples = fs.existsSync(examplesDir);
-        if (hasExamples) {
-          lines.push("");
-          lines.push(`Examples: ${examplesDir}`);
+        if (fs.existsSync(examplesDir)) {
+          for (const file of listFilesRecursive(examplesDir)) {
+            if (file.endsWith(".md")) {
+              docFiles.push(`examples/${file}`);
+            }
+          }
         }
 
-        if (!hasReadme && docFiles.length === 0 && !hasExamples) {
+        if (docFiles.length === 0) {
           return {
             content: [
               {
                 type: "text",
-                text: `No documentation found in Pi installation at ${piPath}`,
+                text: `No markdown documentation found in Pi installation`,
               },
             ],
             details: {
               success: false,
-              message: `No documentation found in Pi installation at ${piPath}`,
+              message: `No markdown documentation found in Pi installation`,
               installPath: piPath,
             },
           };
         }
 
-        const message = lines.join("\n");
+        // Content sent to LLM: full relative paths so it can read them.
+        const lines = docFiles.map(
+          (rel) => `${path.join(piPath, rel)} (${rel})`,
+        );
+        const message = `${docFiles.length} markdown files:\n${lines.join("\n")}`;
 
         return {
           content: [{ type: "text", text: message }],
           details: {
             success: true,
-            message,
-            readme: hasReadme ? readmePath : undefined,
-            docFiles: docFiles.length > 0 ? docFiles : undefined,
-            examplesDir: hasExamples ? examplesDir : undefined,
+            message: `Found ${docFiles.length} markdown files`,
+            docFiles,
             installPath: piPath,
           },
         };
@@ -153,7 +149,7 @@ export function setupDocsTool(pi: ExtensionAPI) {
 
     renderResult(
       result: AgentToolResult<DocsDetails>,
-      _options: ToolRenderResultOptions,
+      options: ToolRenderResultOptions,
       theme: Theme,
     ): Text {
       const { details } = result;
@@ -171,25 +167,40 @@ export function setupDocsTool(pi: ExtensionAPI) {
         return new Text(theme.fg("error", `✗ ${details.message}`), 0, 0);
       }
 
+      if (!details.docFiles || details.docFiles.length === 0) {
+        return new Text(theme.fg("warning", "No docs found"), 0, 0);
+      }
+
+      const { expanded } = options;
       const lines: string[] = [];
 
-      if (details.readme) {
-        lines.push(`${theme.fg("accent", "README:")} ${details.readme}`);
-      }
-
-      if (details.docFiles && details.docFiles.length > 0) {
-        lines.push("");
+      if (expanded) {
+        // Expanded: show relative paths
         lines.push(
-          theme.fg("accent", `Docs (${details.docFiles.length} files):`),
+          theme.fg("accent", `${details.docFiles.length} markdown files:`),
         );
-        for (const file of details.docFiles) {
-          lines.push(theme.fg("dim", `  ${file}`));
-        }
-      }
-
-      if (details.examplesDir) {
         lines.push("");
-        lines.push(`${theme.fg("accent", "Examples:")} ${details.examplesDir}`);
+        for (const rel of details.docFiles) {
+          lines.push(theme.fg("dim", `  ${rel}`));
+        }
+      } else {
+        // Collapsed: count + grid of filenames
+        lines.push(
+          theme.fg("accent", `${details.docFiles.length} markdown files`) +
+            ` (${keyHint("expandTools", "to expand")})`,
+        );
+        lines.push("");
+        const filenames = details.docFiles.map((p) => path.basename(p));
+        const maxLen = Math.max(...filenames.map((f) => f.length));
+        const colWidth = maxLen + 2;
+        const cols = Math.max(1, Math.floor(80 / colWidth));
+        for (let i = 0; i < filenames.length; i += cols) {
+          const row = filenames
+            .slice(i, i + cols)
+            .map((f) => f.padEnd(colWidth))
+            .join("");
+          lines.push(theme.fg("dim", row));
+        }
       }
 
       return new Text(lines.join("\n"), 0, 0);
