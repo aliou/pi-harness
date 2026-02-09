@@ -42,6 +42,10 @@ export function executeStart(
     alertOnKill: params.alertOnKill,
   });
 
+  if (ctx.hasUI) {
+    ctx.ui.notify(`Started "${proc.name}" (${proc.id})`, "info");
+  }
+
   const message = `Started "${proc.name}" (${proc.id}, PID: ${proc.pid})\nLogs: ${proc.stdoutFile}`;
   return {
     content: [{ type: "text", text: message }],
