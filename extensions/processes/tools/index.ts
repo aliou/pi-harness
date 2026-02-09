@@ -87,14 +87,15 @@ Note: User always sees process updates in the UI. The notify flags control wheth
       text += theme.fg("accent", args.action);
 
       switch (args.action) {
-        case "start":
+        case "start": {
           if (args.name) {
             text += ` ${theme.fg("accent", `"${args.name}"`)}`;
           }
           if (args.command) {
-            text += ` ${theme.fg("muted", args.command.slice(0, 40))}`;
+            text += `\n${theme.fg("muted", `$ ${args.command}`)}`;
           }
-          break;
+          return new Text(text, 0, 0);
+        }
         case "output":
         case "kill":
         case "logs":
