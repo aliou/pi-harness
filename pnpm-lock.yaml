@@ -131,6 +131,9 @@ importers:
 
   extensions/processes:
     dependencies:
+      '@aliou/pi-utils-settings':
+        specifier: workspace:*
+        version: link:../../packages/settings
       '@mariozechner/pi-coding-agent':
         specifier: '>=0.51.0'
         version: 0.51.0(ws@8.19.0)(zod@3.25.76)
