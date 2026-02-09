@@ -14,6 +14,10 @@ export {
   type ArrayEditorOptions,
 } from "./components/array-editor";
 export {
+  FuzzySelector,
+  type FuzzySelectorOptions,
+} from "./components/fuzzy-selector";
+export {
   SectionedSettings,
   type SectionedSettingsOptions,
   type SettingsSection,

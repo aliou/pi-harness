@@ -230,7 +230,7 @@ export function registerSettingsCommand<
 
           // Store in draft, don't write to disk yet.
           drafts[scope] = updated;
-          tui.requestRender();
+          refresh();
         }
 
         // --- Save handler (Ctrl+S) ---
