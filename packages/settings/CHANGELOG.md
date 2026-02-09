@@ -1,5 +1,11 @@
 # @aliou/pi-utils-settings
 
+## 0.3.0
+
+### Minor Changes
+
+- 756552a: Add FuzzySelector component for picking one item from a large list using fuzzy search. Refresh sections after cycling value changes so dependent settings update immediately.
+
 ## 0.2.1
 
 ### Patch Changes
