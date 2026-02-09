@@ -1,6 +1,7 @@
 import type { ExtensionContext, Theme } from "@mariozechner/pi-coding-agent";
 import {
   type Component,
+  fuzzyFilter,
   getEditorKeybindings,
   matchesKey,
   truncateToWidth,
@@ -50,8 +51,6 @@ export async function selectPlan(
   return result?.selected ?? null;
 }
 
-type SortMode = "date-desc" | "date-asc";
-
 interface PlanTreeNode {
   id: string;
   slug: string;
@@ -89,8 +88,10 @@ type StatusMessage = {
 
 class PlanSelector implements Component {
   private closed = false;
-  private sortMode: SortMode = "date-desc";
+  private viewMode: "tree" | "flat" = "tree";
   private groupByStatus = false;
+  private searchQuery: string = "";
+  private searchMode = false;
   private flatItems: FlatItem[] = [];
   private selectableNodes: PlanTreeNode[] = [];
   private selectedIndex = 0;
@@ -118,6 +119,45 @@ class PlanSelector implements Component {
     if (this.archiving) return;
 
     const kb = getEditorKeybindings();
+
+    // Handle search mode input
+    if (this.searchMode) {
+      if (kb.matches(data, "selectCancel")) {
+        // Escape: clear search and exit search mode
+        this.searchQuery = "";
+        this.searchMode = false;
+        this.refreshView();
+        return;
+      }
+
+      if (kb.matches(data, "selectConfirm")) {
+        // Enter: exit search mode but keep filter active
+        this.searchMode = false;
+        this.tui.requestRender();
+        return;
+      }
+
+      if (data === "Backspace") {
+        // Remove last character
+        this.searchQuery = this.searchQuery.slice(0, -1);
+        this.refreshView();
+        return;
+      }
+
+      if (data === "/") {
+        // Stay in search mode, do nothing special
+        return;
+      }
+
+      // Append printable character
+      if (data.length === 1 && data >= " " && data <= "~") {
+        this.searchQuery += data;
+        this.refreshView();
+        return;
+      }
+
+      return;
+    }
 
     if (kb.matches(data, "selectUp") || data === "k") {
       this.moveSelection(-1);
@@ -151,17 +191,25 @@ class PlanSelector implements Component {
       return;
     }
 
-    // Toggle sort: Ctrl+U
-    if (matchesKey(data, "ctrl+u")) {
-      this.sortMode = this.sortMode === "date-desc" ? "date-asc" : "date-desc";
+    // Toggle view mode: Ctrl+T
+    if (matchesKey(data, "ctrl+t")) {
+      this.viewMode = this.viewMode === "tree" ? "flat" : "tree";
       this.refreshView();
       return;
     }
 
-    // Toggle group by status: Ctrl+T
-    if (matchesKey(data, "ctrl+t")) {
+    // Toggle group by status: Ctrl+U
+    if (matchesKey(data, "ctrl+u")) {
       this.groupByStatus = !this.groupByStatus;
       this.refreshView();
+      return;
+    }
+
+    // Enter search mode: /
+    if (data === "/") {
+      this.searchMode = true;
+      this.searchQuery = "";
+      this.tui.requestRender();
       return;
     }
   }
@@ -193,7 +241,7 @@ class PlanSelector implements Component {
         border("─".repeat(rightBorder)),
     );
 
-    // Status line: sort/group info, or status message
+    // Status line: view mode/search info, or status message
     if (this.statusMessage) {
       const style =
         this.statusMessage.level === "error"
@@ -206,21 +254,18 @@ class PlanSelector implements Component {
           style(truncateToWidth(this.statusMessage.text, innerWidth, "")),
         ),
       );
+    } else if (this.searchMode) {
+      // In search mode: show prompt with query
+      const promptText = `/ ${this.searchQuery}${this.searchQuery.length > 0 ? "_" : ""}`;
+      lines.push(padLine(accent(promptText)));
     } else {
-      const sortLabel =
-        this.sortMode === "date-desc" ? "newest first" : "oldest first";
+      // Normal mode: show view and group status
+      const viewLabel = this.viewMode === "tree" ? "tree" : "flat";
       const groupLabel = this.groupByStatus ? "on" : "off";
-      lines.push(
-        padLine(
-          dim(
-            truncateToWidth(
-              `Sort: ${sortLabel}  Group: ${groupLabel}`,
-              innerWidth,
-              "",
-            ),
-          ),
-        ),
-      );
+      const statusText = this.searchQuery
+        ? `View: ${viewLabel}  Group: ${groupLabel}  Search: ${this.searchQuery}`
+        : `View: ${viewLabel}  Group: ${groupLabel}`;
+      lines.push(padLine(dim(truncateToWidth(statusText, innerWidth, ""))));
     }
 
     lines.push(border("─".repeat(width)));
@@ -261,7 +306,7 @@ class PlanSelector implements Component {
       padLine(
         dim(
           truncateToWidth(
-            "↑/↓ move  Enter select  Ctrl+A archive  Ctrl+U sort  Ctrl+T group  Esc cancel",
+            "↑/↓ move  Enter select  Ctrl+A archive  Ctrl+T view  Ctrl+U group  / search  Esc cancel",
             innerWidth,
             "",
           ),
@@ -339,11 +384,14 @@ class PlanSelector implements Component {
   ): string {
     // biome-ignore lint/plugin: UI arrow indicator
     const prefix = selected ? `${this.theme.fg("accent", "▶")} ` : "  ";
-    const treePrefix = buildTreePrefix(
-      item.ancestors,
-      item.isLast,
-      item.ancestors.length > 0,
-    );
+    const treePrefix =
+      this.viewMode === "tree"
+        ? buildTreePrefix(
+            item.ancestors,
+            item.isLast,
+            item.ancestors.length > 0,
+          )
+        : "";
     const date = item.node.plan?.date || "????-??-??";
     const title = getNodeTitle(item.node);
     const status = item.node.plan?.status ?? "pending";
@@ -391,18 +439,100 @@ class PlanSelector implements Component {
   }
 
   private refreshView(): void {
-    const viewRoots = buildViewForest(this.roots, this.sortMode);
-    const grouped = this.groupByStatus
-      ? buildGroupedView(viewRoots, this.sortMode)
-      : viewRoots.map((node) => ({ type: "node" as const, node }));
-
     const flatItems: FlatItem[] = [];
-    for (const entry of grouped) {
-      if (entry.type === "group") {
-        flatItems.push(entry);
-        flatItems.push(...flattenViewNodes(entry.nodes, []));
+
+    if (this.viewMode === "flat") {
+      // Flat alphabetical list — no tree structure.
+      let allNodes = Array.from(getAllNodes(this.roots));
+
+      // Apply search filter if active
+      if (this.searchQuery) {
+        allNodes = fuzzyFilter(allNodes, this.searchQuery, getNodeTitle);
+      }
+
+      allNodes.sort((a, b) =>
+        getNodeTitle(a)
+          .toLowerCase()
+          .localeCompare(getNodeTitle(b).toLowerCase(), undefined, {
+            numeric: true,
+            sensitivity: "base",
+          }),
+      );
+
+      if (this.groupByStatus) {
+        const groups = groupNodesByStatus(allNodes);
+        for (const group of groups) {
+          flatItems.push(group.header);
+          for (let i = 0; i < group.nodes.length; i++) {
+            const node = group.nodes[i];
+            if (!node) continue;
+            flatItems.push({
+              type: "node",
+              node,
+              ancestors: [],
+              isLast: i === group.nodes.length - 1,
+            });
+          }
+        }
       } else {
-        flatItems.push(...flattenViewNodes([entry.node], []));
+        for (let i = 0; i < allNodes.length; i++) {
+          const node = allNodes[i];
+          if (!node) continue;
+          flatItems.push({
+            type: "node",
+            node,
+            ancestors: [],
+            isLast: i === allNodes.length - 1,
+          });
+        }
+      }
+    } else {
+      // Tree view
+      const viewRoots = buildViewForest(this.roots);
+
+      // Apply search filter if active
+      if (this.searchQuery) {
+        const allNodes = Array.from(getAllNodes(this.roots));
+        const filtered = fuzzyFilter(allNodes, this.searchQuery, getNodeTitle);
+
+        // If search is active, fall back to flat display of matching results
+        const grouped = this.groupByStatus
+          ? groupNodesByStatus(filtered)
+          : [
+              {
+                header: undefined,
+                nodes: filtered,
+              },
+            ];
+
+        for (const group of grouped) {
+          if (group.header) {
+            flatItems.push(group.header);
+          }
+          for (let i = 0; i < group.nodes.length; i++) {
+            const node = group.nodes[i];
+            if (!node) continue;
+            flatItems.push({
+              type: "node",
+              node,
+              ancestors: [],
+              isLast: i === group.nodes.length - 1,
+            });
+          }
+        }
+      } else {
+        const grouped = this.groupByStatus
+          ? buildGroupedView(viewRoots)
+          : viewRoots.map((node) => ({ type: "node" as const, node }));
+
+        for (const entry of grouped) {
+          if (entry.type === "group") {
+            flatItems.push(entry);
+            flatItems.push(...flattenViewNodes(entry.nodes, []));
+          } else {
+            flatItems.push(...flattenViewNodes([entry.node], []));
+          }
+        }
       }
     }
 
@@ -512,22 +642,19 @@ function buildPlanForest(plans: PlanInfo[]): PlanTreeNode[] {
   return Array.from(nodes.values()).filter((node) => node.parents.size === 0);
 }
 
-function buildViewForest(
-  roots: PlanTreeNode[],
-  sortMode: SortMode,
-): ViewNode[] {
-  const sortedRoots = sortNodes(roots, sortMode);
+function buildViewForest(roots: PlanTreeNode[]): ViewNode[] {
+  const sortedRoots = sortNodesByDate(roots);
   const result: ViewNode[] = [];
 
   for (const node of sortedRoots) {
-    const viewChildren = buildViewForest(node.children, sortMode);
+    const viewChildren = buildViewForest(node.children);
     result.push({ node, children: viewChildren });
   }
 
   return result;
 }
 
-function buildGroupedView(viewRoots: ViewNode[], sortMode: SortMode) {
+function buildGroupedView(viewRoots: ViewNode[]) {
   const groups = new Map<string, ViewNode[]>();
 
   for (const root of viewRoots) {
@@ -557,7 +684,7 @@ function buildGroupedView(viewRoots: ViewNode[], sortMode: SortMode) {
   for (const status of orderedStatuses) {
     const nodes = groups.get(status);
     if (!nodes || nodes.length === 0) continue;
-    const sorted = sortViewNodes(nodes, sortMode);
+    const sorted = sortViewNodesByDate(nodes);
     result.push({
       type: "group",
       status,
@@ -573,13 +700,20 @@ function buildGroupedView(viewRoots: ViewNode[], sortMode: SortMode) {
 function flattenViewNodes(
   nodes: ViewNode[],
   ancestors: boolean[],
+  seen?: Set<string>,
 ): FlatNodeItem[] {
   const items: FlatNodeItem[] = [];
+  const seenSet = seen ?? new Set<string>();
 
-  for (let i = 0; i < nodes.length; i++) {
-    const node = nodes[i];
+  // Filter out already-seen nodes first so isLast is computed correctly.
+  const visible = nodes.filter((n) => !seenSet.has(n.node.id));
+
+  for (let i = 0; i < visible.length; i++) {
+    const node = visible[i];
     if (!node) continue;
-    const isLast = i === nodes.length - 1;
+    seenSet.add(node.node.id);
+
+    const isLast = i === visible.length - 1;
     items.push({
       type: "node",
       node: node.node,
@@ -588,7 +722,9 @@ function flattenViewNodes(
     });
 
     if (node.children.length > 0) {
-      items.push(...flattenViewNodes(node.children, [...ancestors, isLast]));
+      items.push(
+        ...flattenViewNodes(node.children, [...ancestors, isLast], seenSet),
+      );
     }
   }
 
@@ -621,27 +757,85 @@ function formatStatusLabel(status: string): string {
   return status;
 }
 
-function sortViewNodes(nodes: ViewNode[], sortMode: SortMode): ViewNode[] {
+function sortViewNodesByDate(nodes: ViewNode[]): ViewNode[] {
   const sorted = [...nodes];
-  sorted.sort((a, b) => compareNodes(a.node, b.node, sortMode));
+  sorted.sort((a, b) => compareNodesByDate(a.node, b.node));
   return sorted;
 }
 
-function sortNodes(nodes: PlanTreeNode[], sortMode: SortMode): PlanTreeNode[] {
+function sortNodesByDate(nodes: PlanTreeNode[]): PlanTreeNode[] {
   const sorted = [...nodes];
-  sorted.sort((a, b) => compareNodes(a, b, sortMode));
+  sorted.sort((a, b) => compareNodesByDate(a, b));
   return sorted;
 }
 
-function compareNodes(
-  a: PlanTreeNode,
-  b: PlanTreeNode,
-  sortMode: SortMode,
-): number {
+/**
+ * Collect all unique nodes from a forest (deduplicates across branches).
+ */
+function getAllNodes(roots: PlanTreeNode[]): PlanTreeNode[] {
+  const seen = new Set<string>();
+  const result: PlanTreeNode[] = [];
+
+  function walk(node: PlanTreeNode): void {
+    if (seen.has(node.id)) return;
+    seen.add(node.id);
+    if (!node.missing) result.push(node);
+    for (const child of node.children) {
+      walk(child);
+    }
+  }
+
+  for (const root of roots) {
+    walk(root);
+  }
+
+  return result;
+}
+
+/**
+ * Group a flat list of nodes by status, returning ordered groups.
+ */
+function groupNodesByStatus(
+  nodes: PlanTreeNode[],
+): { header: FlatGroupItem; nodes: PlanTreeNode[] }[] {
+  const groups = new Map<string, PlanTreeNode[]>();
+
+  for (const node of nodes) {
+    const status = node.plan?.status ?? "pending";
+    if (!groups.has(status)) groups.set(status, []);
+    groups.get(status)?.push(node);
+  }
+
+  const orderedStatuses = [
+    "in-progress",
+    "pending",
+    "completed",
+    "cancelled",
+    "abandoned",
+    "missing",
+  ];
+
+  const result: { header: FlatGroupItem; nodes: PlanTreeNode[] }[] = [];
+  for (const status of orderedStatuses) {
+    const group = groups.get(status);
+    if (!group || group.length === 0) continue;
+    result.push({
+      header: {
+        type: "group",
+        status,
+        label: formatStatusLabel(status),
+        count: group.length,
+      },
+      nodes: group,
+    });
+  }
+
+  return result;
+}
+
+function compareNodesByDate(a: PlanTreeNode, b: PlanTreeNode): number {
   const dateA = a.plan?.date || "";
   const dateB = b.plan?.date || "";
-  if (sortMode === "date-asc") {
-    return dateA.localeCompare(dateB);
-  }
+  // Sort by date descending (newest first)
   return dateB.localeCompare(dateA);
 }
