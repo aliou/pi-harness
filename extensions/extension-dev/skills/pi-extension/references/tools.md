@@ -17,8 +17,7 @@ const myTool: ToolDefinition = {
   execute: async (toolCallId, params, signal, onUpdate, ctx) => {
     const results = await doSomething(params.query, params.limit);
     return {
-      output: JSON.stringify(results),
-      display: true,
+      content: [{ type: "text", text: JSON.stringify(results, null, 2) }],
       details: { results },
     };
   },
@@ -59,16 +58,41 @@ If you override a built-in tool or wrap another tool, audit any delegated `tool.
 
 ```typescript
 return {
-  output: string,          // Text sent to the LLM
-  display?: boolean,       // Whether to show in the TUI (default: false)
-  isError?: boolean,       // Report as error to the LLM (default: false)
-  details?: TDetails,      // Arbitrary data available in the renderer
+  content: (TextContent | ImageContent)[],  // Content blocks sent to the LLM
+  details?: TDetails,                       // Arbitrary data available in the renderer
 };
 ```
 
-- `output` is what the LLM sees. Keep it structured and concise.
+- `content` is what the LLM sees. Each block is `{ type: "text", text: "..." }` or an image. Keep it structured and concise.
 - `details` is what the renderer sees. Put rich data here for custom display.
-- Set `isError: true` to tell the LLM the tool call failed.
+
+Common pattern:
+
+```typescript
+return {
+  content: [{ type: "text", text: JSON.stringify(results, null, 2) }],
+  details: { results },
+};
+```
+
+## Error Handling
+
+To report a tool call failure, **throw an error**. The framework catches it, sets `isError: true` on the tool result, and sends the error message to the LLM.
+
+```typescript
+execute: async (toolCallId, params, signal, onUpdate, ctx) => {
+  const result = await fetchData(params.query);
+  if (!result) {
+    throw new Error("No results found. Try a different query.");
+  }
+  return {
+    content: [{ type: "text", text: JSON.stringify(result) }],
+    details: { result },
+  };
+},
+```
+
+Do not try to return `isError` in the result object. The `AgentToolResult` type does not have an `isError` field. Only throwing sets `isError: true` on the tool result event sent to the LLM.
 
 ## Parameters Schema
 
@@ -110,11 +134,14 @@ execute: async (toolCallId, params, signal, onUpdate, ctx) => {
   for (const chunk of chunks) {
     const partial = processChunk(chunk);
     onUpdate?.({
-      output: partial,
+      content: [{ type: "text", text: partial }],
       details: { progress: chunk.index / chunks.length },
     });
   }
-  return { output: finalResult, display: true, details: { complete: true } };
+  return {
+    content: [{ type: "text", text: finalResult }],
+    details: { complete: true },
+  };
 },
 ```
 
@@ -179,7 +206,7 @@ The `signal` parameter lets you cancel long-running operations when the user int
 execute: async (toolCallId, params, signal, onUpdate, ctx) => {
   const response = await fetch(url, { signal });
   // If the user cancels, fetch throws an AbortError
-  return { output: await response.text() };
+  return { content: [{ type: "text", text: await response.text() }], details: {} };
 },
 ```
 
@@ -195,8 +222,8 @@ import { truncateHead } from "@mariozechner/pi-coding-agent";
 execute: async (toolCallId, params, signal, onUpdate, ctx) => {
   const fullOutput = await getLargeOutput();
   return {
-    output: truncateHead(fullOutput, 50000), // Keep last 50KB
-    display: true,
+    content: [{ type: "text", text: truncateHead(fullOutput, 50000) }], // Keep last 50KB
+    details: {},
   };
 },
 ```
