@@ -143,7 +143,7 @@ WHEN TO USE:
 - Retrieve recent work to continue from
 
 RESULTS: Returns matching sessions with metadata including name, directory, date, and matched snippet.
-Uses fast keyword search (ripgrep) across 2000+ session files.`,
+Uses Sesame indexed search when available, with ripgrep fallback.`,
 
     parameters: FindSessionsParams,
 

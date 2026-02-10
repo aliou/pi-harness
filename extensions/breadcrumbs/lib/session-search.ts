@@ -10,6 +10,13 @@ import { readFileSync, statSync } from "node:fs";
 import { homedir } from "node:os";
 import { join, resolve } from "node:path";
 import { promisify } from "node:util";
+import {
+  getXDGPaths,
+  openDatabase,
+  type SearchOptions as SesameSearchOptions,
+  type SearchResult as SesameSearchResult,
+  search,
+} from "@aliou/sesame";
 
 const execFileAsync = promisify(execFile);
 
@@ -194,29 +201,24 @@ async function extractSnippet(
 }
 
 /**
- * Check if sesame CLI is available. Cached after first check.
+ * Check if sesame database can be opened.
+ * Cached after first check.
  */
 let sesameAvailable: boolean | null = null;
 async function isSesameAvailable(): Promise<boolean> {
   if (sesameAvailable !== null) return sesameAvailable;
+
   try {
-    await execFileAsync("sesame", ["status"]);
+    const paths = getXDGPaths();
+    const dbPath = join(paths.data, "index.sqlite");
+    const db = openDatabase(dbPath);
+    db.close();
     sesameAvailable = true;
   } catch {
     sesameAvailable = false;
   }
-  return sesameAvailable;
-}
 
-interface SesameSearchResult {
-  sessionId: string;
-  source: string;
-  path: string;
-  cwd: string;
-  name: string | null;
-  score: number;
-  created: string;
-  matchedSnippet: string;
+  return sesameAvailable;
 }
 
 interface SessionFileMetadata {
@@ -275,46 +277,68 @@ function readSessionFileMetadata(filePath: string): SessionFileMetadata | null {
 }
 
 /**
- * Search sessions using the Sesame CLI (indexed BM25 search).
+ * Convert date filter to sesame library format (ISO date string).
+ */
+function toSesameDate(input?: string): string | undefined {
+  if (!input) return undefined;
+
+  // Preserve ISO-like input to match previous behavior
+  if (/^\d{4}-\d{2}-\d{2}/.test(input)) {
+    return input;
+  }
+
+  const parsed = parseRelativeDate(input);
+  if (!parsed) return undefined;
+  return parsed.toISOString().slice(0, 10);
+}
+
+/**
+ * Search sessions using the Sesame library (indexed BM25 search).
  */
 async function searchWithSesame(
   options: SearchOptions,
 ): Promise<SessionSearchResult[]> {
   const { query, cwd, after, before, limit = 10 } = options;
 
-  const args = ["search", query, "--json", "--limit", String(limit)];
-  if (cwd) args.push("--cwd", cwd);
-  if (after) args.push("--after", after);
-  if (before) args.push("--before", before);
+  const sesameOptions: SesameSearchOptions = {
+    cwd,
+    after: toSesameDate(after),
+    before: toSesameDate(before),
+    limit,
+  };
 
-  const { stdout } = await execFileAsync("sesame", args, {
-    maxBuffer: 10 * 1024 * 1024,
-  });
+  const paths = getXDGPaths();
+  const dbPath = join(paths.data, "index.sqlite");
+  const db = openDatabase(dbPath);
 
-  if (!stdout) return [];
+  try {
+    const results = search(db, query, sesameOptions);
 
-  const parsed: { results: SesameSearchResult[] } = JSON.parse(stdout);
+    return results.map((r: SesameSearchResult) => {
+      const meta = readSessionFileMetadata(r.path);
+      const created = r.createdAt ?? r.modifiedAt ?? meta?.modified;
+      const modified = r.modifiedAt ?? meta?.modified ?? created;
 
-  return parsed.results.map((r) => {
-    const meta = readSessionFileMetadata(r.path);
-
-    return {
-      id: r.sessionId,
-      path: r.path,
-      cwd: r.cwd,
-      name: r.name ?? meta?.sessionName,
-      created: r.created,
-      modified: meta?.modified ?? r.created,
-      messageCount: meta?.messageCount ?? 0,
-      firstMessage: meta?.firstMessage ?? "(no messages yet)",
-      matchedSnippet: r.matchedSnippet || undefined,
-      score: r.score,
-    };
-  });
+      return {
+        id: r.sessionId,
+        path: r.path,
+        cwd: r.cwd ?? "",
+        name: r.name ?? meta?.sessionName,
+        created: created || new Date(0).toISOString(),
+        modified: modified || new Date(0).toISOString(),
+        messageCount: meta?.messageCount ?? 0,
+        firstMessage: meta?.firstMessage ?? "(no messages yet)",
+        matchedSnippet: r.matchedSnippet || undefined,
+        score: r.score,
+      };
+    });
+  } finally {
+    db.close();
+  }
 }
 
 /**
- * Search for sessions by keyword. Uses Sesame CLI if available, falls back to ripgrep.
+ * Search for sessions by keyword. Uses Sesame library if available, falls back to ripgrep.
  * Respects cwd and date filters, returns sorted results up to limit.
  * Resilient: skips bad files, never throws.
  */
