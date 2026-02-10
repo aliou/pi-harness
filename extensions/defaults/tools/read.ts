@@ -25,7 +25,7 @@ export function setupReadTool(pi: ExtensionAPI): void {
       };
 
       // Resolve path relative to extension context's working directory
-      const absolutePath = resolve(ctx.cwd, path);
+      const absolutePath = resolve(ctx.cwd || cwd, path);
 
       try {
         const stat = await lstat(absolutePath);
