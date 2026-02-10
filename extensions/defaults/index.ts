@@ -2,6 +2,7 @@ import type { ExtensionAPI } from "@mariozechner/pi-coding-agent";
 import { configLoader } from "./config";
 import { setupHooks } from "./hooks";
 import { AgentsDiscoveryManager } from "./lib/agents-discovery";
+import { registerNestedPrompts } from "./lib/nested-prompts";
 import { setupTools } from "./lib/tools";
 import { setupCommands } from "./setup-commands";
 
@@ -14,4 +15,5 @@ export default async function (pi: ExtensionAPI) {
   setupHooks(pi, agentsDiscovery);
   setupCommands(pi);
   setupTools(pi);
+  await registerNestedPrompts(pi);
 }
