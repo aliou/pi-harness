@@ -12,8 +12,13 @@ import type { ExtensionAPI } from "@mariozechner/pi-coding-agent";
  * This differs from Pi's standard prompts (which are directly under .pi/prompts/).
  */
 export async function registerNestedPrompts(pi: ExtensionAPI) {
-  const piDir = pi.getProjectRoot() ? join(pi.getProjectRoot()!, ".pi") : null;
-  if (!piDir || !existsSync(piDir)) {
+  const projectRoot = pi.getProjectRoot();
+  if (!projectRoot) {
+    return;
+  }
+
+  const piDir = join(projectRoot, ".pi");
+  if (!existsSync(piDir)) {
     return;
   }
 
@@ -49,16 +54,13 @@ export async function registerNestedPrompts(pi: ExtensionAPI) {
               const content = await readFile(filePath, "utf-8");
               await ctx.chat.sendUserMessage(content);
             } catch (error) {
-              ctx.ui.notify(
-                `Failed to read prompt file: ${error}`,
-                "error",
-              );
+              ctx.ui.notify(`Failed to read prompt file: ${error}`, "error");
             }
           },
         });
       }
     }
-  } catch (error) {
+  } catch {
     // Silently fail if prompts directory doesn't exist or can't be read
     // This is expected for projects without nested prompts
   }
