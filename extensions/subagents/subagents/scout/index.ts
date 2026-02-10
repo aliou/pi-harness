@@ -5,6 +5,7 @@
  * answer based on fetched information.
  */
 
+import { createRequire } from "node:module";
 import {
   createRenderCache,
   FailedToolCalls,
@@ -258,7 +259,11 @@ Pass relevant skills (e.g., 'ios-26', 'drizzle-orm') to provide specialized cont
             model,
             systemPrompt: SCOUT_SYSTEM_PROMPT,
             skills: resolvedSkills,
-            extensionPaths: ["npm:@aliou/pi-linkup"],
+            extensionPaths: [
+              createRequire(import.meta.url).resolve(
+                "@aliou/pi-linkup/src/index.ts",
+              ),
+            ],
             customTools: createScoutTools(),
             thinkingLevel: "off",
             logging: {
