@@ -12,11 +12,7 @@ import type { ExtensionAPI } from "@mariozechner/pi-coding-agent";
  * This differs from Pi's standard prompts (which are directly under .pi/prompts/).
  */
 export async function registerNestedPrompts(pi: ExtensionAPI) {
-  const projectRoot = pi.getProjectRoot();
-  if (!projectRoot) {
-    return;
-  }
-
+  const projectRoot = process.cwd();
   const piDir = join(projectRoot, ".pi");
   if (!existsSync(piDir)) {
     return;
@@ -52,7 +48,11 @@ export async function registerNestedPrompts(pi: ExtensionAPI) {
           handler: async (_args, ctx) => {
             try {
               const content = await readFile(filePath, "utf-8");
-              await ctx.chat.sendUserMessage(content);
+              pi.sendMessage({
+                customType: "",
+                content,
+                display: false,
+              });
             } catch (error) {
               ctx.ui.notify(`Failed to read prompt file: ${error}`, "error");
             }
