@@ -1,5 +1,11 @@
 # @aliou/pi-extension-dev
 
+## 0.4.1
+
+### Patch Changes
+
+- 6657016: Standardize extension-dev tool renderCall headers with the shared tool header pattern for consistent tool/action/argument readability.
+
 ## 0.4.0
 
 ### Minor Changes
