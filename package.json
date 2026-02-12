@@ -41,6 +41,7 @@
   },
   "devDependencies": {
     "@aliou/biome-plugins": "^0.3.0",
+    "@aliou/pi-evals": "^0.1.0",
     "@biomejs/biome": "^2.0.0",
     "@changesets/cli": "^2.27.11",
     "@mariozechner/pi-agent-core": "0.53.0",

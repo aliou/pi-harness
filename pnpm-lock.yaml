@@ -36,6 +36,9 @@ importers:
       '@aliou/biome-plugins':
         specifier: ^0.3.0
         version: 0.3.0(@biomejs/biome@2.3.11)
+      '@aliou/pi-evals':
+        specifier: ^0.1.0
+        version: 0.1.0(ws@8.19.0)(zod@3.25.76)
       '@biomejs/biome':
         specifier: ^2.0.0
         version: 2.3.11
@@ -263,6 +266,11 @@ packages:
     resolution: {integrity: sha512-FHmLmOddH800oCqUOOuRJp2yvV6+ZtsmoHujSSkfj2TNYx0RaZ3s3+BrIHlsaT74HLwGB5xtkY+v+nEEtxvfAg==}
     peerDependencies:
       '@biomejs/biome': '>=2.0.0'
+
+  '@aliou/pi-evals@0.1.0':
+    resolution: {integrity: sha512-lPhnNSrWT6Hu5QqNMrrMZePsvpbog1dadKcFUyH97xERdsVXFrZNW+PJQ3ChxqXPyApoGeAJ1n8+CBAoMepS8w==}
+    engines: {node: '>=20'}
+    hasBin: true
 
   '@aliou/pi-linkup@0.7.1':
     resolution: {integrity: sha512-1NzzrzaVNzqv+9UuRpYXrBgI1OQcMevS2h1AyaWGdOCk7kSWckXtOVoJ47V+R3pRrwoZsF3TqKrOnZxNmKlXaA==}
@@ -749,6 +757,10 @@ packages:
   '@isaacs/cliui@8.0.2':
     resolution: {integrity: sha512-O8jcjabXaleOG9DQ0+ARXWZBTfnP4WNAqzuiJK7ll44AmxGKv/J2M4TPjxjY3znBCfvBXFzucm1twdyFybFqEA==}
     engines: {node: '>=12'}
+
+  '@isaacs/cliui@9.0.0':
+    resolution: {integrity: sha512-AokJm4tuBHillT+FpMtxQ60n8ObyXBatq7jD2/JA9dxbDDokKQm8KMht5ibGzLVU9IJDIKK4TPKgMHEYMn3lMg==}
+    engines: {node: '>=18'}
 
   '@jridgewell/sourcemap-codec@1.5.5':
     resolution: {integrity: sha512-cYQ9310grqxueWbl+WuIUIaiUaDcj7WOq5fVhEljNVgRfOUhY9fy2zTvfoqWsnebh8Sl70VScFbICvJnLKB0Og==}
@@ -1634,6 +1646,12 @@ packages:
     deprecated: Old versions of glob are not supported, and contain widely publicized security vulnerabilities, which have been fixed in the current version. Please update. Support for old versions may be purchased (at exorbitant rates) by contacting i@izs.me
     hasBin: true
 
+  glob@11.1.0:
+    resolution: {integrity: sha512-vuNwKSaKiqm7g0THUBu2x7ckSs3XJLXE+2ssL7/MfTGPLLcrJQ/4Uq1CjPTtO5cCIiRxqvN6Twy1qOwhL0Xjcw==}
+    engines: {node: 20 || >=22}
+    deprecated: Old versions of glob are not supported, and contain widely publicized security vulnerabilities, which have been fixed in the current version. Please update. Support for old versions may be purchased (at exorbitant rates) by contacting i@izs.me
+    hasBin: true
+
   glob@13.0.1:
     resolution: {integrity: sha512-B7U/vJpE3DkJ5WXTgTpTRN63uV42DseiXXKMwG14LQBXmsdeIoHAPbU/MEo6II0k5ED74uc2ZGTC6MwHFQhF6w==}
     engines: {node: 20 || >=22}
@@ -1734,6 +1752,10 @@ packages:
 
   jackspeak@3.4.3:
     resolution: {integrity: sha512-OGlZQpz2yfahA/Rd1Y8Cd9SIEsqvXkLVoSw/cgwhnhFMDbsQFeZYoJJ7bIZBS9BcamUW96asq/npPWugM+RQBw==}
+
+  jackspeak@4.2.3:
+    resolution: {integrity: sha512-ykkVRwrYvFm1nb2AJfKKYPr0emF6IiXDYUaFx4Zn9ZuIH7MrzEZ3sD5RlqGXNRpHtvUHJyOnCEFxOlNDtGo7wg==}
+    engines: {node: 20 || >=22}
 
   js-yaml@3.14.2:
     resolution: {integrity: sha512-PMSmkqxr106Xa156c2M265Z+FTrPl+oxd/rgOQy2tijQeK5TxQ43psO1ZCwhVOSdnn+RzkzlRz/eY4BgJBYVpg==}
@@ -2392,6 +2414,20 @@ snapshots:
   '@aliou/biome-plugins@0.3.0(@biomejs/biome@2.3.11)':
     dependencies:
       '@biomejs/biome': 2.3.11
+
+  '@aliou/pi-evals@0.1.0(ws@8.19.0)(zod@3.25.76)':
+    dependencies:
+      '@mariozechner/pi-ai': 0.53.0(ws@8.19.0)(zod@3.25.76)
+      '@mariozechner/pi-coding-agent': 0.53.0(ws@8.19.0)(zod@3.25.76)
+      glob: 11.1.0
+    transitivePeerDependencies:
+      - '@modelcontextprotocol/sdk'
+      - aws-crt
+      - bufferutil
+      - supports-color
+      - utf-8-validate
+      - ws
+      - zod
 
   '@aliou/pi-linkup@0.7.1(@mariozechner/pi-ai@0.53.0(ws@8.19.0)(zod@3.25.76))(@mariozechner/pi-coding-agent@0.53.0(ws@8.19.0)(zod@3.25.76))':
     dependencies:
@@ -3191,6 +3227,8 @@ snapshots:
       strip-ansi-cjs: strip-ansi@6.0.1
       wrap-ansi: 8.1.0
       wrap-ansi-cjs: wrap-ansi@7.0.0
+
+  '@isaacs/cliui@9.0.0': {}
 
   '@jridgewell/sourcemap-codec@1.5.5': {}
 
@@ -4190,6 +4228,15 @@ snapshots:
       package-json-from-dist: 1.0.1
       path-scurry: 1.11.1
 
+  glob@11.1.0:
+    dependencies:
+      foreground-child: 3.3.1
+      jackspeak: 4.2.3
+      minimatch: 10.1.2
+      minipass: 7.1.2
+      package-json-from-dist: 1.0.1
+      path-scurry: 2.0.1
+
   glob@13.0.1:
     dependencies:
       minimatch: 10.1.2
@@ -4291,6 +4338,10 @@ snapshots:
       '@isaacs/cliui': 8.0.2
     optionalDependencies:
       '@pkgjs/parseargs': 0.11.0
+
+  jackspeak@4.2.3:
+    dependencies:
+      '@isaacs/cliui': 9.0.0
 
   js-yaml@3.14.2:
     dependencies:

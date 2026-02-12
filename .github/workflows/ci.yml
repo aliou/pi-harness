@@ -25,3 +25,65 @@ jobs:
 
       - name: Typecheck
         run: pnpm typecheck
+
+  # Verify published extensions install cleanly from npm (no missing deps).
+  install-test:
+    runs-on: ubuntu-latest
+    needs: check
+    strategy:
+      fail-fast: false
+      matrix:
+        package:
+          - "@aliou/pi-extension-dev"
+          - "@aliou/pi-guardrails"
+          - "@aliou/pi-processes"
+          - "@aliou/pi-toolchain"
+    steps:
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Install ${{ matrix.package }} from npm
+        run: |
+          mkdir /tmp/install-test && cd /tmp/install-test
+          npm init -y
+          npm install ${{ matrix.package }}
+
+      - name: Verify package resolves
+        run: |
+          cd /tmp/install-test
+          node -e "require.resolve('${{ matrix.package }}')"
+
+  # Extension evals using pi-evals with GitHub Models.
+  # Requires pi-evals to support loading extensions (PiConfig.extensions).
+  # See: https://github.com/aliou/pi-evals/issues/TBD
+  evals:
+    if: false # Enable once pi-evals supports loading extensions
+    runs-on: ubuntu-latest
+    needs: check
+    strategy:
+      fail-fast: false
+      matrix:
+        extension:
+          - guardrails
+          - processes
+    env:
+      PI_EVAL_PROVIDER: github
+      PI_EVAL_MODEL: gpt-4o
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: general-dexterity/actions/pnpm-install@main
+
+      - name: Run evals for ${{ matrix.extension }}
+        working-directory: extensions/${{ matrix.extension }}
+        run: pnpm exec pi-evals --json --threshold 100 > eval-results.json
+
+      - name: Upload eval results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: eval-results-${{ matrix.extension }}
+          path: extensions/${{ matrix.extension }}/eval-results.json
