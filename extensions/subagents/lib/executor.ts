@@ -70,7 +70,7 @@ export async function executeSubagent(
   const executionTimer = createExecutionTimer();
 
   const agentDir = getAgentDir();
-  const settingsManager = SettingsManager.create(ctx.cwd, agentDir);
+  const settingsManager = SettingsManager.inMemory();
   const resourceLoader = new DefaultResourceLoader({
     cwd: ctx.cwd,
     agentDir,
