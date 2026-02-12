@@ -21,8 +21,8 @@ importers:
         specifier: ^0.2.0
         version: 0.2.0(@mariozechner/pi-coding-agent@0.52.9(ws@8.19.0)(zod@3.25.76))
       '@aliou/sesame':
-        specifier: ^0.2.0
-        version: 0.2.0(@mariozechner/pi-coding-agent@0.52.9(ws@8.19.0)(zod@3.25.76))
+        specifier: ^0.4.0
+        version: 0.4.0(@mariozechner/pi-coding-agent@0.52.9(ws@8.19.0)(zod@3.25.76))
       '@aliou/sh':
         specifier: ^0.1.0
         version: 0.1.0
@@ -82,8 +82,8 @@ importers:
         specifier: workspace:^
         version: link:../../packages/ui
       '@aliou/sesame':
-        specifier: ^0.2.0
-        version: 0.2.0(@mariozechner/pi-coding-agent@0.52.9(ws@8.19.0)(zod@3.25.76))
+        specifier: ^0.4.0
+        version: 0.4.0(@mariozechner/pi-coding-agent@0.52.9(ws@8.19.0)(zod@3.25.76))
       '@mariozechner/pi-coding-agent':
         specifier: 0.52.9
         version: 0.52.9(ws@8.19.0)(zod@3.25.76)
@@ -277,8 +277,8 @@ packages:
     peerDependencies:
       '@mariozechner/pi-coding-agent': 0.52.9
 
-  '@aliou/sesame@0.2.0':
-    resolution: {integrity: sha512-rmga7+v97k+yQRxzJxxx33WK9bARc4XN3cqZwNtixkj4TyS30ZsrDC8mHXX6EpqyxKODttMVeLz8zwsT5np1aQ==}
+  '@aliou/sesame@0.4.0':
+    resolution: {integrity: sha512-r3xKC+6kIW9Q/ECjgzscerJcmhc8zJ4wfAF+U1m2iS/h5uQLUz8/bpmNR46jFmyfa75MRe0qxlYIW+NfLuohcQ==}
     engines: {node: '>=22.5.0'}
     hasBin: true
     peerDependencies:
@@ -2082,7 +2082,7 @@ snapshots:
     dependencies:
       '@mariozechner/pi-coding-agent': 0.52.9(ws@8.19.0)(zod@3.25.76)
 
-  '@aliou/sesame@0.2.0(@mariozechner/pi-coding-agent@0.52.9(ws@8.19.0)(zod@3.25.76))':
+  '@aliou/sesame@0.4.0(@mariozechner/pi-coding-agent@0.52.9(ws@8.19.0)(zod@3.25.76))':
     dependencies:
       '@mariozechner/pi-coding-agent': 0.52.9(ws@8.19.0)(zod@3.25.76)
 

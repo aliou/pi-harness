@@ -32,7 +32,7 @@
   "dependencies": {
     "@aliou/pi-linkup": "^0.6.2",
     "@aliou/pi-utils-settings": "^0.2.0",
-    "@aliou/sesame": "^0.2.0",
+    "@aliou/sesame": "^0.4.0",
     "@aliou/sh": "^0.1.0",
     "better-sqlite3": "^12.6.2",
     "yaml": "^2.8.2"

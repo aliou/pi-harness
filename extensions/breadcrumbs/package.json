@@ -10,7 +10,7 @@
     "@aliou/pi-agent-kit": "workspace:^",
     "@aliou/pi-utils-settings": "workspace:^",
     "@aliou/pi-utils-ui": "workspace:^",
-    "@aliou/sesame": "^0.2.0"
+    "@aliou/sesame": "^0.4.0"
   },
   "peerDependencies": {
     "@mariozechner/pi-coding-agent": ">=0.51.0"
