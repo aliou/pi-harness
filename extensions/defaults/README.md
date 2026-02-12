@@ -4,6 +4,42 @@ Sensible defaults and quality-of-life improvements for Pi.
 
 ## Features
 
+### Hashline editing (optional)
+
+Enable line-addressable editing with content hash verification. When enabled, overrides `read` and `edit` tools to use the hashline format from [oh-my-pi](https://github.com/can1357/oh-my-pi).
+
+**How it works:**
+- Each line in read output is prefixed with `LINE:HASH|` (e.g., `5:a3|function foo()`)
+- Edit operations reference lines by their hash tags instead of reproducing content
+- Hash validation prevents stale edits from corrupting files
+
+**Enable via settings command:** `/defaults:settings`
+
+Or manually in config:
+- Global: `~/.pi/agent/extensions/defaults.json`
+- Local: `{project}/.pi/extensions/defaults.json`
+
+```json
+{
+  "hashlineEnabled": true
+}
+```
+
+Changes take effect after saving in the settings UI (uses dynamic tool activation).
+
+**Edit operations:**
+- `set_line`: Replace a single line
+- `replace_lines`: Replace a range of lines
+- `insert_after`: Insert new lines after a specific line
+
+**Benefits:**
+- Models don't need to reproduce exact whitespace
+- ~20-30% fewer output tokens
+- Stale edits fail cleanly with correct hashes shown
+- Particularly effective with weaker models
+
+**Note:** When enabled, replaces both the directory-aware read tool and the standard edit tool. Disabled by default.
+
 ### Directory-aware read
 
 Overrides the built-in `read` tool to handle directories gracefully. When the agent calls `read` on a directory path, it returns a directory listing (via the native `ls` tool) instead of failing with an `EISDIR` error.
