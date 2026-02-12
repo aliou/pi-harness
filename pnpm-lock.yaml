@@ -37,8 +37,8 @@ importers:
         specifier: ^0.3.0
         version: 0.3.0(@biomejs/biome@2.3.11)
       '@aliou/pi-evals':
-        specifier: ^0.1.0
-        version: 0.1.0(ws@8.19.0)(zod@3.25.76)
+        specifier: ^0.2.1
+        version: 0.2.1(ws@8.19.0)(zod@3.25.76)
       '@biomejs/biome':
         specifier: ^2.0.0
         version: 2.3.11
@@ -267,8 +267,8 @@ packages:
     peerDependencies:
       '@biomejs/biome': '>=2.0.0'
 
-  '@aliou/pi-evals@0.1.0':
-    resolution: {integrity: sha512-lPhnNSrWT6Hu5QqNMrrMZePsvpbog1dadKcFUyH97xERdsVXFrZNW+PJQ3ChxqXPyApoGeAJ1n8+CBAoMepS8w==}
+  '@aliou/pi-evals@0.2.1':
+    resolution: {integrity: sha512-gsYRHRIZA8aM2AlhdC0ZftZiNfTk3xIqeAJhfX17cBZssUdApO9n2/F6FTiCUsEA2KGdi2w8CQTQ8sdwXmIjXg==}
     engines: {node: '>=20'}
     hasBin: true
 
@@ -2415,7 +2415,7 @@ snapshots:
     dependencies:
       '@biomejs/biome': 2.3.11
 
-  '@aliou/pi-evals@0.1.0(ws@8.19.0)(zod@3.25.76)':
+  '@aliou/pi-evals@0.2.1(ws@8.19.0)(zod@3.25.76)':
     dependencies:
       '@mariozechner/pi-ai': 0.53.0(ws@8.19.0)(zod@3.25.76)
       '@mariozechner/pi-coding-agent': 0.53.0(ws@8.19.0)(zod@3.25.76)

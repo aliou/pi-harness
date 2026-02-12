@@ -56,10 +56,7 @@ jobs:
           node -e "require.resolve('${{ matrix.package }}')"
 
   # Extension evals using pi-evals with GitHub Models.
-  # Requires pi-evals to support loading extensions (PiConfig.extensions).
-  # See: https://github.com/aliou/pi-evals/issues/TBD
   evals:
-    if: false # Enable once pi-evals supports loading extensions
     runs-on: ubuntu-latest
     needs: check
     strategy:
