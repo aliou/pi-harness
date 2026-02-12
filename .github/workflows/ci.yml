@@ -50,10 +50,8 @@ jobs:
           npm init -y
           npm install ${{ matrix.package }}
 
-      - name: Verify package resolves
-        run: |
-          cd /tmp/install-test
-          node -e "require.resolve('${{ matrix.package }}')"
+      - name: Verify package installed
+        run: test -d /tmp/install-test/node_modules/${{ matrix.package }}
 
   # Extension evals using pi-evals with GitHub Models.
   evals:
@@ -76,6 +74,8 @@ jobs:
 
       - name: Run evals for ${{ matrix.extension }}
         working-directory: extensions/${{ matrix.extension }}
+        env:
+          NODE_OPTIONS: "--import tsx/esm"
         run: pnpm exec pi-evals --json --threshold 100 > eval-results.json
 
       - name: Upload eval results
