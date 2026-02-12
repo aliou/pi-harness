@@ -21,6 +21,7 @@
   },
   "scripts": {
     "postinstall": "node scripts/resolve-workspace-deps.mjs",
+    "check:public-deps": "node scripts/check-public-deps.mjs",
     "lint": "biome check .",
     "format": "biome check --write .",
     "typecheck": "tsc --build",

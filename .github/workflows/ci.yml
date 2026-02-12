@@ -17,6 +17,9 @@ jobs:
 
       - uses: general-dexterity/actions/pnpm-install@main
 
+      - name: Check public package dependencies
+        run: node scripts/check-public-deps.mjs
+
       - name: Lint
         run: pnpm lint
 

@@ -33,4 +33,25 @@ Uses pnpm workspaces. Nix environment available via `flake.nix`.
 pnpm install
 pnpm typecheck
 pnpm lint
+pnpm run check:public-deps
 ```
+
+### Public vs Private Packages
+
+This monorepo contains both published (public) and internal (private) packages:
+
+- **Public packages**: Published to npm, installable by users
+  - Must have `"private": false` or `"publishConfig": { "access": "public" }"`
+  - Cannot depend on private workspace packages
+  - Examples: `@aliou/pi-utils-settings`, `@aliou/pi-utils-ui`
+
+- **Private packages**: Internal only, not published
+  - Have `"private": true` in package.json
+  - Can depend on anything
+  - Examples: Extensions, `@aliou/pi-agent-kit`
+
+**Important**: Public packages cannot depend on private workspace packages. This is enforced by:
+- Pre-commit hook that blocks invalid commits
+- CI check that prevents merging invalid dependencies
+
+Run `pnpm run check:public-deps` to validate dependencies. See `scripts/README.md` for details.

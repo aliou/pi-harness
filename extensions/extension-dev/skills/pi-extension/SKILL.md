@@ -112,6 +112,7 @@ Before considering an extension complete:
 - [ ] Fire-and-forget methods (notify, setStatus, etc.) are used without hasUI guards.
 - [ ] `signal` is forwarded to all async operations (fetch, child processes, API clients). No unused `_signal`.
 - [ ] Missing API keys produce a notification, not a crash.
+- [ ] If in a monorepo: package doesn't depend on private workspace packages (run `pnpm run check:public-deps` if available).
 - [ ] `pnpm typecheck` passes.
 - [ ] No `homedir()` calls for pi paths -- uses SDK helpers (`getAgentDir()`, etc.).
 - [ ] README documents tools, commands, env vars.

@@ -64,6 +64,13 @@
               files = "(package\\.json|pnpm-lock\\.yaml|pnpm-workspace\\.yaml)$";
               pass_filenames = false;
             };
+            public-deps-check = {
+              enable = true;
+              name = "public deps check";
+              entry = "${pkgs.nodejs}/bin/node scripts/check-public-deps.mjs";
+              files = "package\\.json$";
+              pass_filenames = false;
+            };
             typecheck = {
               enable = true;
               name = "typecheck";
