@@ -2,7 +2,6 @@
   "name": "@aliou/pi-utils-ui",
   "version": "0.1.0",
   "type": "module",
-  "private": true,
   "description": "Shared TUI abstractions for Pi extensions",
   "exports": {
     ".": "./index.ts"
@@ -11,6 +10,9 @@
     "type": "git",
     "url": "https://github.com/aliou/pi-extensions",
     "directory": "packages/ui"
+  },
+  "publishConfig": {
+    "access": "public"
   },
   "files": [
     "*.ts",
