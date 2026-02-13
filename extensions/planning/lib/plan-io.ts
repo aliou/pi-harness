@@ -10,6 +10,56 @@ import type { PlanInfo, PlanStatus } from "./types";
 
 export const PLANS_DIR = ".agents/plans";
 
+const FRONTMATTER_SCAN_CHUNK_BYTES = 4096;
+const FRONTMATTER_SCAN_MAX_BYTES = 64 * 1024;
+
+function findFrontmatterEnd(content: string): number | null {
+  // Match the closing delimiter after the opening frontmatter line.
+  // Accepts both LF and CRLF and supports EOF right after the closing --- line.
+  const match = content.slice(4).match(/\r?\n---(?:\r?\n|$)/);
+  if (!match || match.index === undefined) return null;
+  return 4 + match.index + match[0].length;
+}
+
+/**
+ * Read markdown frontmatter from a plan file by scanning only the header region.
+ * Falls back to a full read if the frontmatter doesn't close within scan limit.
+ */
+async function readPlanFrontmatterContent(planPath: string): Promise<string> {
+  const file = await fs.open(planPath, "r");
+  try {
+    let position = 0;
+    let scannedBytes = 0;
+    let content = "";
+
+    while (scannedBytes < FRONTMATTER_SCAN_MAX_BYTES) {
+      const remaining = FRONTMATTER_SCAN_MAX_BYTES - scannedBytes;
+      const chunkSize = Math.min(FRONTMATTER_SCAN_CHUNK_BYTES, remaining);
+      const buffer = Buffer.alloc(chunkSize);
+      const { bytesRead } = await file.read(buffer, 0, chunkSize, position);
+      if (bytesRead <= 0) break;
+
+      scannedBytes += bytesRead;
+      position += bytesRead;
+      content += buffer.toString("utf-8", 0, bytesRead);
+
+      if (!content.startsWith("---\n") && !content.startsWith("---\r\n")) {
+        return "";
+      }
+
+      const end = findFrontmatterEnd(content);
+      if (end !== null) {
+        return content.slice(0, end);
+      }
+    }
+
+    // Unusually large header: keep behavior correct by parsing full content.
+    return await fs.readFile(planPath, "utf-8");
+  } finally {
+    await file.close();
+  }
+}
+
 /**
  * List all plans in the plans directory
  */
@@ -26,7 +76,7 @@ export async function listPlans(cwd: string): Promise<PlanInfo[]> {
     const plans: PlanInfo[] = [];
     for (const filename of mdFiles) {
       const fullPath = path.join(plansPath, filename);
-      const content = await fs.readFile(fullPath, "utf-8");
+      const content = await readPlanFrontmatterContent(fullPath);
 
       const frontmatter = parseFrontmatter(content);
       if (!frontmatter) continue;
