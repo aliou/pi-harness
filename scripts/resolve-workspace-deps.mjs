@@ -14,8 +14,9 @@
 
 import { readdirSync, readFileSync, existsSync, mkdirSync, symlinkSync, lstatSync } from "fs";
 import { join, dirname, resolve } from "path";
+import { fileURLToPath } from "url";
 
-const ROOT = resolve(dirname(new URL(import.meta.url).pathname), "..");
+const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const PACKAGES_DIR = join(ROOT, "packages");
 const EXTENSIONS_DIR = join(ROOT, "extensions");
 const NODE_MODULES = join(ROOT, "node_modules");
