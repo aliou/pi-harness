@@ -338,10 +338,10 @@ function triggerRateLimitCheck(
 }
 
 export function setupRateLimitWarningHooks(pi: ExtensionAPI): void {
-  // Check on session start - reset warned windows and show all high usage
-  pi.on("session_start", async (_event, ctx) => {
+  // Session start: reset local warning state only. Defer checks until model
+  // change or first completed agent turn.
+  pi.on("session_start", async (_event, _ctx) => {
     warnedWindows.clear();
-    triggerRateLimitCheck(ctx, ctx.model, false);
   });
 
   // Check after agent turn - only warn for newly crossed thresholds

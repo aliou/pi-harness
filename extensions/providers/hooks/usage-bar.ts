@@ -558,11 +558,13 @@ async function refreshRateLimits(
 }
 
 export function setupUsageBarHooks(pi: ExtensionAPI): void {
-  // Session start: always fetch (force), reset state
-  pi.on("session_start", async (_event, ctx) => {
+  // Session start: reset local state only. Defer network fetch until model change
+  // or first agent turn completion.
+  pi.on("session_start", async (_event, _ctx) => {
+    cachedLimits = null;
+    cachedProviderKey = null;
     lastFetchTime = null;
     forceVisible = false;
-    refreshRateLimits(ctx, true).catch(() => {});
   });
 
   // Model change: always fetch (force), reset cache
