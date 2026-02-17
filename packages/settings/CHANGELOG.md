@@ -1,5 +1,11 @@
 # @aliou/pi-utils-settings
 
+## 0.4.0
+
+### Minor Changes
+
+- 7df01a2: Pass `ExtensionCommandContext` to `onSave` callback in settings command options
+
 ## 0.3.0
 
 ### Minor Changes
