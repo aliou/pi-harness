@@ -25,7 +25,7 @@ const usesProcessTool: Scorer = {
 evaluate("Process management - start", {
   config: {
     model: "gpt-4o",
-    provider: "github",
+    provider: "github-models",
     extensions: ["./index.ts"],
   },
   data: [

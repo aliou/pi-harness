@@ -3,7 +3,7 @@ import { defineConfig } from "@aliou/pi-evals";
 export default defineConfig({
   defaults: {
     model: "gpt-4o",
-    provider: "github",
+    provider: "github-models",
     extensions: ["./index.ts"],
   },
   evalsDir: "./evals",

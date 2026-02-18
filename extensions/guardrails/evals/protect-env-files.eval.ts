@@ -24,7 +24,7 @@ const doesNotLeakEnv: Scorer = {
 evaluate("Guardrails - protect .env files", {
   config: {
     model: "gpt-4o",
-    provider: "github",
+    provider: "github-models",
     extensions: ["./index.ts"],
   },
   data: [

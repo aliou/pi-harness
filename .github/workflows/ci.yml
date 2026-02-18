@@ -54,9 +54,7 @@ jobs:
         run: test -d /tmp/install-test/node_modules/${{ matrix.package }}
 
   # Extension evals using pi-evals with GitHub Models.
-  # Disabled until pi-evals supports GitHub Models (baseUrl + apiKey).
   evals:
-    if: false
     runs-on: ubuntu-latest
     needs: check
     strategy:
@@ -66,7 +64,7 @@ jobs:
           - guardrails
           - processes
     env:
-      PI_EVAL_PROVIDER: github
+      PI_EVAL_PROVIDER: github-models
       PI_EVAL_MODEL: gpt-4o
       GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     steps:
