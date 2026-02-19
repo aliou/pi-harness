@@ -14,8 +14,12 @@ import { FuzzySelector } from "@aliou/pi-utils-settings";
 import type {
   ExtensionAPI,
   ExtensionContext,
+  Theme,
 } from "@mariozechner/pi-coding-agent";
-import { getSettingsListTheme } from "@mariozechner/pi-coding-agent";
+import {
+  DynamicBorder,
+  getSettingsListTheme,
+} from "@mariozechner/pi-coding-agent";
 import type { Component, SettingsListTheme } from "@mariozechner/pi-tui";
 import { Input, Key, matchesKey } from "@mariozechner/pi-tui";
 import { configLoader, type ExampleConfig } from "../config";
@@ -143,6 +147,36 @@ class MultiSelect implements Component {
   }
 }
 
+// --- Bordered wrapper ---
+// Wraps any Component with DynamicBorder top/bottom lines.
+
+class BorderedWrapper implements Component {
+  private border: DynamicBorder;
+
+  constructor(
+    private inner: Component,
+    theme: Theme,
+  ) {
+    this.border = new DynamicBorder((segment) => theme.fg("border", segment));
+  }
+
+  render(width: number): string[] {
+    return [
+      ...this.border.render(width),
+      ...this.inner.render(width),
+      ...this.border.render(width),
+    ];
+  }
+
+  invalidate(): void {
+    this.inner.invalidate?.();
+  }
+
+  handleInput(data: string): void {
+    this.inner.handleInput?.(data);
+  }
+}
+
 // --- Command registration ---
 
 export function registerExampleSetup(
@@ -157,39 +191,45 @@ export function registerExampleSetup(
 
       // Step 1: pick a theme via FuzzySelector
       const theme = await ctx.ui.custom<string | undefined>(
-        (_tui, _theme, _kb, done) => {
-          return new FuzzySelector({
-            label: "Example Setup (1/3) - Pick a theme",
-            items: [
-              "dark",
-              "light",
-              "solarized-dark",
-              "solarized-light",
-              "monokai",
-              "nord",
-              "dracula",
-              "gruvbox",
-              "catppuccin",
-              "tokyo-night",
-            ],
-            currentValue: config.appearance.theme,
-            theme: settingsTheme,
-            onSelect: (selected) => done(selected),
-            onDone: () => done(undefined),
-          });
+        (_tui, uiTheme, _kb, done) => {
+          return new BorderedWrapper(
+            new FuzzySelector({
+              label: "Example Setup (1/3) - Pick a theme",
+              items: [
+                "dark",
+                "light",
+                "solarized-dark",
+                "solarized-light",
+                "monokai",
+                "nord",
+                "dracula",
+                "gruvbox",
+                "catppuccin",
+                "tokyo-night",
+              ],
+              currentValue: config.appearance.theme,
+              theme: settingsTheme,
+              onSelect: (selected) => done(selected),
+              onDone: () => done(undefined),
+            }),
+            uiTheme,
+          );
         },
       );
       if (!theme) return;
 
       // Step 2: enter a favorite item via text input
       const favorite = await ctx.ui.custom<string | undefined>(
-        (_tui, _theme, _kb, done) => {
-          return new TextPrompt(
-            settingsTheme,
-            "Example Setup (2/3) - Add a favorite",
-            "Enter a favorite item (or Esc to skip):",
-            "",
-            done,
+        (_tui, uiTheme, _kb, done) => {
+          return new BorderedWrapper(
+            new TextPrompt(
+              settingsTheme,
+              "Example Setup (2/3) - Add a favorite",
+              "Enter a favorite item (or Esc to skip):",
+              "",
+              done,
+            ),
+            uiTheme,
           );
         },
       );
@@ -197,23 +237,26 @@ export function registerExampleSetup(
 
       // Step 3: toggle editor features via multi-select
       const features = await ctx.ui.custom<string[] | undefined>(
-        (_tui, _theme, _kb, done) => {
-          return new MultiSelect(
-            settingsTheme,
-            "Example Setup (3/3) - Editor features",
-            [
-              {
-                label: "Auto save",
-                value: "autoSave",
-                selected: config.editor.autoSave,
-              },
-              {
-                label: "Format on save",
-                value: "formatOnSave",
-                selected: config.editor.formatOnSave,
-              },
-            ],
-            done,
+        (_tui, uiTheme, _kb, done) => {
+          return new BorderedWrapper(
+            new MultiSelect(
+              settingsTheme,
+              "Example Setup (3/3) - Editor features",
+              [
+                {
+                  label: "Auto save",
+                  value: "autoSave",
+                  selected: config.editor.autoSave,
+                },
+                {
+                  label: "Format on save",
+                  value: "formatOnSave",
+                  selected: config.editor.formatOnSave,
+                },
+              ],
+              done,
+            ),
+            uiTheme,
           );
         },
       );

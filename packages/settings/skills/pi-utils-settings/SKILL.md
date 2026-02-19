@@ -261,6 +261,8 @@ pi.registerCommand("my-ext:setup", {
 
 Each `ctx.ui.custom` call blocks until the component calls `done()`. Return `undefined` from the component to signal cancellation. Save config at the end after all steps succeed.
 
+Wrap each step with `DynamicBorder` for visual boundaries (the settings command does this automatically). See the reference extension's `BorderedWrapper` pattern for a reusable approach.
+
 ## Components
 
 This package includes TUI components for use in settings UIs and setup wizards. All are exported from `@aliou/pi-utils-settings`.
