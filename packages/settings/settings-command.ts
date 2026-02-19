@@ -9,7 +9,10 @@ import type {
   ExtensionAPI,
   ExtensionCommandContext,
 } from "@mariozechner/pi-coding-agent";
-import { getSettingsListTheme } from "@mariozechner/pi-coding-agent";
+import {
+  DynamicBorder,
+  getSettingsListTheme,
+} from "@mariozechner/pi-coding-agent";
 import { Key, matchesKey } from "@mariozechner/pi-tui";
 import {
   SectionedSettings,
@@ -310,13 +313,18 @@ export function registerSettingsCommand<
         // --- Init ---
 
         settings = buildSettingsComponent(activeScope);
+        const border = new DynamicBorder((segment) =>
+          theme.fg("border", segment),
+        );
 
         return {
           render(width: number) {
             const lines: string[] = [];
+            lines.push(...border.render(width));
             lines.push(theme.fg("accent", theme.bold(title)));
             lines.push(...renderTabs());
             lines.push(...(settings?.render(width) ?? []));
+            lines.push(...border.render(width));
             return lines;
           },
           invalidate() {
