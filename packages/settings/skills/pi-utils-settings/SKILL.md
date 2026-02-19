@@ -205,63 +205,52 @@ displayToStorageValue("off");           // false
 displayToStorageValue("pnpm");          // "pnpm"
 ```
 
-## Setup Commands (Wizard Pattern)
+## Setup Commands (Wizard Component)
 
-For first-time configuration that walks users through multiple steps, register a separate setup command using `ctx.ui.custom` for each step. This is distinct from the settings command (which edits existing config).
+For first-time configuration or multi-step onboarding, use the `Wizard` component. It renders all steps as tabs inside a bordered frame with navigation, progress indicators, and a shared state model.
 
 ```typescript
-import type { Component } from "@mariozechner/pi-tui";
-import { Input } from "@mariozechner/pi-tui";
-import { getSettingsListTheme } from "@mariozechner/pi-coding-agent";
+import { Wizard, type WizardStepContext } from "@aliou/pi-utils-settings";
 
-// Step component: a simple text prompt
-class UrlPrompt implements Component {
-  private input: Input;
-  private done: (value: string | undefined) => void;
-
-  constructor(currentValue: string, done: (value: string | undefined) => void) {
-    this.done = done;
-    this.input = new Input();
-    if (currentValue) this.input.setValue(currentValue);
-    this.input.onSubmit = () => {
-      const value = this.input.getValue().trim();
-      if (!value) return;
-      this.done(value);
-    };
-    this.input.onEscape = () => this.done(undefined);
-  }
-
-  render(width: number): string[] { /* ... */ }
-  invalidate() {}
-  handleInput(data: string) { this.input.handleInput(data); }
-}
-
-// Registration
 pi.registerCommand("my-ext:setup", {
   description: "First-time setup wizard",
   handler: async (_args, ctx) => {
-    const config = configLoader.getConfig();
+    // Shared mutable state that each step writes into
+    const state = { url: "", name: "" };
 
-    // Step 1: collect a URL
-    const url = await ctx.ui.custom<string | undefined>((_tui, _theme, _kb, done) => {
-      return new UrlPrompt(config.baseUrl, done);
+    const saved = await ctx.ui.custom<boolean>((_tui, uiTheme, _kb, done) => {
+      return new Wizard({
+        title: "My Extension Setup",
+        theme: uiTheme,
+        onComplete: () => done(true),
+        onCancel: () => done(false),
+        steps: [
+          {
+            label: "URL",
+            build: (wizardCtx) => new UrlStep(state, wizardCtx),
+          },
+          {
+            label: "Name",
+            build: (wizardCtx) => new NameStep(state, wizardCtx),
+          },
+        ],
+      });
     });
-    if (!url) return; // user cancelled
 
-    // Step 2: collect another value (same pattern)
-    const name = await ctx.ui.custom<string | undefined>(/* ... */);
-    if (!name) return;
-
-    // Save all at once
-    await configLoader.save("global", { baseUrl: url, name });
-    ctx.ui.notify("Setup complete", "success");
+    if (!saved) return;
+    await configLoader.save("global", state);
+    ctx.ui.notify("Setup complete", "info");
   },
 });
 ```
 
-Each `ctx.ui.custom` call blocks until the component calls `done()`. Return `undefined` from the component to signal cancellation. Save config at the end after all steps succeed.
+Each step is a `Component` that receives a `WizardStepContext`:
+- `markComplete()` — fills the step's progress dot (●)
+- `markIncomplete()` — clears it (○)
 
-Wrap each step with `DynamicBorder` for visual boundaries (the settings command does this automatically). See the reference extension's `BorderedWrapper` pattern for a reusable approach.
+The Wizard handles borders, tab rendering, and navigation (Tab/Shift+Tab between steps, Ctrl+S to submit, Esc to cancel). Step components should NOT handle these keys.
+
+Steps write into shared mutable state. After `onComplete` fires, read the state and save.
 
 ## Components
 
@@ -269,6 +258,7 @@ This package includes TUI components for use in settings UIs and setup wizards. 
 
 | Component            | Use case                                       |
 |----------------------|------------------------------------------------|
+| `Wizard`             | Multi-step setup with tabbed navigation + borders |
 | `SectionedSettings`  | Grouped settings list with search and submenus |
 | `ArrayEditor`        | Edit a `string[]` (add/edit/delete)            |
 | `PathArrayEditor`    | Same as ArrayEditor + Tab path completion      |
@@ -295,4 +285,4 @@ my-extension/
     setup.ts     # optional: multi-step wizard for first-time config
 ```
 
-A complete reference extension is bundled at `references/example-extension/`. It demonstrates every feature: config types, migrations, afterMerge, settings command with all item types (toggles, enums, submenus with ArrayEditor/PathArrayEditor/FuzzySelector), setup wizard with multi-step `ctx.ui.custom`, and the activation pattern.
+A complete reference extension is bundled at `references/example-extension/`. It demonstrates every feature: config types, migrations, afterMerge, settings command with all item types (toggles, enums, submenus with ArrayEditor/PathArrayEditor/FuzzySelector), setup wizard using the Wizard component with tabbed steps, and the activation pattern.

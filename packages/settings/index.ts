@@ -4,6 +4,7 @@
  * Shared settings infrastructure for pi extensions:
  * - ConfigLoader: load/save/merge JSON configs from global + project paths
  * - registerSettingsCommand: create a settings command with Local/Global tabs
+ * - Wizard: multi-step wizard component with tabbed navigation and borders
  * - SectionedSettings: sectioned settings list component
  * - ArrayEditor: string array editor submenu component
  * - Helpers: nested value access, display-to-storage value mapping
@@ -26,6 +27,12 @@ export {
   type SectionedSettingsOptions,
   type SettingsSection,
 } from "./components/sectioned-settings";
+export {
+  Wizard,
+  type WizardOptions,
+  type WizardStep,
+  type WizardStepContext,
+} from "./components/wizard";
 export {
   ConfigLoader,
   type ConfigStore,

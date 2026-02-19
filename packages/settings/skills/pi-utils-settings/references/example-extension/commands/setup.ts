@@ -1,130 +1,187 @@
 /**
  * Setup wizard for the example extension.
  *
- * Demonstrates the multi-step ctx.ui.custom pattern:
- * - Each step is a Component that calls done() when complete
- * - Steps are chained sequentially; returning undefined = cancel
- * - Config is saved at the end after all steps succeed
- *
- * Use a setup command for first-time onboarding or multi-step configuration
- * that doesn't fit the settings UI model.
+ * Demonstrates the Wizard component:
+ * - All steps shown as tabs in a single bordered frame
+ * - Tab/Shift+Tab navigates between steps
+ * - Each step has its own inner Component
+ * - Steps call markComplete() when they have valid data
+ * - Ctrl+S submits, Esc cancels
  */
 
-import { FuzzySelector } from "@aliou/pi-utils-settings";
+import {
+  FuzzySelector,
+  Wizard,
+  type WizardStepContext,
+} from "@aliou/pi-utils-settings";
 import type {
   ExtensionAPI,
   ExtensionContext,
-  Theme,
 } from "@mariozechner/pi-coding-agent";
-import {
-  DynamicBorder,
-  getSettingsListTheme,
-} from "@mariozechner/pi-coding-agent";
+import { getSettingsListTheme } from "@mariozechner/pi-coding-agent";
 import type { Component, SettingsListTheme } from "@mariozechner/pi-tui";
 import { Input, Key, matchesKey } from "@mariozechner/pi-tui";
 import { configLoader, type ExampleConfig } from "../config";
 
-// --- Step 1: Text input ---
+// --- Collected wizard state ---
+// Shared mutable object that each step writes into.
 
-class TextPrompt implements Component {
-  private input: Input;
-  private done: (value: string | undefined) => void;
-  private theme: SettingsListTheme;
-  private title: string;
-  private prompt: string;
+interface WizardState {
+  theme: string | null;
+  favorite: string | null;
+  autoSave: boolean;
+  formatOnSave: boolean;
+}
+
+// --- Step components ---
+// Each step reads/writes to the shared WizardState and calls
+// markComplete()/markIncomplete() to update progress indicators.
+
+class ThemeStep implements Component {
+  private selector: FuzzySelector;
 
   constructor(
-    theme: SettingsListTheme,
-    title: string,
-    prompt: string,
-    currentValue: string,
-    done: (value: string | undefined) => void,
+    state: WizardState,
+    settingsTheme: SettingsListTheme,
+    wizardCtx: WizardStepContext,
   ) {
-    this.theme = theme;
-    this.title = title;
-    this.prompt = prompt;
-    this.done = done;
+    this.selector = new FuzzySelector({
+      label: "Pick a theme",
+      items: [
+        "dark",
+        "light",
+        "solarized-dark",
+        "solarized-light",
+        "monokai",
+        "nord",
+        "dracula",
+        "gruvbox",
+        "catppuccin",
+        "tokyo-night",
+      ],
+      currentValue: state.theme ?? undefined,
+      theme: settingsTheme,
+      onSelect: (selected) => {
+        state.theme = selected;
+        wizardCtx.markComplete();
+      },
+      // onDone is a no-op here; the Wizard handles Esc globally
+      onDone: () => {},
+    });
+  }
+
+  render(width: number): string[] {
+    return this.selector.render(width);
+  }
+
+  invalidate(): void {
+    this.selector.invalidate?.();
+  }
+
+  handleInput(data: string): void {
+    // Filter out keys the Wizard handles globally
+    if (matchesKey(data, Key.escape)) return;
+    this.selector.handleInput(data);
+  }
+}
+
+class FavoriteStep implements Component {
+  private input: Input;
+  private settingsTheme: SettingsListTheme;
+
+  constructor(
+    private state: WizardState,
+    settingsTheme: SettingsListTheme,
+    wizardCtx: WizardStepContext,
+  ) {
+    this.settingsTheme = settingsTheme;
     this.input = new Input();
-    if (currentValue) this.input.setValue(currentValue);
+    if (state.favorite) this.input.setValue(state.favorite);
 
     this.input.onSubmit = () => {
       const value = this.input.getValue().trim();
-      if (!value) return;
-      this.done(value);
+      state.favorite = value || null;
+      if (value) wizardCtx.markComplete();
+      else wizardCtx.markIncomplete();
     };
-    this.input.onEscape = () => this.done(undefined);
   }
 
   render(width: number): string[] {
     const lines: string[] = [];
-    lines.push(this.theme.label(` ${this.title}`, true));
+    lines.push(this.settingsTheme.label(" Add a favorite", true));
     lines.push("");
-    lines.push(this.theme.hint(`  ${this.prompt}`));
+    lines.push(
+      this.settingsTheme.hint("  Enter an item (optional, Enter to confirm):"),
+    );
     lines.push(`  ${this.input.render(width - 4).join("")}`);
-    lines.push("");
-    lines.push(this.theme.hint("  Enter: confirm · Esc: cancel"));
+
+    if (this.state.favorite) {
+      lines.push("");
+      lines.push(this.settingsTheme.hint(`  Current: ${this.state.favorite}`));
+    }
+
     return lines;
   }
 
   invalidate() {}
 
-  handleInput(data: string) {
+  handleInput(data: string): void {
+    if (matchesKey(data, Key.escape)) return;
     this.input.handleInput(data);
   }
 }
 
-// --- Step 2: Multi-select (toggle items on/off) ---
-
-interface ToggleItem {
-  label: string;
-  value: string;
-  selected: boolean;
-}
-
-class MultiSelect implements Component {
-  private items: ToggleItem[];
-  private theme: SettingsListTheme;
-  private title: string;
-  private done: (values: string[] | undefined) => void;
+class EditorFeaturesStep implements Component {
+  private items: Array<{
+    label: string;
+    value: keyof WizardState;
+    selected: boolean;
+  }>;
+  private settingsTheme: SettingsListTheme;
   private selectedIndex = 0;
 
   constructor(
-    theme: SettingsListTheme,
-    title: string,
-    items: ToggleItem[],
-    done: (values: string[] | undefined) => void,
+    private state: WizardState,
+    settingsTheme: SettingsListTheme,
+    wizardCtx: WizardStepContext,
   ) {
-    this.theme = theme;
-    this.title = title;
-    this.items = items;
-    this.done = done;
+    this.settingsTheme = settingsTheme;
+    this.items = [
+      { label: "Auto save", value: "autoSave", selected: state.autoSave },
+      {
+        label: "Format on save",
+        value: "formatOnSave",
+        selected: state.formatOnSave,
+      },
+    ];
+    // Always complete since toggles have defaults
+    wizardCtx.markComplete();
   }
 
   render(_width: number): string[] {
     const lines: string[] = [];
-    lines.push(this.theme.label(` ${this.title}`, true));
+    lines.push(this.settingsTheme.label(" Editor features", true));
     lines.push("");
 
     for (let i = 0; i < this.items.length; i++) {
       const item = this.items[i];
       if (!item) continue;
       const isSelected = i === this.selectedIndex;
-      const prefix = isSelected ? this.theme.cursor : "  ";
+      const prefix = isSelected ? this.settingsTheme.cursor : "  ";
       const check = item.selected ? "[x]" : "[ ]";
-      const label = this.theme.value(`${check} ${item.label}`, isSelected);
+      const label = this.settingsTheme.value(
+        `${check} ${item.label}`,
+        isSelected,
+      );
       lines.push(`${prefix}${label}`);
     }
 
-    lines.push("");
-    lines.push(
-      this.theme.hint("  Space: toggle · Enter: confirm · Esc: cancel"),
-    );
     return lines;
   }
 
   invalidate() {}
 
-  handleInput(data: string) {
+  handleInput(data: string): void {
     if (matchesKey(data, Key.up)) {
       this.selectedIndex =
         this.selectedIndex === 0
@@ -135,45 +192,14 @@ class MultiSelect implements Component {
         this.selectedIndex === this.items.length - 1
           ? 0
           : this.selectedIndex + 1;
-    } else if (data === " ") {
+    } else if (data === " " || matchesKey(data, Key.enter)) {
       const item = this.items[this.selectedIndex];
-      if (item) item.selected = !item.selected;
-    } else if (matchesKey(data, Key.enter)) {
-      const selected = this.items.filter((i) => i.selected).map((i) => i.value);
-      this.done(selected);
-    } else if (matchesKey(data, Key.escape)) {
-      this.done(undefined);
+      if (item) {
+        item.selected = !item.selected;
+        // Write back to shared state
+        this.state[item.value] = item.selected as never;
+      }
     }
-  }
-}
-
-// --- Bordered wrapper ---
-// Wraps any Component with DynamicBorder top/bottom lines.
-
-class BorderedWrapper implements Component {
-  private border: DynamicBorder;
-
-  constructor(
-    private inner: Component,
-    theme: Theme,
-  ) {
-    this.border = new DynamicBorder((segment) => theme.fg("border", segment));
-  }
-
-  render(width: number): string[] {
-    return [
-      ...this.border.render(width),
-      ...this.inner.render(width),
-      ...this.border.render(width),
-    ];
-  }
-
-  invalidate(): void {
-    this.inner.invalidate?.();
-  }
-
-  handleInput(data: string): void {
-    this.inner.handleInput?.(data);
   }
 }
 
@@ -187,91 +213,57 @@ export function registerExampleSetup(
     description: "First-time setup wizard for example extension",
     handler: async (_args, ctx) => {
       const settingsTheme = getSettingsListTheme();
-      const config = configLoader.getConfig();
+      const currentConfig = configLoader.getConfig();
 
-      // Step 1: pick a theme via FuzzySelector
-      const theme = await ctx.ui.custom<string | undefined>(
-        (_tui, uiTheme, _kb, done) => {
-          return new BorderedWrapper(
-            new FuzzySelector({
-              label: "Example Setup (1/3) - Pick a theme",
-              items: [
-                "dark",
-                "light",
-                "solarized-dark",
-                "solarized-light",
-                "monokai",
-                "nord",
-                "dracula",
-                "gruvbox",
-                "catppuccin",
-                "tokyo-night",
-              ],
-              currentValue: config.appearance.theme,
-              theme: settingsTheme,
-              onSelect: (selected) => done(selected),
-              onDone: () => done(undefined),
-            }),
-            uiTheme,
-          );
-        },
-      );
-      if (!theme) return;
+      // Shared state across all wizard steps
+      const state: WizardState = {
+        theme: currentConfig.appearance.theme,
+        favorite: null,
+        autoSave: currentConfig.editor.autoSave,
+        formatOnSave: currentConfig.editor.formatOnSave,
+      };
 
-      // Step 2: enter a favorite item via text input
-      const favorite = await ctx.ui.custom<string | undefined>(
-        (_tui, uiTheme, _kb, done) => {
-          return new BorderedWrapper(
-            new TextPrompt(
-              settingsTheme,
-              "Example Setup (2/3) - Add a favorite",
-              "Enter a favorite item (or Esc to skip):",
-              "",
-              done,
-            ),
-            uiTheme,
-          );
-        },
-      );
-      // Note: not returning on undefined here -- this step is optional
+      const saved = await ctx.ui.custom<boolean>((_tui, uiTheme, _kb, done) => {
+        return new Wizard({
+          title: "Example Setup",
+          theme: uiTheme,
+          onComplete: () => done(true),
+          onCancel: () => done(false),
+          steps: [
+            {
+              label: "Theme",
+              build: (wizardCtx) => {
+                // Pre-mark complete if we have a default
+                if (state.theme) wizardCtx.markComplete();
+                return new ThemeStep(state, settingsTheme, wizardCtx);
+              },
+            },
+            {
+              label: "Favorite",
+              build: (wizardCtx) =>
+                new FavoriteStep(state, settingsTheme, wizardCtx),
+            },
+            {
+              label: "Editor",
+              build: (wizardCtx) =>
+                new EditorFeaturesStep(state, settingsTheme, wizardCtx),
+            },
+          ],
+        });
+      });
 
-      // Step 3: toggle editor features via multi-select
-      const features = await ctx.ui.custom<string[] | undefined>(
-        (_tui, uiTheme, _kb, done) => {
-          return new BorderedWrapper(
-            new MultiSelect(
-              settingsTheme,
-              "Example Setup (3/3) - Editor features",
-              [
-                {
-                  label: "Auto save",
-                  value: "autoSave",
-                  selected: config.editor.autoSave,
-                },
-                {
-                  label: "Format on save",
-                  value: "formatOnSave",
-                  selected: config.editor.formatOnSave,
-                },
-              ],
-              done,
-            ),
-            uiTheme,
-          );
-        },
-      );
-      if (!features) return;
+      if (!saved) return;
 
-      // Save all collected values at once
+      // Build config from wizard state
       const newConfig: ExampleConfig = {
-        appearance: { theme },
+        appearance: { theme: state.theme ?? undefined },
         editor: {
-          autoSave: features.includes("autoSave"),
-          formatOnSave: features.includes("formatOnSave"),
+          autoSave: state.autoSave,
+          formatOnSave: state.formatOnSave,
         },
       };
-      if (favorite) {
-        newConfig.favorites = [favorite];
+      if (state.favorite) {
+        newConfig.favorites = [state.favorite];
       }
 
       await configLoader.save("global", newConfig);
