@@ -64,6 +64,7 @@ class ThemeStep implements Component {
       onSelect: (selected) => {
         state.theme = selected;
         wizardCtx.markComplete();
+        wizardCtx.goNext();
       },
       // onDone is a no-op here; the Wizard handles Esc globally
       onDone: () => {},
@@ -103,6 +104,7 @@ class FavoriteStep implements Component {
       state.favorite = value || null;
       if (value) wizardCtx.markComplete();
       else wizardCtx.markIncomplete();
+      wizardCtx.goNext();
     };
   }
 

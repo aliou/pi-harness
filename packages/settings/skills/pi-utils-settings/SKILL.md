@@ -247,8 +247,10 @@ pi.registerCommand("my-ext:setup", {
 Each step is a `Component` that receives a `WizardStepContext`:
 - `markComplete()` — fills the step's progress dot (●)
 - `markIncomplete()` — clears it (○)
+- `goNext()` — advance to the next step (call after selection/submit)
+- `goPrev()` — go back to the previous step
 
-The Wizard handles borders, tab rendering, and navigation (Tab/Shift+Tab between steps, Ctrl+S to submit, Esc to cancel). Step components should NOT handle these keys.
+The Wizard handles borders, tab rendering, and global navigation (Tab/Shift+Tab between steps, Ctrl+S to submit, Esc to cancel). Step components should NOT handle Esc or Tab. Steps should call `goNext()` after the user completes them (e.g. after Enter selects a value).
 
 Steps write into shared mutable state. After `onComplete` fires, read the state and save.
 

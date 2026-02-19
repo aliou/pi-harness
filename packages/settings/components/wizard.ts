@@ -43,6 +43,10 @@ export interface WizardStepContext {
   markComplete: () => void;
   /** Mark this step as incomplete (empty ○ in progress). */
   markIncomplete: () => void;
+  /** Advance to the next step (wraps around). */
+  goNext: () => void;
+  /** Go back to the previous step (wraps around). */
+  goPrev: () => void;
 }
 
 export interface WizardOptions {
@@ -88,6 +92,13 @@ export class Wizard implements Component {
         },
         markIncomplete: () => {
           this.completed[i] = false;
+        },
+        goNext: () => {
+          this.activeIndex = (this.activeIndex + 1) % this.steps.length;
+        },
+        goPrev: () => {
+          this.activeIndex =
+            (this.activeIndex - 1 + this.steps.length) % this.steps.length;
         },
       }),
     );
