@@ -53,7 +53,7 @@ const DEFAULT_CONFIG: ResolvedSubagentsConfig = {
   subagents: {
     scout: {
       provider: "openrouter",
-      model: "anthropic/claude-haiku-4.5",
+      model: "z-ai/glm-5",
       enabled: true,
     },
     lookout: {
