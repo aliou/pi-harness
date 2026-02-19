@@ -205,6 +205,77 @@ displayToStorageValue("off");           // false
 displayToStorageValue("pnpm");          // "pnpm"
 ```
 
+## Setup Commands (Wizard Pattern)
+
+For first-time configuration that walks users through multiple steps, register a separate setup command using `ctx.ui.custom` for each step. This is distinct from the settings command (which edits existing config).
+
+```typescript
+import type { Component } from "@mariozechner/pi-tui";
+import { Input } from "@mariozechner/pi-tui";
+import { getSettingsListTheme } from "@mariozechner/pi-coding-agent";
+
+// Step component: a simple text prompt
+class UrlPrompt implements Component {
+  private input: Input;
+  private done: (value: string | undefined) => void;
+
+  constructor(currentValue: string, done: (value: string | undefined) => void) {
+    this.done = done;
+    this.input = new Input();
+    if (currentValue) this.input.setValue(currentValue);
+    this.input.onSubmit = () => {
+      const value = this.input.getValue().trim();
+      if (!value) return;
+      this.done(value);
+    };
+    this.input.onEscape = () => this.done(undefined);
+  }
+
+  render(width: number): string[] { /* ... */ }
+  invalidate() {}
+  handleInput(data: string) { this.input.handleInput(data); }
+}
+
+// Registration
+pi.registerCommand("my-ext:setup", {
+  description: "First-time setup wizard",
+  handler: async (_args, ctx) => {
+    const config = configLoader.getConfig();
+
+    // Step 1: collect a URL
+    const url = await ctx.ui.custom<string | undefined>((_tui, _theme, _kb, done) => {
+      return new UrlPrompt(config.baseUrl, done);
+    });
+    if (!url) return; // user cancelled
+
+    // Step 2: collect another value (same pattern)
+    const name = await ctx.ui.custom<string | undefined>(/* ... */);
+    if (!name) return;
+
+    // Save all at once
+    await configLoader.save("global", { baseUrl: url, name });
+    ctx.ui.notify("Setup complete", "success");
+  },
+});
+```
+
+Each `ctx.ui.custom` call blocks until the component calls `done()`. Return `undefined` from the component to signal cancellation. Save config at the end after all steps succeed.
+
+## Components
+
+This package includes TUI components for use in settings UIs and setup wizards. All are exported from `@aliou/pi-utils-settings`.
+
+| Component            | Use case                                       |
+|----------------------|------------------------------------------------|
+| `SectionedSettings`  | Grouped settings list with search and submenus |
+| `ArrayEditor`        | Edit a `string[]` (add/edit/delete)            |
+| `PathArrayEditor`    | Same as ArrayEditor + Tab path completion      |
+| `FuzzySelector`      | Fuzzy-searchable single-select list            |
+
+These components implement the pi-tui `Component` interface (`render`, `handleInput`, `invalidate`). They are designed for use inside `registerSettingsCommand` submenus or `ctx.ui.custom` calls.
+
+Note: `packages/ui/` is a separate package with different primitives (panels, tool renderers). There is no overlap.
+
 ## Save Model
 
 All changes are held as in-memory drafts until Ctrl+S. Esc exits without saving. Dirty tabs show a `*` marker. After save, `onSave` callback fires (use to reload runtime state).
@@ -215,8 +286,9 @@ Typical extension file structure:
 
 ```
 my-extension/
-  index.ts       # activate() calls configLoader.load(), registers settings command
+  index.ts       # activate() calls configLoader.load(), registers commands
   config.ts      # ConfigLoader + types + migrations
   commands/
-    settings.ts  # registerSettingsCommand call
+    settings.ts  # registerSettingsCommand (edit existing config)
+    setup.ts     # optional: multi-step wizard for first-time config
 ```
