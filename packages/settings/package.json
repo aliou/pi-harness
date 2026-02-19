@@ -19,8 +19,14 @@
   "files": [
     "*.ts",
     "components",
+    "skills",
     "README.md"
   ],
+  "pi": {
+    "skills": [
+      "skills"
+    ]
+  },
   "peerDependencies": {
     "@mariozechner/pi-coding-agent": ">=0.51.0"
   }
