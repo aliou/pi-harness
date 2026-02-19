@@ -165,6 +165,8 @@ export class FuzzySelector implements Component {
         this.selectedIndex === this.filteredItems.length - 1
           ? 0
           : this.selectedIndex + 1;
+    } else if (matchesKey(data, Key.enter)) {
+      this.selectCurrent();
     } else if (matchesKey(data, Key.escape)) {
       this.onDone();
     } else {
