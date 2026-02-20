@@ -22,16 +22,9 @@ import type {
   AgentToolUpdateCallback,
   ExtensionContext,
   Skill,
+  Theme,
   ToolDefinition,
   ToolRenderResultOptions,
-} from "@mariozechner/pi-coding-agent";
-import {
-  createBashTool,
-  createEditTool,
-  type createReadOnlyTools,
-  createReadTool,
-  createWriteTool,
-  type Theme,
 } from "@mariozechner/pi-coding-agent";
 import { Type } from "@sinclair/typebox";
 import { getSubagentModelConfig, isDebugEnabled } from "../../config";
@@ -45,13 +38,14 @@ import type { SubagentToolCall } from "../../lib/types";
 import { pluralize } from "../../lib/ui/stats";
 import { WORKER_SYSTEM_PROMPT } from "./system-prompt";
 import { createWorkerToolFormatter } from "./tool-formatter";
+import { createWorkerTools } from "./tools";
 import type { WorkerDetails, WorkerInput } from "./types";
 
 /** System prompt guidance for worker tool usage */
 export const WORKER_GUIDANCE = `
 ## Worker
 
-Delegate implementation work to the worker instead of doing it yourself when the task is well-defined and the files are known. The worker is a focused implementation agent: it reads, edits, writes files and runs verification commands. It is sandboxed to the files you provide.
+Delegate implementation work to the worker instead of doing it yourself when the task is well-defined and the files are known. The worker is a focused implementation agent: it reads, edits, writes files and runs mandatory verification commands. It is sandboxed to the files you provide.
 
 **You SHOULD delegate to the worker when:**
 - You already know which files need to change and what the change is
@@ -63,6 +57,14 @@ Delegate implementation work to the worker instead of doing it yourself when the
 - The scope is unclear or you don't know which files are involved
 - The task is architectural planning (use oracle)
 
+**Worker verification policy (enforced):**
+- Run relevant lint checks before finishing
+- Run relevant type checks before finishing
+- Run relevant tests before finishing
+- Never use \`--no-verify\` for commits
+- Never bypass checks by disabling lint/type/test gates unless explicitly authorized
+- If checks cannot be run or cannot pass without forbidden bypasses, worker must call this out to the parent agent
+
 **Inputs:**
 - \`task\`: Short description (~50 chars, for display only, not sent to the worker)
 - \`instructions\`: Full instructions for the worker (be specific and complete)
@@ -70,7 +72,7 @@ Delegate implementation work to the worker instead of doing it yourself when the
 - \`context\`: Optional background info (e.g., patterns to follow, constraints)
 - \`skills\`: Optional skill names for specialized context
 
-**After the worker completes:** Review its output yourself. If the worker did not run verification (e.g., typecheck, tests, lint), do it yourself and fix any issues.
+**After the worker completes:** Review its output yourself. If the worker reports unrun/failed checks or forbidden bypass pressure, resolve that before shipping.
 
 **Example:**
 \`\`\`json
@@ -142,7 +144,9 @@ export function createWorkerTool(): ToolDefinition<
     label: "Worker",
     description: `Focused implementation agent for well-defined tasks on specific files.
 
-The worker reads, edits, writes files and runs bash for verification. It is sandboxed to the files you provide. It does not search or explore the codebase.
+The worker reads, edits, writes files and runs mandatory verification (lint, typecheck, tests) before finishing. It is sandboxed to the files you provide. It does not search or explore the codebase.
+
+It must never use commit bypass flags like \`--no-verify\` and must not disable lint/type/test gates unless explicitly authorized. If checks cannot run/pass under those constraints, it reports that to the parent agent.
 
 Use for: file migrations, adding docs/types, applying refactoring patterns, adding error handling, fixing known bugs in specific files.
 
@@ -251,14 +255,9 @@ Pass relevant skills (e.g., 'ios-26', 'drizzle-orm') to provide specialized cont
           userMessage += `\n\n**Note:** The following skills were not found and could not be loaded: ${notFoundSkills.join(", ")}`;
         }
 
-        // Sandboxed tools: read, edit, write, bash. No grep/find/ls.
-        type BuiltinTool = ReturnType<typeof createReadOnlyTools>[number];
-        const tools: BuiltinTool[] = [
-          createReadTool(ctx.cwd) as BuiltinTool,
-          createEditTool(ctx.cwd) as BuiltinTool,
-          createWriteTool(ctx.cwd) as BuiltinTool,
-          createBashTool(ctx.cwd) as BuiltinTool,
-        ];
+        // Sandboxed tools: read/edit/write hard-scoped to provided files.
+        // Bash is guarded for worker policy (no exploration, no --no-verify).
+        const tools = createWorkerTools(ctx.cwd, files);
 
         const result = await executeSubagent(
           {

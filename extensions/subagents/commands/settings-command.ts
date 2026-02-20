@@ -44,7 +44,8 @@ const SUBAGENT_UI: Record<
   },
   worker: {
     label: "Worker",
-    description: "Focused implementation agent for well-defined tasks",
+    description:
+      "Focused implementation agent with mandatory lint/typecheck/test verification",
   },
 };
 
