@@ -13,6 +13,7 @@ import {
   getInstalled,
   readSettings,
 } from "./project-init/installer";
+import { buildNixPrompt } from "./project-init/nix";
 import { showWizard } from "./project-init/wizard";
 
 export function registerProjectInitCommand(pi: ExtensionAPI): void {
@@ -74,14 +75,25 @@ export function registerProjectInitCommand(pi: ExtensionAPI): void {
         }
       }
 
-      // Generate AGENTS.md via prompt injection
+      // Build combined prompt for nix + AGENTS.md generation
+      const promptParts: string[] = [];
+
+      if (result.nixChoice !== "skip") {
+        promptParts.push(buildNixPrompt(result.nixChoice, result.stack));
+      }
+
       if (result.generateAgents && result.agentsDirs.length > 0) {
-        const prompt = buildAgentsPrompt(
-          result.stack,
-          result.selectedEntries,
-          result.agentsDirs,
+        promptParts.push(
+          buildAgentsPrompt(
+            result.stack,
+            result.selectedEntries,
+            result.agentsDirs,
+          ),
         );
-        pi.sendUserMessage(prompt);
+      }
+
+      if (promptParts.length > 0) {
+        pi.sendUserMessage(promptParts.join("\n\n---\n\n"));
       }
     },
   });

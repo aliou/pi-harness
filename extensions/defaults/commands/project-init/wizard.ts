@@ -9,6 +9,8 @@
  * Ctrl+S to apply, Esc to cancel.
  */
 
+import { existsSync } from "node:fs";
+import { resolve } from "node:path";
 import {
   FuzzyMultiSelector,
   type FuzzyMultiSelectorItem,
@@ -24,9 +26,12 @@ import { scanCatalog } from "./catalog";
 import { getInstalled, readSettings } from "./installer";
 import { findChildProjects, type ProjectStack, scanProject } from "./scanner";
 
+export type NixChoice = "shell.nix" | "flake.nix" | "skip";
+
 export interface WizardResult {
   selectedEntries: CatalogEntry[];
   unselectedEntries: CatalogEntry[];
+  nixChoice: NixChoice;
   generateAgents: boolean;
   agentsDirs: string[];
   stack: ProjectStack;
@@ -45,6 +50,8 @@ interface WizardState {
   // Items mutated by steps
   packageItems: FuzzyMultiSelectorItem[];
   skillItems: FuzzyMultiSelectorItem[];
+  nixChoice: NixChoice;
+  nixExisting: "shell.nix" | "flake.nix" | null;
   generateAgents: boolean;
   agentsDirItems: Array<{ path: string; checked: boolean }>;
 }
@@ -131,7 +138,126 @@ class SkillsStep implements Component {
 }
 
 // ---------------------------------------------------------------------------
-// Step 3: AGENTS.md
+// Step 3: Nix Dev Shell
+// ---------------------------------------------------------------------------
+
+const NIX_OPTIONS: Array<{ value: NixChoice; label: string; hint: string }> = [
+  {
+    value: "shell.nix",
+    label: "shell.nix",
+    hint: "Simple dev shell with nix-shell. Pairs with .envrc containing `use nix`.",
+  },
+  {
+    value: "flake.nix",
+    label: "flake.nix",
+    hint: "Flake-based dev shell with nix develop. Pairs with .envrc containing `use flake`.",
+  },
+  {
+    value: "skip",
+    label: "Skip",
+    hint: "Do not create or modify Nix files.",
+  },
+];
+
+class NixStep implements Component {
+  private settingsTheme: SettingsListTheme;
+  private selectedIndex: number;
+
+  constructor(
+    private state: WizardState,
+    settingsTheme: SettingsListTheme,
+    wizardCtx: WizardStepContext,
+  ) {
+    this.settingsTheme = settingsTheme;
+    wizardCtx.markComplete();
+
+    // Pre-select based on existing files or default to skip
+    const currentIdx = NIX_OPTIONS.findIndex(
+      (o) => o.value === state.nixChoice,
+    );
+    this.selectedIndex = currentIdx >= 0 ? currentIdx : NIX_OPTIONS.length - 1;
+  }
+
+  render(_width: number): string[] {
+    const lines: string[] = [];
+
+    lines.push(this.settingsTheme.label(" Nix Dev Shell", true));
+    lines.push("");
+
+    if (this.state.nixExisting) {
+      lines.push(
+        this.settingsTheme.hint(
+          `  Existing: ${this.state.nixExisting} detected`,
+        ),
+      );
+    } else {
+      lines.push(this.settingsTheme.hint("  No existing Nix shell detected"));
+    }
+    lines.push("");
+
+    for (let i = 0; i < NIX_OPTIONS.length; i++) {
+      const opt = NIX_OPTIONS[i];
+      if (!opt) continue;
+      const isSelected = i === this.selectedIndex;
+      const isCurrent = this.state.nixChoice === opt.value;
+      const prefix = isSelected ? this.settingsTheme.cursor : "  ";
+      const radio = isCurrent ? "(x)" : "( )";
+      const label = this.settingsTheme.value(
+        `${radio} ${opt.label}`,
+        isSelected,
+      );
+      lines.push(`${prefix}${label}`);
+    }
+
+    // Hint for selected option
+    const current = NIX_OPTIONS[this.selectedIndex];
+    if (current) {
+      lines.push("");
+      lines.push(this.settingsTheme.hint(`  ${current.hint}`));
+    }
+
+    lines.push("");
+    lines.push(
+      this.settingsTheme.hint(
+        "  Enter select · Creates shell + .envrc for direnv",
+      ),
+    );
+
+    return lines;
+  }
+
+  invalidate(): void {}
+
+  handleInput(data: string): void {
+    if (matchesKey(data, Key.escape)) return;
+
+    if (matchesKey(data, Key.up)) {
+      this.selectedIndex =
+        this.selectedIndex === 0
+          ? NIX_OPTIONS.length - 1
+          : this.selectedIndex - 1;
+      return;
+    }
+
+    if (matchesKey(data, Key.down)) {
+      this.selectedIndex =
+        this.selectedIndex === NIX_OPTIONS.length - 1
+          ? 0
+          : this.selectedIndex + 1;
+      return;
+    }
+
+    if (data === " " || matchesKey(data, Key.enter)) {
+      const opt = NIX_OPTIONS[this.selectedIndex];
+      if (opt) {
+        this.state.nixChoice = opt.value;
+      }
+    }
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Step 4: AGENTS.md
 // ---------------------------------------------------------------------------
 
 /** Max visible directory rows in the AGENTS.md step. */
@@ -384,6 +510,7 @@ function collectResult(state: WizardState): WizardResult {
   return {
     selectedEntries,
     unselectedEntries,
+    nixChoice: state.nixChoice,
     generateAgents: state.generateAgents,
     agentsDirs,
     stack: state.stack,
@@ -415,6 +542,11 @@ export async function showWizard(
   const installed = getInstalled(settings);
   const childProjects = findChildProjects(ctx.cwd, childProjectDepth);
 
+  // Detect existing nix files
+  const hasFlake = existsSync(resolve(ctx.cwd, "flake.nix"));
+  const hasShell = existsSync(resolve(ctx.cwd, "shell.nix"));
+  const nixExisting = hasFlake ? "flake.nix" : hasShell ? "shell.nix" : null;
+
   // --- Build shared state ---
   const state: WizardState = {
     catalog,
@@ -423,6 +555,8 @@ export async function showWizard(
     installedPackages: installed.packages,
     packageItems: buildPackageItems(catalog, installed.packages),
     skillItems: buildSkillItems(catalog, installed.skills),
+    nixChoice: nixExisting ?? "skip",
+    nixExisting: nixExisting as "shell.nix" | "flake.nix" | null,
     generateAgents: true,
     agentsDirItems: buildAgentsDirItems(ctx.cwd, childProjects),
   };
@@ -450,6 +584,10 @@ export async function showWizard(
         {
           label: "Skills",
           build: (wizardCtx) => new SkillsStep(state, settingsTheme, wizardCtx),
+        },
+        {
+          label: "Nix",
+          build: (wizardCtx) => new NixStep(state, settingsTheme, wizardCtx),
         },
         {
           label: "AGENTS.md",
