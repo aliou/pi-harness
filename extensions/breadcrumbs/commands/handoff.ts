@@ -6,7 +6,6 @@
  * prompt in an editor for review before the new session is created.
  */
 
-import { randomUUID } from "node:crypto";
 import { createRunLogger, type SubagentLogger } from "@aliou/pi-agent-kit";
 import { type Message, stream } from "@mariozechner/pi-ai";
 import type { ExtensionAPI } from "@mariozechner/pi-coding-agent";
@@ -15,11 +14,7 @@ import {
   extractFilesFromSessionEntries,
   extractMentionedFiles,
 } from "../lib/context-extractor";
-import {
-  HANDOFF_MARKER_CUSTOM_TYPE,
-  type HandoffMarkerDetails,
-  patchHandoffMarker,
-} from "../lib/handoff-marker";
+import { writeHandoffMarker, writeHandoffSource } from "../lib/handoff-marker";
 import {
   readCurrentSessionContent,
   readRawSessionContent,
@@ -215,35 +210,7 @@ export function setupHandoffCommand(pi: ExtensionAPI) {
 
       await log(`Extracted content: ${extractedContent.length} chars`);
 
-      // Build the full handoff message
-      const handoffMessage = `Continuing from session ${parentSessionId}.
-
-**Important:** The context below is a summary. If you need more details (full plans, code examples, ASCII diagrams, or reasoning), read the parent session's final messages:
-
-\`\`\`
-read_session({ sessionId: "${parentSessionId}", goal: "Get the last assistant message with the full plan and context" })
-\`\`\`
-
-${extractedContent}
-
-## Goal
-
-${goal}`;
-
       await log("Creating new session...");
-
-      // Generate placeholder for the handoff marker
-      const placeholder = `__handoff_${randomUUID()}__`;
-      // Send handoff marker to parent session with placeholder
-      pi.sendMessage<HandoffMarkerDetails>(
-        {
-          customType: HANDOFF_MARKER_CUSTOM_TYPE,
-          content: "",
-          display: true,
-          details: { targetSessionId: placeholder, goal },
-        },
-        { triggerTurn: false },
-      );
 
       // Create new session with parent tracking
       const newSessionResult = await ctx.newSession({
@@ -251,7 +218,10 @@ ${goal}`;
         setup: async (sm) => {
           const newSessionId = sm.getSessionId();
           if (currentSessionFile && newSessionId) {
-            patchHandoffMarker(currentSessionFile, placeholder, newSessionId);
+            writeHandoffMarker(currentSessionFile, newSessionId, goal);
+          }
+          if (extractedContent) {
+            writeHandoffSource(sm, parentSessionId, goal, extractedContent);
           }
         },
       });
@@ -263,8 +233,8 @@ ${goal}`;
         return;
       }
 
-      // Set the handoff prompt in the editor for the user to review/submit
-      ctx.ui.setEditorText(handoffMessage);
+      // Set just the goal in the editor -- context is in the custom entry
+      ctx.ui.setEditorText(goal);
 
       await log("Handoff complete");
       await logger?.close();

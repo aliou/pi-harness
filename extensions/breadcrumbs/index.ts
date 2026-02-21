@@ -2,7 +2,10 @@ import type { ExtensionAPI } from "@mariozechner/pi-coding-agent";
 import { setupSessionCommands } from "./commands";
 import { configLoader } from "./config";
 import { setupProtectSessionsDirHook } from "./hooks/protect-sessions-dir";
-import { setupHandoffMarkerRenderer } from "./lib/handoff-marker";
+import {
+  setupHandoffMarkerRenderer,
+  setupHandoffSourceRenderer,
+} from "./lib/handoff-marker";
 import {
   FIND_SESSIONS_GUIDANCE,
   HANDOFF_GUIDANCE,
@@ -16,6 +19,7 @@ export default async function (pi: ExtensionAPI) {
 
   setupProtectSessionsDirHook(pi);
   setupHandoffMarkerRenderer(pi);
+  setupHandoffSourceRenderer(pi);
   setupSessionTools(pi, { handoffTool: config.handoffTool });
   setupSessionCommands(pi);
 

@@ -90,17 +90,16 @@ Example goals:
       const parentSessionId = ctx.sessionManager.getSessionId() ?? "unknown";
 
       try {
-        const { message, filesExtracted, contextLength } =
+        const { extractedContext, filesExtracted, contextLength } =
           await extractHandoffContext(goal, ctx);
 
         // The tool cannot call ctx.newSession (only available in command context).
-        // Instead, return the handoff message for the agent to present, and
-        // instruct the user to run /handoff or use Ctrl+N to create a new session.
+        // Instead, return the extracted context and instruct the user to run /handoff.
         return {
           content: [
             {
               type: "text",
-              text: `Handoff context extracted (${filesExtracted} files, ${contextLength} chars). The following message should be used to start the new session. Ask the user to run \`/handoff ${goal}\` or create a new session manually and paste this context.\n\n---\n\n${message}`,
+              text: `Handoff context extracted (${filesExtracted} files, ${contextLength} chars). Ask the user to run \`/handoff ${goal}\` to create a new session with the context below.\n\n---\n\n${extractedContext}`,
             },
           ],
           details: {

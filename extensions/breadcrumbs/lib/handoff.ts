@@ -5,7 +5,6 @@
  * with the extracted context as the initial message.
  */
 
-import { randomUUID } from "node:crypto";
 import { complete, type Message } from "@mariozechner/pi-ai";
 import type {
   ExtensionAPI,
@@ -16,11 +15,7 @@ import {
   extractFilesFromSessionEntries,
   extractMentionedFiles,
 } from "./context-extractor";
-import {
-  HANDOFF_MARKER_CUSTOM_TYPE,
-  type HandoffMarkerDetails,
-  patchHandoffMarker,
-} from "./handoff-marker";
+import { writeHandoffMarker, writeHandoffSource } from "./handoff-marker";
 import {
   readCurrentSessionContent,
   readRawSessionContent,
@@ -73,7 +68,11 @@ Be factual and specific. Prioritize the END of the conversation over the beginni
 export async function extractHandoffContext(
   goal: string,
   ctx: ExtensionContext,
-): Promise<{ message: string; filesExtracted: number; contextLength: number }> {
+): Promise<{
+  extractedContext: string;
+  filesExtracted: number;
+  contextLength: number;
+}> {
   // Read session content (both formatted and raw)
   const sessionContent = readCurrentSessionContent(ctx.sessionManager);
   if (!sessionContent) {
@@ -127,14 +126,8 @@ export async function extractHandoffContext(
     throw new Error("Context extraction returned empty result");
   }
 
-  // Get session identifiers
-  const sessionId = ctx.sessionManager.getSessionId() ?? "unknown";
-
-  // Build the handoff message
-  const handoffMessage = buildHandoffMessage(sessionId, goal, extractedContent);
-
   return {
-    message: handoffMessage,
+    extractedContext: extractedContent,
     filesExtracted: mentionedFiles.length,
     contextLength: extractedContent.length,
   };
@@ -153,21 +146,8 @@ export async function executeHandoff(
   const currentSessionFile = ctx.sessionManager.getSessionFile();
 
   // Extract context
-  const { message, filesExtracted, contextLength } =
+  const { extractedContext, filesExtracted, contextLength } =
     await extractHandoffContext(goal, ctx);
-
-  // Generate placeholder for the handoff marker
-  const placeholder = `__handoff_${randomUUID()}__`;
-  // Send handoff marker to parent session with placeholder
-  pi.sendMessage<HandoffMarkerDetails>(
-    {
-      customType: HANDOFF_MARKER_CUSTOM_TYPE,
-      content: "",
-      display: true,
-      details: { targetSessionId: placeholder, goal },
-    },
-    { triggerTurn: false },
-  );
 
   // Create new session with parent tracking
   const result = await ctx.newSession({
@@ -175,8 +155,9 @@ export async function executeHandoff(
     setup: async (sm) => {
       const newSessionId = sm.getSessionId();
       if (currentSessionFile && newSessionId) {
-        patchHandoffMarker(currentSessionFile, placeholder, newSessionId);
+        writeHandoffMarker(currentSessionFile, newSessionId, goal);
       }
+      writeHandoffSource(sm, parentSessionId, goal, extractedContext);
     },
   });
 
@@ -184,8 +165,8 @@ export async function executeHandoff(
     throw new Error("Session creation cancelled");
   }
 
-  // Send the handoff message to the new session
-  pi.sendUserMessage(message);
+  // Send just the goal as the user message -- context is in the custom entry
+  pi.sendUserMessage(goal);
 
   return {
     goal,
@@ -193,27 +174,4 @@ export async function executeHandoff(
     filesExtracted,
     contextLength,
   };
-}
-
-/**
- * Build the handoff message that will be sent to the new session.
- */
-function buildHandoffMessage(
-  parentSessionId: string,
-  goal: string,
-  extractedContext: string,
-): string {
-  return `Continuing from session ${parentSessionId}.
-
-**Important:** The context below is a summary. If you need more details (full plans, code examples, ASCII diagrams, or reasoning), read the parent session's final messages:
-
-\`\`\`
-read_session({ sessionId: "${parentSessionId}", goal: "Get the last assistant message with the full plan and context" })
-\`\`\`
-
-${extractedContext}
-
-## Goal
-
-${goal}`;
 }

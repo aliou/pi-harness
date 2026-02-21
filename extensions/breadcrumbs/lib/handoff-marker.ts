@@ -5,11 +5,18 @@ import { join } from "node:path";
 import type {
   ExtensionAPI,
   MessageRenderOptions,
+  SessionManager,
   Theme,
 } from "@mariozechner/pi-coding-agent";
 import { Box, Text } from "@mariozechner/pi-tui";
 
 export const HANDOFF_MARKER_CUSTOM_TYPE = "handoff-marker";
+export const HANDOFF_SOURCE_CUSTOM_TYPE = "handoff-source";
+
+export interface HandoffSourceDetails {
+  parentSessionId: string;
+  goal: string;
+}
 
 export interface HandoffMarkerDetails {
   targetSessionId: string;
@@ -93,8 +100,7 @@ function resolveSessionName(sessionId: string): string {
 
 /**
  * Register the handoff marker message renderer.
- * Displays "Handed off to -> {sessionId}" or "(pending...)" if placeholder.
- * Placeholder entries return undefined (hidden) -- only the patched entry renders.
+ * Displays "Handed off to -> {sessionName}" for every entry with details.
  */
 export function setupHandoffMarkerRenderer(pi: ExtensionAPI) {
   pi.registerMessageRenderer<HandoffMarkerDetails>(
@@ -111,14 +117,6 @@ export function setupHandoffMarkerRenderer(pi: ExtensionAPI) {
       }
 
       const targetSessionId = details.targetSessionId;
-      const isPending = targetSessionId.startsWith("__handoff_");
-
-      // Skip placeholder entries -- the patched entry will render instead.
-      // If patching failed, nothing renders (acceptable).
-      if (isPending) {
-        return undefined;
-      }
-
       const displayName = resolveSessionName(targetSessionId);
       const label = theme.fg("muted", "Handed off to ");
       const displayText = `${label}${theme.fg("accent", displayName)}`;
@@ -130,58 +128,93 @@ export function setupHandoffMarkerRenderer(pi: ExtensionAPI) {
   );
 }
 
+interface HandoffSourceMessage {
+  customType: string;
+  content: string | Array<{ type: string; text?: string }>;
+  details?: HandoffSourceDetails;
+}
+
 /**
- * Patch a handoff marker in the old session file.
- *
- * Reads the session JSONL file, finds the line containing the placeholder,
- * creates a corrected copy with the real session ID, and appends it to the file.
- *
- * @param oldSessionFile - Path to the old session JSONL file
- * @param placeholder - The placeholder string to find (e.g., "__handoff_xxx__")
- * @param newSessionId - The real new session ID
+ * Register the handoff source message renderer.
+ * Displays "Continuing from {sessionName}" for every entry with details.
  */
-export function patchHandoffMarker(
-  oldSessionFile: string,
-  placeholder: string,
-  newSessionId: string,
+export function setupHandoffSourceRenderer(pi: ExtensionAPI) {
+  pi.registerMessageRenderer<HandoffSourceDetails>(
+    HANDOFF_SOURCE_CUSTOM_TYPE,
+    (
+      message: HandoffSourceMessage,
+      _options: MessageRenderOptions,
+      theme: Theme,
+    ) => {
+      const details = message.details;
+
+      if (!details) {
+        return undefined;
+      }
+
+      const parentSessionId = details.parentSessionId;
+      const displayName = resolveSessionName(parentSessionId);
+      const label = theme.fg("muted", "Continuing from ");
+      const displayText = `${label}${theme.fg("accent", displayName)}`;
+
+      const box = new Box(1, 1, (t) => theme.bg("customMessageBg", t));
+      box.addChild(new Text(displayText, 0, 0));
+      return box;
+    },
+  );
+}
+
+/**
+ * Write a handoff source entry to the new session.
+ *
+ * Appends a `custom_message` entry with the extracted context and a
+ * reference back to the parent session.
+ *
+ * @param sm - The new session's SessionManager
+ * @param parentSessionId - The ID of the session being handed off from
+ * @param goal - The handoff goal
+ * @param extractedContext - The extracted context from the parent session
+ */
+export function writeHandoffSource(
+  sm: SessionManager,
+  parentSessionId: string,
+  goal: string,
+  extractedContext: string,
 ): void {
-  try {
-    // Read all lines from the session file
-    const content = readFileSync(oldSessionFile, "utf-8");
-    const lines = content.split("\n").filter((line) => line.trim());
+  const content = `Continuing from session ${parentSessionId}.\n\nThe context below is a summary. If you need more details, read the parent session:\n\nread_session({ sessionId: "${parentSessionId}", goal: "Get the last assistant message with the full plan and context" })\n\n${extractedContext}`;
+  sm.appendCustomMessageEntry<HandoffSourceDetails>(
+    HANDOFF_SOURCE_CUSTOM_TYPE,
+    content,
+    true,
+    { parentSessionId, goal },
+  );
+}
 
-    // Find the line containing the placeholder
-    const matchLine = lines.find((line) => line.includes(placeholder));
-    if (!matchLine) {
-      // No matching line found, nothing to patch
-      return;
-    }
-
-    // Parse the matching line
-    let entry: Record<string, unknown>;
-    try {
-      entry = JSON.parse(matchLine);
-    } catch {
-      // If we can't parse it, skip patching
-      return;
-    }
-
-    // Create a corrected copy
-    const correctedEntry = { ...entry };
-    if (correctedEntry.details && typeof correctedEntry.details === "object") {
-      const details = correctedEntry.details as Record<string, unknown>;
-      details.targetSessionId = newSessionId;
-    }
-
-    // Generate new IDs for the corrected entry
-    const originalId = correctedEntry.id;
-    correctedEntry.id = randomUUID();
-    correctedEntry.parentId = originalId;
-
-    // Append the corrected line to the file
-    appendFileSync(oldSessionFile, `\n${JSON.stringify(correctedEntry)}`);
-  } catch (error) {
-    // Silently fail if file operations don't work
-    console.error("Error patching handoff marker:", error);
-  }
+/**
+ * Write a handoff marker entry directly to the parent session file.
+ *
+ * Appends a well-formed `custom_message` JSONL entry with the real new
+ * session ID. Call this from the `setup` callback of `newSession`, where
+ * both the session file path (captured in closure) and the new session ID
+ * (via `sm.getSessionId()`) are available.
+ *
+ * @param sessionFile - Path to the parent session JSONL file
+ * @param targetSessionId - The new session ID to link to
+ * @param goal - The handoff goal, shown in the marker
+ */
+export function writeHandoffMarker(
+  sessionFile: string,
+  targetSessionId: string,
+  goal: string,
+): void {
+  const entry = {
+    type: "custom_message",
+    customType: HANDOFF_MARKER_CUSTOM_TYPE,
+    id: randomUUID(),
+    timestamp: new Date().toISOString(),
+    content: "",
+    display: true,
+    details: { targetSessionId, goal } satisfies HandoffMarkerDetails,
+  };
+  appendFileSync(sessionFile, `\n${JSON.stringify(entry)}`);
 }
