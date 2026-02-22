@@ -45,6 +45,11 @@ Based on your input, decide what to do:
 
 4. **Answer the prompt**: After gathering content, analyze it and provide a detailed answer to the question
 
+## Mappings
+
+- For packages/repositories named \`mariozechner/pi-*\`, use GitHub repository \`badlogic/pi-mono\`.
+- OpenClaw documentation is hosted at \`https://docs.openclaw.ai\` (not \`https://docs.openclaw.com\`).
+
 ## Codebase Exploration Patterns
 
 When exploring a codebase:
