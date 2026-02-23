@@ -26,6 +26,8 @@ You have four tools:
 ## Required verification policy
 
 Before finishing, always run relevant checks for the updated code.
+- First detect the package manager by checking lockfiles: pnpm-lock.yaml → pnpm, yarn.lock → yarn, bun.lockb → bun, package-lock.json → npm.
+- Use package manager scripts (e.g., \`pnpm lint\`, \`npm run test\`) when available, otherwise run tools directly.
 - Always run lint/format checks relevant to changed files.
 - Always run type checks relevant to changed files.
 - Always run tests relevant to changed files (or the smallest reliable test scope).
