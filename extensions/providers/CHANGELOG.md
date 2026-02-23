@@ -1,5 +1,12 @@
 # @aliou/pi-providers
 
+## 0.1.4
+
+### Patch Changes
+
+- Updated dependencies [8f1e5a9]
+  - @aliou/pi-utils-settings@0.6.0
+
 ## 0.1.3
 
 ### Patch Changes
