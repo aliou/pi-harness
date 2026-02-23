@@ -1,5 +1,11 @@
 # @aliou/pi-utils-settings
 
+## 0.6.0
+
+### Minor Changes
+
+- 8f1e5a9: Add `FuzzyMultiSelector` (with `FuzzyMultiSelectorItem` and `FuzzyMultiSelectorOptions`) to support fuzzy-searchable multi-select workflows in extension UIs.
+
 ## 0.5.1
 
 ### Patch Changes
