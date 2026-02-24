@@ -12,7 +12,7 @@ All packages in this repository are published under the `@aliou` scope, not `@an
 ## Extensions
 
 - `breadcrumbs` - Session history tools. Search past sessions, extract information, hand off context to new sessions.
-- `defaults` - Sensible defaults and quality-of-life improvements.
+- `defaults` - Personal sensible defaults and quality-of-life improvements (directory-aware read, flexible edit parameters, AGENTS.md discovery, git rebase helper, notifications, terminal title, auto session naming).
 - `introspection` - Inspect Pi agent internals: system prompt, tools, skills, context usage.
 - `neovim` - Bidirectional integration between Pi and Neovim.
 - `planning` - Turn conversations into implementation plans and manage saved plans.

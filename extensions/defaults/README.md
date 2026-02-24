@@ -27,14 +27,6 @@ Pi's built-in discovery only loads AGENTS.md files from the cwd and its ancestor
 - Falls back to home directory as boundary if file is outside cwd
 - Supports global ignore list (`agentsIgnorePaths`) to skip selected AGENTS.md files/directories
 
-### Git rebase helper
-
-Intercepts git rebase commands that would hang in a non-interactive environment. Blocks the command and provides the correct syntax with `GIT_SEQUENCE_EDITOR` or `GIT_EDITOR` environment variables.
-
-- Interactive rebase (`git rebase -i`): suggests `GIT_SEQUENCE_EDITOR=: GIT_EDITOR=true`
-- Rebase continue: suggests `GIT_EDITOR=true` or `--no-edit`
-- Skips commands that already set editor-related env vars
-
 ### Notifications
 
 Emits notification events consumed by the [presenter extension](../presenter/).
@@ -53,9 +45,9 @@ Updates the terminal title with a project breadcrumb (e.g. `pi: project > subdir
 
 Breadcrumbs are built from the project root (detected via `.git`, `.root`, `pnpm-workspace.yaml`) to the current directory, truncated to 2 levels.
 
-### Custom header
+### Flexible edit parameters
 
-Pi logo with version number.
+Overrides the built-in `edit` tool to accept `new_text` as an alias for `newText`. Models sometimes emit `new_text` (snake_case) instead of the expected `newText` (camelCase), causing a validation error. This wrapper normalises either form before delegating to the native implementation. If neither `newText` nor `new_text` is provided, it returns a clear error message.
 
 ### Auto session naming
 
@@ -74,3 +66,15 @@ Uses `google/gemini-2.5-flash-lite` to generate a 3-7 word title in sentence cas
 ### `/theme` command
 
 Theme selector with live preview. Browse all available themes (built-in and custom), preview each one in real-time, and apply with Enter or cancel with Escape to restore the original.
+
+### `/project:init` command
+
+Multi-step wizard to configure packages, skills, and AGENTS.md for the current project.
+
+### `/ad:settings` command
+
+Interactive editor for the extension's config (catalog paths, ignore paths, etc.).
+
+### `/defaults:update` command
+
+Runs `~/.pi/agent/bin/update` to update pinned package refs and refresh installed packages.
