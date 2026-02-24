@@ -3,22 +3,57 @@
  *
  * Auto-discovers AGENTS.md files in subdirectories when the agent reads files.
  * Pi's built-in discovery only walks up from cwd. This hook fills the gap by
- * injecting AGENTS.md files found between cwd and the directory of the file
- * being read.
+ * sending messages with AGENTS.md files found between cwd and the directory of
+ * the file being read.
  */
 
 import type {
   ExtensionAPI,
   ExtensionContext,
 } from "@mariozechner/pi-coding-agent";
+import { getMarkdownTheme } from "@mariozechner/pi-coding-agent";
+import { Box, Markdown, Text } from "@mariozechner/pi-tui";
 import type { AgentsDiscoveryManager } from "../lib/agents-discovery";
 
-type TextContent = { type: "text"; text: string };
+const AGENTS_DISCOVERY_MESSAGE_TYPE = "agents-discovery";
+
+export interface AgentsDiscoveryDetails {
+  path: string;
+  content: string;
+}
 
 export function setupAgentsDiscoveryHook(
   pi: ExtensionAPI,
   manager: AgentsDiscoveryManager,
 ) {
+  // Register custom message renderer
+  pi.registerMessageRenderer<AgentsDiscoveryDetails>(
+    AGENTS_DISCOVERY_MESSAGE_TYPE,
+    (message, options, theme) => {
+      const { details } = message;
+      if (!details) return undefined;
+
+      const { expanded } = options;
+      const prettyPath = manager.prettyPath(details.path);
+
+      const label = theme.bold(theme.fg("accent", "[AGENTS]"));
+      const header = `${label} ${theme.fg("muted", prettyPath)}`;
+
+      const box = new Box(1, 1, (t) => theme.bg("customMessageBg", t));
+      box.addChild(new Text(header, 0, 0));
+
+      if (expanded) {
+        // Show the markdown content below the header
+        box.addChild(new Text("", 0, 0)); // spacer
+        const mdTheme = getMarkdownTheme();
+        const markdown = new Markdown(details.content, 0, 0, mdTheme);
+        box.addChild(markdown);
+      }
+
+      return box;
+    },
+  );
+
   const handleSessionChange = (_event: unknown, ctx: ExtensionContext) => {
     manager.resetSession(ctx.cwd);
   };
@@ -51,12 +86,17 @@ export function setupAgentsDiscoveryHook(
 
     const prettyPaths = discovered.map((f) => manager.prettyPath(f.path));
 
-    const additions: TextContent[] = discovered.map((file, i) => ({
-      type: "text",
-      text: `Loaded subdirectory context from ${prettyPaths[i]}\n\n${file.content}`,
-    }));
+    // Send custom messages for each discovered AGENTS.md
+    for (const file of discovered) {
+      pi.sendMessage({
+        customType: AGENTS_DISCOVERY_MESSAGE_TYPE,
+        content: file.content,
+        display: true,
+        details: { path: file.path, content: file.content },
+      });
+    }
 
-    // Notify UI without adding to agent context (appendEntry doesn't go to LLM)
+    // Notify UI about the discovery
     if (ctx.hasUI) {
       ctx.ui.notify(
         `Loaded subdirectory context: ${prettyPaths.join(", ")}`,
@@ -64,7 +104,6 @@ export function setupAgentsDiscoveryHook(
       );
     }
 
-    const baseContent = event.content ?? [];
-    return { content: [...baseContent, ...additions], details: event.details };
+    return undefined; // Don't modify the original read result
   });
 }

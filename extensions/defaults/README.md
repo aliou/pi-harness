@@ -18,9 +18,12 @@ Returns the current date and time with structured fields: formatted string, date
 
 ### Subdirectory AGENTS.md discovery
 
-Pi's built-in discovery only loads AGENTS.md files from the cwd and its ancestors. This hook fills the gap: when the agent reads a file, it checks for AGENTS.md files in the directories between cwd and the file being read, and injects their content alongside the tool result.
+Pi's built-in discovery only loads AGENTS.md files from the cwd and its ancestors. This hook fills the gap: when the agent reads a file, it checks for AGENTS.md files in the directories between cwd and the file being read, and sends a custom message for each discovered file.
 
 - Only triggers on `read` tool results (not bash, etc.)
+- Sends messages that are visible in the session history (persisted through compaction)
+- Collapsed display: "[AGENTS] ~/path/to/AGENTS.md" (accent/bold label, muted path)
+- Expanded display: markdown-rendered content of the AGENTS.md file below the header
 - Deduplicates per session (each AGENTS.md injected at most once)
 - Resets on session start/switch
 - Skips cwd's own AGENTS.md (already loaded by Pi)
