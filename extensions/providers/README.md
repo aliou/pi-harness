@@ -1,56 +1,150 @@
 # Providers Extension
 
-Register custom providers and show unified rate-limit and usage dashboards.
-
-## Installation
-
-Install via the pi-extensions package:
-
-```bash
-pi install git:github.com/aliou/pi-extensions
-```
-
-Or selectively in your `settings.json`:
-
-```json
-{
-  "packages": [
-    {
-      "source": "git:github.com/aliou/pi-extensions",
-      "extensions": ["extensions/providers"]
-    }
-  ]
-}
-```
+Rate limiting alerts, usage widgets, and dashboards for AI providers.
 
 ## Features
 
-- **Providers**: Registers OpenRouter Gemini and Moonshot model groups.
-- **Usage bar**: Compact rate-limit widget below the editor.
-- **/providers:usage**: Dashboard with rate limits and historical usage stats.
-- **Warnings**: Projected rate-limit notifications for Claude and Codex.
+- **Rate Limit Warnings**: Smart, time-aware alerts when approaching limits
+- **Usage Bar**: Compact widget showing current provider usage
+- **Usage Dashboard**: Interactive `/providers:usage` command with session and historical stats
 
-## Usage
+## Commands
 
-### Commands
+- `/providers:usage` - Open usage dashboard (interactive)
+- `/providers:toggle-widget` - Toggle usage bar visibility
+- `/providers:settings` - Configure provider-specific settings
 
-- `/providers:usage` opens the usage dashboard.
-- `/providers:toggle-widget` toggles the usage bar widget.
+## Rate Limit Warnings
 
-### Providers
+Warnings trigger based on **projected usage** (current pace extrapolated to window end) combined with absolute usage guards. The thresholds are dynamic:
 
-OpenRouter providers show up in the `/model` selector under these IDs:
+- **Early in window**: More lenient (need ~33% absolute usage + 260% projected)
+- **Late in window**: Stricter (need only ~8% absolute usage + 120% projected)
 
-- `openrouter-google`
-- `openrouter-moonshot`
+This prevents spam at window start while ensuring alerts fire before limits are hit.
 
-## Requirements
+### Cooldown Behavior
 
-- **OpenRouter keys**: Set `OPENROUTER_GOOGLE_API_KEY` and/or `OPENROUTER_MOONSHOT_API_KEY`.
-- **Claude limits**: Requires `anthropic` auth configured in Pi.
-- **Codex limits**: Requires `openai-codex` auth configured in Pi.
-- **Opencode limits**: Requires cookies from Safari or Helium on macOS.
+- **Warning (80-90%)**: 60-minute cooldown per window
+- **High/Critical (90%+)**: No cooldown - notifies immediately
 
-## Notes
+## Usage Bar Widget
 
-OpenRouter usage uses the `GET https://openrouter.ai/api/v1/key` endpoint and reports daily, weekly, and monthly credit usage windows.
+Shows compact rate limit info below the editor. Configurable per-provider:
+
+- `always` - Always visible
+- `warnings-only` - Only when usage is elevated (default)
+- `never` - Hidden
+
+## Usage Dashboard
+
+Interactive UI with tabs:
+
+- **Session**: Current rate limits for all providers with hybrid layout (bar + metadata)
+- **Today**: Today's usage stats
+- **Week**: This week's usage stats  
+- **All Time**: All-time usage stats
+
+### Controls
+
+- `Tab/Shift+Tab` or `←/→` - Switch tabs
+- `j/k` or `↑/↓` - Scroll
+- `Enter` or `Space` - Expand/collapse provider in stats tabs
+- `q` or `Esc` - Close
+
+### Session Tab Layout
+
+```
+Anthropic ● Operational
+Daily tokens (1.2h/5h)
+  ████████████████████░░░░░░░░░░░░░░░░░░░░░░ 48%
+  proj 89% · 14% ahead pace · resets in 3.8h
+
+Weekly tokens (2.1d/7d)
+  ████████████░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░ 28%
+  proj 93% · within pace · resets in 4.9d
+```
+
+The bar shows:
+- **Filled portion**: Used percentage
+- **│ marker**: Expected pace (where you should be at this point in the window)
+- **Color**: Risk level (green/warning/red based on projected usage)
+
+## Configuration
+
+Set per-provider in memory config:
+
+```json
+{
+  "providers": {
+    "anthropic": {
+      "widget": "warnings-only",
+      "warnings": true
+    },
+    "openai-codex": {
+      "widget": "always",
+      "warnings": true
+    }
+  }
+}
+```
+
+## Supported Providers
+
+- **Anthropic (Claude)**: Requires `anthropic` auth in Pi
+- **OpenAI Codex**: Requires `openai-codex` auth in Pi
+- **Synthetic**: Requires `SYNTHETIC_API_KEY` environment variable
+
+## Multi-Credential Accounts
+
+Create multiple named accounts for the same provider (e.g., work and personal Codex accounts) that share rate limits but have separate credentials.
+
+### Account Management Commands
+
+- `/providers:create-account` - Create a new account (interactive wizard)
+- `/providers:list-accounts` - List configured accounts
+- `/providers:delete-account <id>` - Delete an account
+
+### Creating an Account
+
+```
+/providers:create-account
+# 1. Select base provider (e.g., "openai-codex")
+# 2. Enter account ID (e.g., "work" becomes "openai-codex-work")
+# 3. Enter display name (e.g., "Codex (Work)")
+# 4. Optional description
+```
+
+After creating, run `/login` to authenticate the new account. The account appears in the login selector with its display name.
+
+### How Accounts Work
+
+- Account ID format: `{base-provider}-{name}` (e.g., `openai-codex-work`)
+- Credentials stored separately per account
+- Rate limits shared with base provider (same pool)
+- Inherits settings from base provider
+- Shows in usage bar and dashboard with display name
+
+## Architecture
+
+### Shared Projection Module
+
+`rate-limits/projection.ts` provides:
+- `assessWindowRisk()` - Time-aware risk calculation
+- `getPacePercent()` - Window progress calculation
+- `getProjectedPercent()` - Extrapolated usage at window end
+- `getSeverityColor()` - Map severity to theme colors
+
+Used by both warning hooks and UI rendering for consistent behavior.
+
+### Warning Hook
+
+- Session-local alert state with 60-min cooldown
+- Severity escalation tracking (warning → high → critical)
+- Non-blocking fetch (fire-and-forget)
+
+### Usage Bar Hook
+
+- Caches rate limits with configurable refresh interval
+- Filters Claude windows by model family (Sonnet vs Opus)
+- Respects per-provider widget mode

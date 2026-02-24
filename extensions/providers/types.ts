@@ -11,11 +11,13 @@ export interface RateLimitWindow {
 
 export interface ProviderRateLimits {
   provider: string;
+  providerId?: string; // Original provider ID (e.g., "zai", "openai-codex")
   plan?: string;
   status: StatusIndicator;
   statusMessage?: string;
   windows: RateLimitWindow[];
   error?: string;
+  accountId?: string; // Set if this is an account provider
 }
 
 // === Stats tabs types ===

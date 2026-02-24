@@ -7,50 +7,31 @@ import type {
 import { getProviderSettings, type ProviderKey } from "../config";
 import { fetchClaudeRateLimits } from "../rate-limits/claude";
 import { fetchCodexRateLimits } from "../rate-limits/codex";
+import { assessWindowRisk, type RiskSeverity } from "../rate-limits/projection";
+import { fetchSyntheticRateLimits } from "../rate-limits/synthetic";
 import type { ProviderRateLimits, RateLimitWindow } from "../types";
 import { formatResetTime } from "../utils";
 import { forceShowWidget } from "./usage-bar";
 
-const WARNING_THRESHOLD = 80;
-const ERROR_THRESHOLD = 90;
-const CRITICAL_THRESHOLD = 100;
-const MIN_PACE_PERCENT = 5;
-const END_WINDOW_SUPPRESS_THRESHOLD = 90;
+const COOLDOWN_MS = 60 * 60 * 1000; // 60 minutes
 
 type ClaudeModelFamily = "opus" | "sonnet" | null;
 
-/**
- * Tracks which windows have already shown warnings this session.
- * Key format: "provider:label" (e.g., "anthropic:Daily tokens")
- */
-const warnedWindows = new Set<string>();
+interface WindowAlertState {
+  lastSeverity: RiskSeverity;
+  lastNotifiedAt: number; // epoch ms
+}
+
+// Key format: "provider:label" (e.g., "anthropic:Daily tokens")
+const windowAlerts = new Map<string, WindowAlertState>();
 
 function getWindowKey(provider: string, label: string): string {
   return `${provider}:${label}`;
 }
 
-type WindowProjection = {
+interface WindowRisk {
   window: RateLimitWindow;
-  projectedPercent: number;
-};
-
-function inferWindowSeconds(label: string): number | null {
-  const lower = label.toLowerCase();
-  if (lower.includes("5-hour") || lower.includes("5h")) {
-    return 5 * 60 * 60;
-  }
-  if (
-    lower.includes("7-day") ||
-    lower.includes("week") ||
-    lower.includes("weekly")
-  ) {
-    return 7 * 24 * 60 * 60;
-  }
-  const hourMatch = lower.match(/(\d+)\s*h/);
-  if (hourMatch?.[1]) return Number(hourMatch[1]) * 60 * 60;
-  const dayMatch = lower.match(/(\d+)\s*d/);
-  if (dayMatch?.[1]) return Number(dayMatch[1]) * 24 * 60 * 60;
-  return null;
+  risk: ReturnType<typeof assessWindowRisk>;
 }
 
 /**
@@ -120,33 +101,22 @@ function filterClaudeWindows(
   return filtered;
 }
 
-function getPacePercent(window: RateLimitWindow): number | null {
-  const windowSeconds =
-    window.windowSeconds ?? inferWindowSeconds(window.label);
-  if (!windowSeconds || !window.resetsAt) return null;
-  const totalMs = windowSeconds * 1000;
-  if (!Number.isFinite(totalMs) || totalMs <= 0) return null;
-  const remainingMs = window.resetsAt.getTime() - Date.now();
-  const elapsedMs = totalMs - remainingMs;
-  const percent = (elapsedMs / totalMs) * 100;
-  return Math.max(0, Math.min(100, percent));
-}
-
-function getProjectedPercent(
-  usedPercent: number,
-  pacePercent?: number | null,
-): number {
-  if (pacePercent === null || pacePercent === undefined) return usedPercent;
-  const effectivePace = Math.max(MIN_PACE_PERCENT, pacePercent);
-  return Math.max(0, (usedPercent / effectivePace) * 100);
-}
-
-function getProjectionStatus(
-  projectedPercent: number,
-): "critical" | "high" | "warning" | null {
-  if (projectedPercent >= CRITICAL_THRESHOLD) return "critical";
-  if (projectedPercent >= ERROR_THRESHOLD) return "high";
-  if (projectedPercent >= WARNING_THRESHOLD) return "warning";
+function inferWindowSeconds(label: string): number | null {
+  const lower = label.toLowerCase();
+  if (lower.includes("5-hour") || lower.includes("5h")) {
+    return 5 * 60 * 60;
+  }
+  if (
+    lower.includes("7-day") ||
+    lower.includes("week") ||
+    lower.includes("weekly")
+  ) {
+    return 7 * 24 * 60 * 60;
+  }
+  const hourMatch = lower.match(/(\d+)\s*h/);
+  if (hourMatch?.[1]) return Number(hourMatch[1]) * 60 * 60;
+  const dayMatch = lower.match(/(\d+)\s*d/);
+  if (dayMatch?.[1]) return Number(dayMatch[1]) * 24 * 60 * 60;
   return null;
 }
 
@@ -159,6 +129,8 @@ function getProviderKey(model: Model<any> | undefined): ProviderKey | null {
   const provider = model.provider.toLowerCase();
   if (provider === "anthropic") return "anthropic";
   if (provider === "openai-codex") return "openai-codex";
+  if (provider === "synthetic") return "synthetic";
+
   return null;
 }
 
@@ -178,31 +150,35 @@ function getClaudeModelFamily(
 
 /**
  * Fetches rate limits for a specific provider.
+ * For accounts, pass the account ID as providerId.
  */
 async function fetchProviderRateLimits(
   providerKey: ProviderKey,
   authStorage: AuthStorage,
   signal?: AbortSignal,
+  providerId?: string,
 ): Promise<ProviderRateLimits | null> {
   switch (providerKey) {
     case "anthropic":
-      return fetchClaudeRateLimits(authStorage, signal);
+      return fetchClaudeRateLimits(authStorage, signal, providerId);
     case "openai-codex":
-      return fetchCodexRateLimits(authStorage, signal);
+      return fetchCodexRateLimits(authStorage, signal, providerId);
+    case "synthetic":
+      return fetchSyntheticRateLimits(signal);
     default:
       return null;
   }
 }
 
 /**
- * Finds windows that exceed the projection threshold and haven't been warned yet.
+ * Finds windows that exceed the risk threshold.
+ * Returns windows with their risk assessments.
  */
-function findNewHighUsageWindows(
+function findHighRiskWindows(
   limits: ProviderRateLimits,
   providerKey: ProviderKey,
   modelFamily: ClaudeModelFamily,
-  skipAlreadyWarned: boolean,
-): WindowProjection[] {
+): WindowRisk[] {
   if (limits.error || !limits.windows.length) return [];
 
   // Filter Claude windows based on model family
@@ -211,53 +187,70 @@ function findNewHighUsageWindows(
       ? filterClaudeWindows(limits.windows, modelFamily)
       : limits.windows;
 
-  return windows.flatMap((window) => {
-    const pacePercent = getPacePercent(window);
-    const projectedPercent = getProjectedPercent(
-      window.usedPercent,
-      pacePercent,
-    );
-    if (projectedPercent < WARNING_THRESHOLD) return [];
-    if (
-      pacePercent !== null &&
-      pacePercent !== undefined &&
-      pacePercent >= END_WINDOW_SUPPRESS_THRESHOLD &&
-      projectedPercent < CRITICAL_THRESHOLD
-    ) {
-      return [];
-    }
-    if (skipAlreadyWarned) {
-      const key = getWindowKey(limits.provider, window.label);
-      if (warnedWindows.has(key)) return [];
-    }
-    return [{ window, projectedPercent }];
-  });
+  return windows
+    .map((window) => ({ window, risk: assessWindowRisk(window) }))
+    .filter((item) => item.risk.severity !== "none");
 }
 
 /**
- * Marks windows as warned so they won't trigger again.
+ * Determines if we should notify for this window based on cooldown and severity rules.
+ * Rules:
+ * - First time seeing this window at risk: notify
+ * - Severity escalation (warning → high → critical): notify
+ * - Cooldown elapsed (60 min) AND severity is "warning": notify
+ * - High/Critical severity: always notify (no cooldown)
  */
-function markWindowsAsWarned(
-  provider: string,
-  windows: WindowProjection[],
-): void {
-  for (const entry of windows) {
-    warnedWindows.add(getWindowKey(provider, entry.window.label));
+function shouldNotify(windowKey: string, severity: RiskSeverity): boolean {
+  const state = windowAlerts.get(windowKey);
+
+  if (!state) {
+    // First time seeing this window at risk
+    return true;
   }
+
+  // Severity escalation always notifies
+  const severityOrder: RiskSeverity[] = ["none", "warning", "high", "critical"];
+  const currentIndex = severityOrder.indexOf(severity);
+  const lastIndex = severityOrder.indexOf(state.lastSeverity);
+  if (currentIndex > lastIndex) {
+    return true;
+  }
+
+  // High and critical: no cooldown, always notify
+  if (severity === "high" || severity === "critical") {
+    return true;
+  }
+
+  // Warning: only notify if cooldown elapsed
+  if (severity === "warning") {
+    const elapsed = Date.now() - state.lastNotifiedAt;
+    return elapsed >= COOLDOWN_MS;
+  }
+
+  return false;
+}
+
+/**
+ * Updates alert state after notifying.
+ */
+function markNotified(windowKey: string, severity: RiskSeverity): void {
+  windowAlerts.set(windowKey, {
+    lastSeverity: severity,
+    lastNotifiedAt: Date.now(),
+  });
 }
 
 /**
  * Formats the warning message for the notification.
  */
-function formatWarningMessage(
-  provider: string,
-  windows: WindowProjection[],
-): string {
-  const lines = windows.map(({ window, projectedPercent }) => {
+function formatWarningMessage(provider: string, windows: WindowRisk[]): string {
+  const lines = windows.map(({ window, risk }) => {
     const reset = formatResetTime(window.resetsAt);
-    const status = getProjectionStatus(projectedPercent);
-    const statusLabel = status ? ` (${status})` : "";
-    return `- ${window.label}: ${Math.round(window.usedPercent)}% used, projected ${Math.round(projectedPercent)}%${statusLabel}, resets ${reset}`;
+    const status = risk.severity;
+    const statusLabel = status !== "none" ? ` (${status})` : "";
+    const projected = Math.round(risk.projectedPercent);
+    const used = Math.round(window.usedPercent);
+    return `- ${window.label}: ${used}% used, projected ${projected}%${statusLabel}, resets ${reset}`;
   });
   return `${provider} rate limit warning:\n${lines.join("\n")}`;
 }
@@ -287,31 +280,55 @@ async function checkAndWarnRateLimits(
   const authStorage = ctx.modelRegistry.authStorage;
 
   try {
-    const limits = await fetchProviderRateLimits(providerKey, authStorage);
+    const providerId = model?.provider;
+    const limits = await fetchProviderRateLimits(
+      providerKey,
+      authStorage,
+      undefined,
+      providerId,
+    );
     if (!limits) return;
 
     // Verify model hasn't changed during the async check
     if (ctx.model !== model) return;
 
     const modelFamily = getClaudeModelFamily(model);
-    const highUsageWindows = findNewHighUsageWindows(
+    const highRiskWindows = findHighRiskWindows(
       limits,
       providerKey,
       modelFamily,
-      skipAlreadyWarned,
     );
-    if (highUsageWindows.length === 0) return;
+    if (highRiskWindows.length === 0) return;
 
-    // Mark these windows as warned before showing notification
-    markWindowsAsWarned(limits.provider, highUsageWindows);
+    // Filter to only windows that should be notified
+    const windowsToNotify = skipAlreadyWarned
+      ? highRiskWindows.filter(({ window, risk }) => {
+          const key = getWindowKey(limits.provider, window.label);
+          return shouldNotify(key, risk.severity);
+        })
+      : highRiskWindows;
 
-    const message = formatWarningMessage(limits.provider, highUsageWindows);
+    if (windowsToNotify.length === 0) return;
 
-    // Determine severity based on projected usage
-    const hasHighUsage = highUsageWindows.some(
-      (entry) => entry.projectedPercent >= ERROR_THRESHOLD,
+    // Mark all high-risk windows as notified (not just the ones triggering notification)
+    // This ensures we track severity changes properly
+    for (const { window, risk } of highRiskWindows) {
+      const key = getWindowKey(limits.provider, window.label);
+      markNotified(key, risk.severity);
+    }
+
+    const message = formatWarningMessage(limits.provider, windowsToNotify);
+
+    // Determine severity based on highest projected usage
+    const hasCritical = windowsToNotify.some(
+      ({ risk }) => risk.severity === "critical",
     );
-    ctx.ui.notify(message, hasHighUsage ? "error" : "warning");
+    const hasHigh = windowsToNotify.some(
+      ({ risk }) => risk.severity === "high",
+    );
+    const notifyLevel = hasCritical ? "error" : hasHigh ? "error" : "warning";
+
+    ctx.ui.notify(message, notifyLevel);
 
     // Force the usage bar widget visible when a warning fires
     forceShowWidget(ctx);
@@ -341,7 +358,7 @@ export function setupRateLimitWarningHooks(pi: ExtensionAPI): void {
   // Session start: reset local warning state only. Defer checks until model
   // change or first completed agent turn.
   pi.on("session_start", async (_event, _ctx) => {
-    warnedWindows.clear();
+    windowAlerts.clear();
   });
 
   // Check after agent turn - only warn for newly crossed thresholds
@@ -352,7 +369,7 @@ export function setupRateLimitWarningHooks(pi: ExtensionAPI): void {
   // Check when model changes - reset for new provider, show all high usage
   pi.on("model_select", async (event, ctx) => {
     // Clear warnings since we're switching providers
-    warnedWindows.clear();
+    windowAlerts.clear();
     triggerRateLimitCheck(ctx, event.model, false);
   });
 }

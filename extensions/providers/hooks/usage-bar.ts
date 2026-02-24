@@ -8,25 +8,28 @@ import type {
 import { type Component, truncateToWidth } from "@mariozechner/pi-tui";
 import {
   configLoader,
+  getBaseProvider,
+  getProviderDisplayName,
   getProviderSettings,
-  PROVIDER_DISPLAY_NAMES,
   type ProviderKey,
 } from "../config";
 import { fetchClaudeRateLimits } from "../rate-limits/claude";
 import { fetchCodexRateLimits } from "../rate-limits/codex";
-import { fetchOpencodeRateLimits } from "../rate-limits/opencode";
+import {
+  assessWindowRisk,
+  getSeverityColor,
+  inferWindowSeconds,
+} from "../rate-limits/projection";
+import { fetchSyntheticRateLimits } from "../rate-limits/synthetic";
 import type { ProviderRateLimits, RateLimitWindow } from "../types";
 
 const WIDGET_ID = "usage-bar";
 
 type ClaudeModelFamily = "opus" | "sonnet" | null;
 
-// Thresholds (must match rate-limit-warning.ts)
-const WARNING_THRESHOLD = 80;
-
 // State
 let cachedLimits: ProviderRateLimits | null = null;
-let cachedProviderKey: ProviderKey | null = null;
+let cachedProviderId: string | null = null;
 let lastFetchTime: number | null = null;
 let forceVisible = false;
 
@@ -35,17 +38,21 @@ function getRefreshIntervalMs(): number {
 }
 
 /**
- * Maps a model provider to the rate limit provider key.
+ * Maps a model provider to the base provider key.
+ * Handles both base providers and account IDs.
  */
 // biome-ignore lint/suspicious/noExplicitAny: Model type requires any for generic API
 function getProviderKey(model: Model<any> | undefined): ProviderKey | null {
   if (!model) return null;
   const provider = model.provider.toLowerCase();
+
+  // Check for exact base provider match
   if (provider === "anthropic") return "anthropic";
   if (provider === "openai-codex") return "openai-codex";
-  if (provider === "opencode") return "opencode";
+  if (provider === "synthetic") return "synthetic";
 
-  return null;
+  // Check for account pattern (e.g., "openai-codex-work")
+  return getBaseProvider(provider);
 }
 
 /**
@@ -131,19 +138,21 @@ function filterClaudeWindows(
 
 /**
  * Fetches rate limits for a specific provider.
+ * For accounts, pass the account ID as providerId.
  */
 async function fetchProviderRateLimits(
   providerKey: ProviderKey,
   authStorage: AuthStorage,
   signal?: AbortSignal,
+  providerId?: string,
 ): Promise<ProviderRateLimits | null> {
   switch (providerKey) {
     case "anthropic":
-      return fetchClaudeRateLimits(authStorage, signal);
+      return fetchClaudeRateLimits(authStorage, signal, providerId);
     case "openai-codex":
-      return fetchCodexRateLimits(authStorage, signal);
-    case "opencode":
-      return fetchOpencodeRateLimits(signal);
+      return fetchCodexRateLimits(authStorage, signal, providerId);
+    case "synthetic":
+      return fetchSyntheticRateLimits(signal);
     default:
       return null;
   }
@@ -186,23 +195,34 @@ function formatDurationPairSeconds(
   return `${elapsedText}/${totalText}`;
 }
 
-const MIN_PACE_PERCENT = 5;
+function getPacePercent(window: RateLimitWindow): number | null {
+  const windowSeconds =
+    window.windowSeconds ?? inferWindowSeconds(window.label);
+  if (!windowSeconds || !window.resetsAt) return null;
+  const totalMs = windowSeconds * 1000;
+  if (!Number.isFinite(totalMs) || totalMs <= 0) return null;
+  const remainingMs = window.resetsAt.getTime() - Date.now();
+  const elapsedMs = totalMs - remainingMs;
+  const percent = (elapsedMs / totalMs) * 100;
+  return Math.max(0, Math.min(100, percent));
+}
+
+function getWindowProgressText(window: RateLimitWindow): string {
+  const windowSeconds =
+    window.windowSeconds ?? inferWindowSeconds(window.label);
+  if (!windowSeconds || !window.resetsAt) return "??/??";
+  const totalMs = windowSeconds * 1000;
+  const remainingMs = window.resetsAt.getTime() - Date.now();
+  const elapsedMs = Math.min(totalMs, Math.max(0, totalMs - remainingMs));
+  return formatDurationPairSeconds(elapsedMs / 1000, windowSeconds);
+}
 
 type FillColor = "success" | "warning" | "error";
 
-function getProjectedPercent(
-  usedPercent: number,
-  pacePercent?: number | null,
-): number {
-  if (pacePercent === null || pacePercent === undefined) return usedPercent;
-  const effectivePace = Math.max(MIN_PACE_PERCENT, pacePercent);
-  return Math.max(0, (usedPercent / effectivePace) * 100);
-}
-
-function getFillColor(projectedPercent: number): FillColor {
-  if (projectedPercent >= 90) return "error";
-  if (projectedPercent >= 80) return "warning";
-  return "success";
+function getFillColorFromSeverity(
+  severity: ReturnType<typeof assessWindowRisk>["severity"],
+): FillColor {
+  return getSeverityColor(severity);
 }
 
 /**
@@ -245,47 +265,6 @@ function createProgressBar(
   return parts.join("");
 }
 
-function inferWindowSeconds(label: string): number | null {
-  const lower = label.toLowerCase();
-  if (lower.includes("5-hour") || lower.includes("5h")) {
-    return 5 * 60 * 60;
-  }
-  if (
-    lower.includes("7-day") ||
-    lower.includes("week") ||
-    lower.includes("weekly")
-  ) {
-    return 7 * 24 * 60 * 60;
-  }
-  const hourMatch = lower.match(/(\d+)\s*h/);
-  if (hourMatch?.[1]) return Number(hourMatch[1]) * 60 * 60;
-  const dayMatch = lower.match(/(\d+)\s*d/);
-  if (dayMatch?.[1]) return Number(dayMatch[1]) * 24 * 60 * 60;
-  return null;
-}
-
-function getPacePercent(window: RateLimitWindow): number | null {
-  const windowSeconds =
-    window.windowSeconds ?? inferWindowSeconds(window.label);
-  if (!windowSeconds || !window.resetsAt) return null;
-  const totalMs = windowSeconds * 1000;
-  if (!Number.isFinite(totalMs) || totalMs <= 0) return null;
-  const remainingMs = window.resetsAt.getTime() - Date.now();
-  const elapsedMs = totalMs - remainingMs;
-  const percent = (elapsedMs / totalMs) * 100;
-  return Math.max(0, Math.min(100, percent));
-}
-
-function getWindowProgressText(window: RateLimitWindow): string {
-  const windowSeconds =
-    window.windowSeconds ?? inferWindowSeconds(window.label);
-  if (!windowSeconds || !window.resetsAt) return "??/??";
-  const totalMs = windowSeconds * 1000;
-  const remainingMs = window.resetsAt.getTime() - Date.now();
-  const elapsedMs = Math.min(totalMs, Math.max(0, totalMs - remainingMs));
-  return formatDurationPairSeconds(elapsedMs / 1000, windowSeconds);
-}
-
 /**
  * Calculates fixed width for a window (everything except the bar).
  * Format: "(elapsed/total) [bar] X%"
@@ -309,8 +288,8 @@ function renderWindow(
   const progressText = getWindowProgressText(window);
   const percent = Math.round(window.usedPercent);
   const pacePercent = getPacePercent(window);
-  const projected = getProjectedPercent(window.usedPercent, pacePercent);
-  const fillColor = getFillColor(projected);
+  const risk = assessWindowRisk(window);
+  const fillColor = getFillColorFromSeverity(risk.severity);
   const bar = createProgressBar(
     window.usedPercent,
     barWidth,
@@ -329,27 +308,27 @@ function renderWindow(
 class UsageBarWidget implements Component {
   private theme: Theme;
   private limits: ProviderRateLimits | null;
-  private providerKey: ProviderKey;
+  private providerId: string;
   private modelFamily: ClaudeModelFamily;
   private loading: boolean;
 
   constructor(
     theme: Theme,
     limits: ProviderRateLimits | null,
-    providerKey: ProviderKey,
+    providerId: string,
     modelFamily: ClaudeModelFamily,
     loading: boolean,
   ) {
     this.theme = theme;
     this.limits = limits;
-    this.providerKey = providerKey;
+    this.providerId = providerId;
     this.modelFamily = modelFamily;
     this.loading = loading;
   }
 
   render(width: number): string[] {
     const th = this.theme;
-    const displayName = PROVIDER_DISPLAY_NAMES[this.providerKey];
+    const displayName = getProviderDisplayName(this.providerId);
     const separator = th.fg("borderMuted", "─".repeat(width));
 
     if (this.loading || !this.limits) {
@@ -369,7 +348,7 @@ class UsageBarWidget implements Component {
 
     // Filter windows for Claude based on current model family
     const windows =
-      this.providerKey === "anthropic"
+      getBaseProvider(this.providerId) === "anthropic"
         ? filterClaudeWindows(this.limits.windows, this.modelFamily)
         : this.limits.windows;
 
@@ -409,25 +388,24 @@ class UsageBarWidget implements Component {
 
 /**
  * Computes whether the widget should be visible based on current data.
- * Shows when any window's projected usage >= WARNING_THRESHOLD or there's an error.
+ * Shows when any window's severity is warning/high/critical or there's an error.
  */
 function computeVisibility(
   limits: ProviderRateLimits | null,
-  providerKey: ProviderKey,
+  providerId: string,
   modelFamily: ClaudeModelFamily,
 ): boolean {
   if (!limits) return false;
   if (limits.error) return true;
 
   const windows =
-    providerKey === "anthropic"
+    getBaseProvider(providerId) === "anthropic"
       ? filterClaudeWindows(limits.windows, modelFamily)
       : limits.windows;
 
   for (const window of windows) {
-    const pacePercent = getPacePercent(window);
-    const projected = getProjectedPercent(window.usedPercent, pacePercent);
-    if (projected >= WARNING_THRESHOLD) return true;
+    const risk = assessWindowRisk(window);
+    if (risk.severity !== "none") return true;
   }
   return false;
 }
@@ -461,13 +439,13 @@ function updateWidget(ctx: ExtensionContext): void {
     return;
   }
 
-  const providerKey = getProviderKey(ctx.model);
-  if (!providerKey) {
+  const providerId = ctx.model?.provider ?? null;
+  if (!providerId) {
     ctx.ui.setWidget(WIDGET_ID, undefined);
     return;
   }
 
-  const settings = getProviderSettings(providerKey);
+  const settings = getProviderSettings(providerId);
   const modelFamily = getClaudeModelFamily(ctx.model);
 
   let visible: boolean;
@@ -481,7 +459,7 @@ function updateWidget(ctx: ExtensionContext): void {
     case "warnings-only":
       visible =
         forceVisible ||
-        computeVisibility(cachedLimits, providerKey, modelFamily);
+        computeVisibility(cachedLimits, providerId, modelFamily);
       break;
   }
 
@@ -490,18 +468,12 @@ function updateWidget(ctx: ExtensionContext): void {
     return;
   }
 
-  const loading = !cachedLimits || cachedProviderKey !== providerKey;
+  const loading = !cachedLimits || cachedProviderId !== providerId;
 
   ctx.ui.setWidget(
     WIDGET_ID,
     (_tui, theme) =>
-      new UsageBarWidget(
-        theme,
-        cachedLimits,
-        providerKey,
-        modelFamily,
-        loading,
-      ),
+      new UsageBarWidget(theme, cachedLimits, providerId, modelFamily, loading),
     { placement: "belowEditor" },
   );
 }
@@ -524,10 +496,18 @@ async function refreshRateLimits(
 ): Promise<void> {
   if (!ctx.hasUI) return;
 
+  const providerId = ctx.model?.provider ?? null;
+  if (!providerId) {
+    cachedLimits = null;
+    cachedProviderId = null;
+    updateWidget(ctx);
+    return;
+  }
+
   const providerKey = getProviderKey(ctx.model);
   if (!providerKey) {
     cachedLimits = null;
-    cachedProviderKey = null;
+    cachedProviderId = null;
     updateWidget(ctx);
     return;
   }
@@ -542,10 +522,12 @@ async function refreshRateLimits(
     const limits = await fetchProviderRateLimits(
       providerKey,
       ctx.modelRegistry.authStorage,
+      undefined,
+      providerId,
     );
     if (limits) {
       cachedLimits = limits;
-      cachedProviderKey = providerKey;
+      cachedProviderId = providerId;
       lastFetchTime = Date.now();
       // Clear force flag on successful refresh; visibility is now data-driven
       forceVisible = false;
@@ -562,7 +544,7 @@ export function setupUsageBarHooks(pi: ExtensionAPI): void {
   // or first agent turn completion.
   pi.on("session_start", async (_event, _ctx) => {
     cachedLimits = null;
-    cachedProviderKey = null;
+    cachedProviderId = null;
     lastFetchTime = null;
     forceVisible = false;
   });
@@ -570,7 +552,7 @@ export function setupUsageBarHooks(pi: ExtensionAPI): void {
   // Model change: always fetch (force), reset cache
   pi.on("model_select", async (_event, ctx) => {
     cachedLimits = null;
-    cachedProviderKey = null;
+    cachedProviderId = null;
     lastFetchTime = null;
     refreshRateLimits(ctx, true).catch(() => {});
   });

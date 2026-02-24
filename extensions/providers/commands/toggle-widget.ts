@@ -10,7 +10,7 @@ function getProviderKey(
   const provider = model.provider.toLowerCase();
   if (provider === "anthropic") return "anthropic";
   if (provider === "openai-codex") return "openai-codex";
-  if (provider === "opencode") return "opencode";
+  if (provider === "synthetic") return "synthetic";
 
   return null;
 }

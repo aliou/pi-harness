@@ -9,9 +9,17 @@ import {
   matchesKey,
   type TUI,
   visibleWidth,
+  wrapTextWithAnsi,
 } from "@mariozechner/pi-tui";
 import { collectSessionStats } from "../collectors/session-stats";
+import { getProviderSettings } from "../config";
 import { fetchAllProviderRateLimits } from "../rate-limits";
+import {
+  assessWindowRisk,
+  getPacePercent,
+  getSeverityColor,
+  inferWindowSeconds,
+} from "../rate-limits/projection";
 import type {
   ProviderRateLimits,
   RateLimitWindow,
@@ -25,11 +33,8 @@ import {
   formatResetTime,
   formatTokens,
   getLocalTimezone,
-  padLeft,
-  padRight,
 } from "../utils";
 
-const TAB_ORDER: TabName[] = ["session", "today", "thisWeek", "allTime"];
 const TAB_LABELS: Record<TabName, string> = {
   session: "Session",
   today: "Today",
@@ -37,44 +42,47 @@ const TAB_LABELS: Record<TabName, string> = {
   allTime: "All Time",
 };
 
-const MIN_NAME_WIDTH = 16;
-const MIN_COLUMN_WIDTH = 4;
-const STATS_COLUMNS = [
-  {
-    label: "Sessions",
-    minWidth: 8,
-    getValue: (s: RowStats) => formatNumber(s.sessions),
-  },
-  {
-    label: "Msgs",
-    minWidth: 6,
-    getValue: (s: RowStats) => formatNumber(s.messages),
-  },
-  { label: "Cost", minWidth: 8, getValue: (s: RowStats) => formatCost(s.cost) },
-  {
-    label: "Tokens",
-    minWidth: 8,
-    getValue: (s: RowStats) => formatTokens(s.tokens.total),
-  },
-  {
-    label: "↑In",
-    minWidth: 6,
-    dimmed: true,
-    getValue: (s: RowStats) => formatTokens(s.tokens.input),
-  },
-  {
-    label: "↓Out",
-    minWidth: 6,
-    dimmed: true,
-    getValue: (s: RowStats) => formatTokens(s.tokens.output),
-  },
-  {
-    label: "Cache",
-    minWidth: 6,
-    dimmed: true,
-    getValue: (s: RowStats) => formatTokens(s.tokens.cache),
-  },
-];
+// === Width-safe rendering utilities ===
+
+function ensureWidth(lines: string[], width: number, theme: Theme): string[] {
+  return lines.map((line) => {
+    const lineWidth = visibleWidth(line);
+    if (lineWidth <= width) return line;
+    // Try wrapping first
+    const wrapped = wrapTextWithAnsi(line, width);
+    if (wrapped.length > 0 && visibleWidth(wrapped[0] ?? "") <= width) {
+      return wrapped[0] ?? "";
+    }
+    // Fallback: truncate
+    return truncateToWidthSafe(line, width, theme);
+  });
+}
+
+function truncateToWidthSafe(
+  text: string,
+  width: number,
+  theme: Theme,
+): string {
+  if (width <= 0) return "";
+  const visible = visibleWidth(text);
+  if (visible <= width) return text;
+  if (width <= 3) return text.slice(0, width);
+  // Strip ANSI and truncate
+  // biome-ignore lint/suspicious/noControlCharactersInRegex: ANSI escape sequences
+  const ansiRegex = /\u001b\[[0-9;]*m/g;
+  const plainText = text.replace(ansiRegex, "");
+  const truncated = plainText.slice(0, Math.max(0, width - 3));
+  return `${truncated}${theme.fg("dim", "...")}`;
+}
+
+// === Stats table utilities ===
+
+type StatsColumn = {
+  label: string;
+  minWidth: number;
+  getValue: (s: RowStats) => string;
+  dimmed?: boolean;
+};
 
 type RowStats = {
   sessions: number;
@@ -83,227 +91,411 @@ type RowStats = {
   tokens: { total: number; input: number; output: number; cache: number };
 };
 
-type StatsColumn = (typeof STATS_COLUMNS)[number] & { width: number };
-
-type StatsLayout = {
-  nameWidth: number;
-  columns: StatsColumn[];
-  tableWidth: number;
-};
-
-type AnsiTheme = {
-  dim: (s: string) => string;
-  bold: (s: string) => string;
-  accent: (s: string) => string;
-  green: (s: string) => string;
-  yellow: (s: string) => string;
-  red: (s: string) => string;
-  cyan: (s: string) => string;
-  border: (s: string) => string;
-};
-
-type Rgb = { r: number; g: number; b: number };
-
-const ANSI_16_COLORS: Rgb[] = [
-  { r: 0, g: 0, b: 0 },
-  { r: 128, g: 0, b: 0 },
-  { r: 0, g: 128, b: 0 },
-  { r: 128, g: 128, b: 0 },
-  { r: 0, g: 0, b: 128 },
-  { r: 128, g: 0, b: 128 },
-  { r: 0, g: 128, b: 128 },
-  { r: 192, g: 192, b: 192 },
-  { r: 128, g: 128, b: 128 },
-  { r: 255, g: 0, b: 0 },
-  { r: 0, g: 255, b: 0 },
-  { r: 255, g: 255, b: 0 },
-  { r: 0, g: 0, b: 255 },
-  { r: 255, g: 0, b: 255 },
-  { r: 0, g: 255, b: 255 },
-  { r: 255, g: 255, b: 255 },
+const STATS_COLUMNS: StatsColumn[] = [
+  {
+    label: "Sessions",
+    minWidth: 8,
+    getValue: (s) => formatNumber(s.sessions),
+  },
+  {
+    label: "Msgs",
+    minWidth: 6,
+    getValue: (s) => formatNumber(s.messages),
+  },
+  { label: "Cost", minWidth: 8, getValue: (s) => formatCost(s.cost) },
+  {
+    label: "Tokens",
+    minWidth: 8,
+    getValue: (s) => formatTokens(s.tokens.total),
+  },
+  {
+    label: "↑In",
+    minWidth: 6,
+    dimmed: true,
+    getValue: (s) => formatTokens(s.tokens.input),
+  },
+  {
+    label: "↓Out",
+    minWidth: 6,
+    dimmed: true,
+    getValue: (s) => formatTokens(s.tokens.output),
+  },
+  {
+    label: "Cache",
+    minWidth: 6,
+    dimmed: true,
+    getValue: (s) => formatTokens(s.tokens.cache),
+  },
 ];
 
-const ANSI_CUBE = [0, 95, 135, 175, 215, 255];
+// === Session tab: hybrid layout (bar + metadata) ===
 
-function rgbFrom256(index: number): Rgb {
-  if (index < 16)
-    return ANSI_16_COLORS[index] ?? ANSI_16_COLORS[0] ?? { r: 0, g: 0, b: 0 };
-  if (index >= 232) {
-    const gray = 8 + (index - 232) * 10;
-    return { r: gray, g: gray, b: gray };
-  }
-  const idx = index - 16;
-  const r = Math.floor(idx / 36);
-  const g = Math.floor((idx % 36) / 6);
-  const b = idx % 6;
-  return { r: ANSI_CUBE[r] ?? 0, g: ANSI_CUBE[g] ?? 0, b: ANSI_CUBE[b] ?? 0 };
-}
+function buildSessionTabContent(
+  width: number,
+  theme: Theme,
+  data: UsageData,
+  activeProvider: string | undefined,
+): string[] {
+  const lines: string[] = [];
+  const timezone = getLocalTimezone();
 
-function parseAnsiColor(ansi: string): Rgb | null {
-  const trueColorPrefixes = ["\u001b[38;2;", "\u001b[48;2;"];
-  for (const prefix of trueColorPrefixes) {
-    const start = ansi.indexOf(prefix);
-    if (start === -1) continue;
-    const payloadStart = start + prefix.length;
-    const end = ansi.indexOf("m", payloadStart);
-    if (end === -1) continue;
-    const parts = ansi.slice(payloadStart, end).split(";");
-    if (parts.length >= 3) {
-      const r = Number(parts[0]);
-      const g = Number(parts[1]);
-      const b = Number(parts[2]);
-      if (!Number.isNaN(r) && !Number.isNaN(g) && !Number.isNaN(b)) {
-        return { r, g, b };
-      }
+  // Filter out providers with widget: "never"
+  const visibleProviders = data.rateLimits.filter((provider) => {
+    const id = provider.providerId ?? provider.accountId;
+    if (!id) return true;
+    const settings = getProviderSettings(id);
+    return settings.widget !== "never";
+  });
+
+  // Sort providers: active first, then others alphabetically
+  const sortedProviders = [...visibleProviders].sort((a, b) => {
+    if (activeProvider) {
+      // Match by providerId or accountId (normalize by removing hyphens/underscores)
+      const normalize = (id: string) => id.replace(/[-_]/g, "").toLowerCase();
+      const activeNorm = normalize(activeProvider);
+      const aNorm = a.providerId ? normalize(a.providerId) : "";
+      const bNorm = b.providerId ? normalize(b.providerId) : "";
+
+      const aMatch = aNorm === activeNorm;
+      const bMatch = bNorm === activeNorm;
+      if (aMatch) return -1;
+      if (bMatch) return 1;
     }
-  }
+    return a.provider.localeCompare(b.provider);
+  });
 
-  const indexedPrefixes = ["\u001b[38;5;", "\u001b[48;5;"];
-  for (const prefix of indexedPrefixes) {
-    const start = ansi.indexOf(prefix);
-    if (start === -1) continue;
-    const payloadStart = start + prefix.length;
-    const end = ansi.indexOf("m", payloadStart);
-    if (end === -1) continue;
-    const value = Number(ansi.slice(payloadStart, end));
-    if (!Number.isNaN(value)) {
-      return rgbFrom256(value);
+  for (const provider of sortedProviders) {
+    // Provider header with status
+    lines.push(...renderProviderHeader(provider, width, theme));
+    lines.push("");
+
+    if (provider.error) {
+      lines.push(theme.fg("error", `  Error: ${provider.error}`));
+      lines.push("");
+      continue;
     }
+
+    if (!provider.windows.length) {
+      lines.push(theme.fg("dim", "  No rate limit data"));
+      lines.push("");
+      continue;
+    }
+
+    for (const window of provider.windows) {
+      lines.push(...renderWindowBlock(window, width, theme, timezone));
+    }
+
+    lines.push("");
   }
 
-  return null;
-}
-
-function isLightTheme(theme: Theme): boolean {
-  try {
-    const bgAnsi = theme.getBgAnsi("userMessageBg");
-    const rgb = parseAnsiColor(bgAnsi);
-    if (!rgb) return false;
-    const luminance = (0.299 * rgb.r + 0.587 * rgb.g + 0.114 * rgb.b) / 255;
-    return luminance > 0.6;
-  } catch {
-    return false;
+  if (lines.length === 0) {
+    return [theme.fg("dim", "No providers configured")];
   }
-}
 
-function createAnsiTheme(theme: Theme): AnsiTheme {
-  const light = isLightTheme(theme);
-  const colors = light
-    ? {
-        accent: "\x1b[34m",
-        green: "\x1b[32m",
-        yellow: "\x1b[33m",
-        red: "\x1b[31m",
-        cyan: "\x1b[36m",
-      }
-    : {
-        accent: "\x1b[96m",
-        green: "\x1b[92m",
-        yellow: "\x1b[93m",
-        red: "\x1b[91m",
-        cyan: "\x1b[96m",
-      };
-  const color = (code: string) => (s: string) => `${code}${s}\x1b[0m`;
-  const dim = (s: string) => `\x1b[2m${s}\x1b[22m`;
-  const bold = (s: string) => `\x1b[1m${s}\x1b[22m`;
-  return {
-    dim,
-    bold,
-    accent: color(colors.accent),
-    green: color(colors.green),
-    yellow: color(colors.yellow),
-    red: color(colors.red),
-    cyan: color(colors.cyan),
-    border: (s: string) => theme.fg("dim", s),
-  };
-}
-
-const MIN_PACE_PERCENT = 5;
-
-function inferWindowSeconds(label: string): number | null {
-  const lower = label.toLowerCase();
-  if (lower.includes("5-hour") || lower.includes("5h")) {
-    return 5 * 60 * 60;
+  // Remove trailing empty lines
+  while (lines.length > 0 && lines[lines.length - 1] === "") {
+    lines.pop();
   }
-  if (
-    lower.includes("7-day") ||
-    lower.includes("week") ||
-    lower.includes("weekly")
-  ) {
-    return 7 * 24 * 60 * 60;
-  }
-  const hourMatch = lower.match(/(\d+)\s*h/);
-  if (hourMatch?.[1]) return Number(hourMatch[1]) * 60 * 60;
-  const dayMatch = lower.match(/(\d+)\s*d/);
-  if (dayMatch?.[1]) return Number(dayMatch[1]) * 24 * 60 * 60;
-  return null;
+
+  return lines;
 }
 
-function getPacePercent(window: RateLimitWindow): number | null {
+function renderProviderHeader(
+  provider: ProviderRateLimits,
+  _width: number,
+  theme: Theme,
+): string[] {
+  const lines: string[] = [];
+
+  // Status indicator
+  let statusColor: "success" | "warning" | "error" | "dim" = "dim";
+  let statusText = "Unknown";
+  switch (provider.status) {
+    case "operational":
+      statusColor = "success";
+      statusText = "● Operational";
+      break;
+    case "degraded":
+      statusColor = "warning";
+      statusText = "● Degraded";
+      break;
+    case "outage":
+      statusColor = "error";
+      statusText = "● Outage";
+      break;
+  }
+
+  // Format provider name: strip "Plan" suffix, add plan type in parentheses, add "Plan" back
+  let providerName = provider.provider;
+  const planSuffix = " Plan";
+  if (providerName.endsWith(planSuffix)) {
+    providerName = providerName.slice(0, -planSuffix.length);
+  }
+
+  // Add plan type in parentheses if available
+  if (provider.plan && provider.plan.trim()) {
+    const planDisplay =
+      provider.plan.charAt(0).toUpperCase() + provider.plan.slice(1);
+    providerName = `${providerName} (${planDisplay})`;
+  }
+
+  // Add "Plan" suffix back
+  providerName = `${providerName} Plan`;
+
+  const header = `${providerName}  ${theme.fg(statusColor, statusText)}`;
+  lines.push(header);
+
+  return lines;
+}
+
+function renderWindowBlock(
+  window: RateLimitWindow,
+  width: number,
+  theme: Theme,
+  timezone: string,
+): string[] {
+  const lines: string[] = [];
+  const barWidth = Math.min(50, Math.max(20, width - 20));
+
+  const risk = assessWindowRisk(window);
+  const pacePercent = getPacePercent(window);
+  const usedStr = `${Math.round(window.usedPercent)}%`;
+  const projected = Math.round(risk.projectedPercent);
+  const severityColor = getSeverityColor(risk.severity);
+
+  // Window label with progress
   const windowSeconds =
     window.windowSeconds ?? inferWindowSeconds(window.label);
-  if (!windowSeconds || !window.resetsAt) return null;
-  const totalMs = windowSeconds * 1000;
-  if (!Number.isFinite(totalMs) || totalMs <= 0) return null;
-  const remainingMs = window.resetsAt.getTime() - Date.now();
-  const elapsedMs = totalMs - remainingMs;
-  const percent = (elapsedMs / totalMs) * 100;
-  return Math.max(0, Math.min(100, percent));
+  let progressText = "";
+  if (windowSeconds && window.resetsAt) {
+    const totalMs = windowSeconds * 1000;
+    const remainingMs = window.resetsAt.getTime() - Date.now();
+    const elapsedMs = Math.min(totalMs, Math.max(0, totalMs - remainingMs));
+    const elapsedH = Math.floor(elapsedMs / (1000 * 60 * 60));
+    const elapsedM = Math.floor((elapsedMs % (1000 * 60 * 60)) / (1000 * 60));
+    const totalH = Math.floor(windowSeconds / (60 * 60));
+    progressText =
+      elapsedH > 0 || totalH > 0
+        ? `${elapsedH}.${Math.floor(elapsedM / 6)}h/${totalH}h`
+        : `${elapsedM}m/${Math.floor(windowSeconds / 60)}m`;
+  }
+
+  lines.push(`  ${theme.fg("accent", window.label)} (${progressText})`);
+
+  // Bar line
+  const bar = renderProgressBar(
+    window.usedPercent,
+    barWidth,
+    theme,
+    severityColor,
+    pacePercent,
+  );
+  const usedColored = theme.fg(severityColor, usedStr);
+  lines.push(`  ${bar} ${usedColored}`);
+
+  // Metadata line: projected, pace, reset
+  const resetStr = formatResetTime(window.resetsAt, timezone);
+  let paceStr = "";
+  if (pacePercent !== null) {
+    const paceDiff = window.usedPercent - pacePercent;
+    if (paceDiff > 10) {
+      paceStr = `${Math.round(Math.abs(paceDiff))}% ahead pace`;
+    } else if (paceDiff < -10) {
+      paceStr = `${Math.round(Math.abs(paceDiff))}% behind pace`;
+    } else {
+      paceStr = "within pace";
+    }
+  }
+
+  const projStr =
+    risk.severity !== "none" ? `proj ${projected}%` : `proj ${projected}%`;
+  const projColored =
+    risk.severity !== "none"
+      ? theme.fg(severityColor, projStr)
+      : theme.fg("dim", projStr);
+
+  const metaParts: string[] = [projColored];
+  if (paceStr) metaParts.push(theme.fg("dim", paceStr));
+  metaParts.push(theme.fg("dim", `resets ${resetStr}`));
+
+  lines.push(`  ${metaParts.join("  ")}`);
+
+  return lines;
 }
 
-function getProjectedPercent(
-  usedPercent: number,
+function renderProgressBar(
+  percent: number,
+  width: number,
+  theme: Theme,
+  fillColor: "success" | "warning" | "error",
   pacePercent?: number | null,
-): number {
-  if (pacePercent === null || pacePercent === undefined) return usedPercent;
-  const effectivePace = Math.max(MIN_PACE_PERCENT, pacePercent);
-  return Math.max(0, (usedPercent / effectivePace) * 100);
-}
-
-function getDurationUnitMs(totalMs: number): {
-  label: "d" | "h" | "m";
-  ms: number;
-} {
-  if (totalMs >= 24 * 60 * 60 * 1000) {
-    return { label: "d", ms: 24 * 60 * 60 * 1000 };
-  }
-  if (totalMs >= 60 * 60 * 1000) {
-    return { label: "h", ms: 60 * 60 * 1000 };
-  }
-  return { label: "m", ms: 60 * 1000 };
-}
-
-function formatDurationDecimalMs(
-  durationMs: number,
-  unit: { label: "d" | "h" | "m"; ms: number },
 ): string {
-  if (!Number.isFinite(durationMs) || durationMs <= 0) {
-    return `0${unit.label}`;
+  const clamped = Math.max(0, Math.min(100, Math.round(percent)));
+  const filled = Math.round((clamped / 100) * width);
+  const filledChar = "█";
+  const emptyChar = "░";
+  const markerChar = "│";
+
+  const markerIndex =
+    pacePercent === null || pacePercent === undefined
+      ? null
+      : Math.max(
+          0,
+          Math.min(width - 1, Math.round((pacePercent / 100) * (width - 1))),
+        );
+
+  const parts: string[] = [];
+  for (let idx = 0; idx < width; idx++) {
+    if (markerIndex === idx) {
+      parts.push(theme.fg("accent", markerChar));
+      continue;
+    }
+    if (idx < filled) {
+      parts.push(theme.fg(fillColor, filledChar));
+    } else {
+      parts.push(theme.fg("dim", emptyChar));
+    }
   }
-  const value = durationMs / unit.ms;
-  const rounded = Math.round(value * 10) / 10;
-  const text = Number.isInteger(rounded)
-    ? rounded.toFixed(0)
-    : rounded.toFixed(1);
-  return `${text}${unit.label}`;
+
+  return parts.join("");
 }
 
-function formatDurationPairMs(elapsedMs: number, totalMs: number): string {
-  if (!Number.isFinite(totalMs) || totalMs <= 0) return "??/??";
-  const unit = getDurationUnitMs(totalMs);
-  const elapsedText = formatDurationDecimalMs(elapsedMs, unit);
-  const totalText = formatDurationDecimalMs(totalMs, unit);
-  return `${elapsedText}/${totalText}`;
+// === Time tabs: collapsible provider groups ===
+
+interface StatsViewState {
+  selectedProviderIndex: number;
+  expandedProviders: Set<string>;
 }
 
-function getWindowProgressText(window: RateLimitWindow): string {
-  const windowSeconds =
-    window.windowSeconds ?? inferWindowSeconds(window.label);
-  if (!windowSeconds || !window.resetsAt) return "??/??";
-  const totalMs = windowSeconds * 1000;
-  const remainingMs = window.resetsAt.getTime() - Date.now();
-  const elapsedMs = Math.min(totalMs, Math.max(0, totalMs - remainingMs));
-  return formatDurationPairMs(elapsedMs, totalMs);
+function buildStatsTabContent(
+  tab: Exclude<TabName, "session">,
+  width: number,
+  theme: Theme,
+  stats: TimeFilteredStats,
+  state: StatsViewState,
+): string[] {
+  const lines: string[] = [];
+
+  // Period progress
+  const period = getPeriodProgress(tab);
+  if (period) {
+    const barWidth = Math.min(50, Math.max(20, width - 20));
+    const bar = renderProgressBar(
+      period.percent,
+      barWidth,
+      theme,
+      "success",
+      period.percent,
+    );
+    lines.push(
+      `${period.label} progress: ${bar} ${Math.round(period.percent)}%`,
+    );
+    lines.push("");
+  }
+
+  if (stats.providers.size === 0) {
+    lines.push(theme.fg("dim", "No usage data for this period"));
+    return lines;
+  }
+
+  // Build table layout
+  const layout = buildStatsLayout(width);
+
+  // Header
+  lines.push(renderStatsHeader(layout, theme));
+  lines.push(theme.fg("dim", "─".repeat(layout.tableWidth)));
+
+  // Providers sorted by cost
+  const providers = Array.from(stats.providers.entries()).sort(
+    (a, b) => b[1].cost - a[1].cost,
+  );
+
+  for (let i = 0; i < providers.length; i++) {
+    const [providerName, providerStats] = providers[i] ?? ["", null];
+    if (!providerStats) continue;
+
+    const isSelected = i === state.selectedProviderIndex;
+    const isExpanded = state.expandedProviders.has(providerName);
+    const prefix = isSelected ? "> " : "  ";
+    const expandIndicator = isExpanded ? "v" : ">";
+
+    const providerRow = renderStatsRow(
+      layout,
+      `${expandIndicator} ${providerName}`,
+      {
+        sessions: providerStats.sessions.size,
+        messages: providerStats.messages,
+        cost: providerStats.cost,
+        tokens: providerStats.tokens,
+      },
+      theme,
+      isSelected,
+    );
+    lines.push(prefix + providerRow);
+
+    if (isExpanded) {
+      const models = Array.from(providerStats.models.entries()).sort(
+        (a, b) => b[1].cost - a[1].cost,
+      );
+      for (const [modelName, modelStats] of models) {
+        const modelRow = renderStatsRow(
+          layout,
+          `    ${modelName}`,
+          {
+            sessions: modelStats.sessions.size,
+            messages: modelStats.messages,
+            cost: modelStats.cost,
+            tokens: modelStats.tokens,
+          },
+          theme,
+          false,
+          true,
+        );
+        lines.push(modelRow);
+      }
+    }
+  }
+
+  lines.push(theme.fg("dim", "─".repeat(layout.tableWidth)));
+  lines.push(
+    renderStatsRow(layout, "Totals", {
+      sessions: stats.totals.sessions,
+      messages: stats.totals.messages,
+      cost: stats.totals.cost,
+      tokens: stats.totals.tokens,
+    }),
+  );
+
+  return lines;
+}
+
+function getPeriodProgress(
+  tab: Exclude<TabName, "session">,
+): { label: string; percent: number } | null {
+  const now = new Date();
+
+  if (tab === "today") {
+    const start = new Date(now);
+    start.setHours(0, 0, 0, 0);
+    const end = new Date(start);
+    end.setDate(start.getDate() + 1);
+    const totalMs = end.getTime() - start.getTime();
+    const elapsedMs = now.getTime() - start.getTime();
+    const percent = (elapsedMs / totalMs) * 100;
+    return { label: "Today", percent: Math.max(0, Math.min(100, percent)) };
+  }
+
+  if (tab === "thisWeek") {
+    const start = getStartOfWeek(now);
+    const end = new Date(start);
+    end.setDate(start.getDate() + 7);
+    const totalMs = end.getTime() - start.getTime();
+    const elapsedMs = now.getTime() - start.getTime();
+    const percent = (elapsedMs / totalMs) * 100;
+    return { label: "Week", percent: Math.max(0, Math.min(100, percent)) };
+  }
+
+  return null;
 }
 
 function getStartOfWeek(date: Date): Date {
@@ -315,546 +507,427 @@ function getStartOfWeek(date: Date): Date {
   return start;
 }
 
-function getPeriodProgress(
-  tab: TabName,
-): { label: string; percent: number; progressText: string } | null {
-  const now = new Date();
-
-  if (tab === "today") {
-    const start = new Date(now);
-    start.setHours(0, 0, 0, 0);
-    const end = new Date(start);
-    end.setDate(start.getDate() + 1);
-    const totalMs = end.getTime() - start.getTime();
-    const elapsedMs = now.getTime() - start.getTime();
-    const percent = (elapsedMs / totalMs) * 100;
-    return {
-      label: "Today",
-      percent: Math.max(0, Math.min(100, percent)),
-      progressText: formatDurationPairMs(elapsedMs, totalMs),
-    };
-  }
-
-  if (tab === "thisWeek") {
-    const start = getStartOfWeek(now);
-    const end = new Date(start);
-    end.setDate(start.getDate() + 7);
-    const totalMs = end.getTime() - start.getTime();
-    const elapsedMs = now.getTime() - start.getTime();
-    const percent = (elapsedMs / totalMs) * 100;
-    return {
-      label: "Week",
-      percent: Math.max(0, Math.min(100, percent)),
-      progressText: formatDurationPairMs(elapsedMs, totalMs),
-    };
-  }
-
-  return null;
+interface StatsLayout {
+  nameWidth: number;
+  columns: {
+    label: string;
+    width: number;
+    getValue: (s: RowStats) => string;
+    dimmed?: boolean;
+  }[];
+  tableWidth: number;
 }
 
-class UsageComponent implements Component {
-  private activeTab: TabName = "session";
-  private data: UsageData;
-  private colors: AnsiTheme;
-  private requestRender: () => void;
-  private done: () => void;
+function buildStatsLayout(width: number): StatsLayout {
+  const availableWidth = Math.max(60, width - 4);
+  const nameWidth = Math.min(
+    25,
+    Math.max(16, Math.floor(availableWidth * 0.3)),
+  );
+  const remainingWidth = availableWidth - nameWidth;
+
+  // Distribute remaining width among columns
+  const totalMinWidth = STATS_COLUMNS.reduce(
+    (sum, col) => sum + col.minWidth,
+    0,
+  );
+  const extraWidth = Math.max(0, remainingWidth - totalMinWidth);
+  const extraPerColumn = Math.floor(extraWidth / STATS_COLUMNS.length);
+
+  const columns = STATS_COLUMNS.map((col) => ({
+    ...col,
+    width: col.minWidth + extraPerColumn,
+  }));
+
+  const tableWidth =
+    nameWidth + columns.reduce((sum, col) => sum + col.width, 0);
+
+  return { nameWidth, columns, tableWidth };
+}
+
+function renderStatsHeader(layout: StatsLayout, theme: Theme): string {
+  const parts: string[] = [];
+
+  // Name column
+  parts.push(padRight("Provider/Model", layout.nameWidth));
+
+  // Data columns
+  for (const col of layout.columns) {
+    const label = padLeft(col.label, col.width);
+    parts.push(col.dimmed ? theme.fg("dim", label) : label);
+  }
+
+  return parts.join("");
+}
+
+function renderStatsRow(
+  layout: StatsLayout,
+  name: string,
+  stats: RowStats,
+  theme?: Theme,
+  selected = false,
+  dimmed = false,
+): string {
+  const parts: string[] = [];
+  const t = theme ?? { fg: (_c: string, s: string) => s };
+
+  // Name column (truncated)
+  const displayName =
+    visibleWidth(name) > layout.nameWidth
+      ? `${name.slice(0, Math.max(0, layout.nameWidth - 3))}...`
+      : name;
+  const nameStr = padRight(displayName, layout.nameWidth);
+  parts.push(
+    selected
+      ? t.fg("accent", nameStr)
+      : dimmed
+        ? t.fg("dim", nameStr)
+        : nameStr,
+  );
+
+  // Data columns
+  for (const col of layout.columns) {
+    const value = padLeft(col.getValue(stats), col.width);
+    const displayValue = col.dimmed || dimmed ? t.fg("dim", value) : value;
+    parts.push(displayValue);
+  }
+
+  return parts.join("");
+}
+
+function padRight(str: string, width: number): string {
+  const len = visibleWidth(str);
+  if (len >= width) return str;
+  return str + " ".repeat(width - len);
+}
+
+function padLeft(str: string, width: number): string {
+  const len = visibleWidth(str);
+  if (len >= width) return str;
+  return " ".repeat(width - len) + str;
+}
+
+// === Main component ===
+
+interface PanelTab {
+  label: string;
+  buildContent: (width: number, theme: Theme) => string[];
+  onInput?: (key: string) => boolean;
+}
+
+class ProvidersUsagePanel implements Component {
+  private activeTab = 0;
   private scrollOffset = 0;
-  private lastContentLines = 0;
-  private lastAvailableLines = 0;
+  private cachedLines: string[] | null = null;
+  private cachedWidth = 0;
+  private onClose: () => void;
+  private data: UsageData;
+  private activeProvider: string | undefined;
+  private theme: Theme;
+
+  // State for stats tabs
+  private statsState: Record<Exclude<TabName, "session">, StatsViewState> = {
+    today: { selectedProviderIndex: 0, expandedProviders: new Set() },
+    thisWeek: { selectedProviderIndex: 0, expandedProviders: new Set() },
+    allTime: { selectedProviderIndex: 0, expandedProviders: new Set() },
+  };
 
   constructor(
-    colors: AnsiTheme,
+    _tui: TUI,
+    theme: Theme,
     data: UsageData,
-    requestRender: () => void,
-    done: () => void,
+    activeProvider: string | undefined,
+    onClose: () => void,
   ) {
-    this.colors = colors;
+    this.theme = theme;
+    this.onClose = onClose;
     this.data = data;
-    this.requestRender = requestRender;
-    this.done = done;
+    this.activeProvider = activeProvider;
   }
 
-  handleInput(data: string): void {
-    if (matchesKey(data, "escape") || data === "q" || data === "Q") {
-      this.done();
-      return;
-    }
-
-    if (matchesKey(data, "tab") || matchesKey(data, "right")) {
-      const idx = TAB_ORDER.indexOf(this.activeTab);
-      const nextIndex = (idx + 1 + TAB_ORDER.length) % TAB_ORDER.length;
-      const nextTab = TAB_ORDER[nextIndex] ?? TAB_ORDER[0] ?? this.activeTab;
-      this.activeTab = nextTab;
-      this.scrollOffset = 0;
-      this.requestRender();
-      return;
-    }
-
-    if (matchesKey(data, "shift+tab") || matchesKey(data, "left")) {
-      const idx = TAB_ORDER.indexOf(this.activeTab);
-      const prevIndex = (idx - 1 + TAB_ORDER.length) % TAB_ORDER.length;
-      const prevTab = TAB_ORDER[prevIndex] ?? TAB_ORDER[0] ?? this.activeTab;
-      this.activeTab = prevTab;
-      this.scrollOffset = 0;
-      this.requestRender();
-      return;
-    }
-
-    if (matchesKey(data, "down") || data === "j") {
-      const maxOffset = Math.max(
-        0,
-        this.lastContentLines - this.lastAvailableLines,
-      );
-      if (this.scrollOffset < maxOffset) {
-        this.scrollOffset += 1;
-        this.requestRender();
-      }
-      return;
-    }
-
-    if (matchesKey(data, "up") || data === "k") {
-      if (this.scrollOffset > 0) {
-        this.scrollOffset -= 1;
-        this.requestRender();
-      }
-    }
+  private getTabs(): PanelTab[] {
+    return [
+      {
+        label: TAB_LABELS.session,
+        buildContent: (width, theme) =>
+          buildSessionTabContent(width, theme, this.data, this.activeProvider),
+      },
+      {
+        label: TAB_LABELS.today,
+        buildContent: (width, theme) =>
+          buildStatsTabContent(
+            "today",
+            width,
+            theme,
+            this.data.stats.today,
+            this.statsState.today,
+          ),
+        onInput: (key) => this.handleStatsInput("today", key),
+      },
+      {
+        label: TAB_LABELS.thisWeek,
+        buildContent: (width, theme) =>
+          buildStatsTabContent(
+            "thisWeek",
+            width,
+            theme,
+            this.data.stats.thisWeek,
+            this.statsState.thisWeek,
+          ),
+        onInput: (key) => this.handleStatsInput("thisWeek", key),
+      },
+      {
+        label: TAB_LABELS.allTime,
+        buildContent: (width, theme) =>
+          buildStatsTabContent(
+            "allTime",
+            width,
+            theme,
+            this.data.stats.allTime,
+            this.statsState.allTime,
+          ),
+        onInput: (key) => this.handleStatsInput("allTime", key),
+      },
+    ];
   }
 
-  render(width: number): string[] {
-    const colors = this.colors;
-    const lines: string[] = [];
-    const innerWidth = width - 2; // 1 char padding each side
-
-    // Helper to pad line
-    const padLine = (content: string): string => {
-      const len = visibleWidth(content);
-      return ` ${content}${" ".repeat(Math.max(0, innerWidth - len))} `;
-    };
-
-    // Top border with title
-    const title = " Usage ";
-    const titleLen = title.length;
-    const borderLen = Math.max(0, width - titleLen);
-    const leftBorder = Math.floor(borderLen / 2);
-    const rightBorder = borderLen - leftBorder;
-    lines.push(
-      colors.border("─".repeat(leftBorder)) +
-        colors.accent(colors.bold(title)) +
-        colors.border("─".repeat(rightBorder)),
-    );
-
-    lines.push(padLine(""));
-    lines.push(padLine(this.renderTabs()));
-    lines.push(padLine(""));
-
-    const contentLines =
-      this.activeTab === "session"
-        ? this.renderSessionTab(innerWidth)
-        : this.renderStatsTab(this.getStatsForTab(this.activeTab), innerWidth);
-
-    // Fixed height to keep UI compact (matches original overlay size)
-    const FIXED_HEIGHT = 24;
-    const headerLines = 4; // title + empty + tabs + empty
-    const footerLines = 2; // divider + footer
-    const availableLines = Math.max(
-      3,
-      FIXED_HEIGHT - headerLines - footerLines,
-    );
-
-    this.lastContentLines = contentLines.length;
-    this.lastAvailableLines = availableLines;
-    const maxOffset = Math.max(0, contentLines.length - availableLines);
-    this.scrollOffset = Math.min(this.scrollOffset, maxOffset);
-
-    const visibleLines = contentLines.slice(
-      this.scrollOffset,
-      this.scrollOffset + availableLines,
-    );
-
-    for (const line of visibleLines) {
-      lines.push(padLine(line));
-    }
-
-    let renderedLines = visibleLines.length;
-    while (renderedLines < availableLines) {
-      lines.push(padLine(""));
-      renderedLines++;
-    }
-
-    const canScroll = contentLines.length > availableLines;
-    lines.push(colors.border("─".repeat(width)));
-    lines.push(padLine(this.renderFooter(innerWidth, canScroll)));
-
-    // Bottom border
-    lines.push(colors.border("─".repeat(width)));
-
-    return lines;
-  }
-
-  invalidate(): void {
-    // no-op
-  }
-
-  dispose(): void {
-    // no-op
-  }
-
-  private renderTabs(): string {
-    return TAB_ORDER.map((tab) => {
-      const label = TAB_LABELS[tab];
-      if (tab === this.activeTab) {
-        return this.colors.accent(`[${label}]`);
-      }
-      return this.colors.dim(` ${label} `);
-    }).join("  ");
-  }
-
-  private renderFooter(width: number, canScroll: boolean): string {
-    const left = canScroll
-      ? `${this.colors.dim("Tab/←/→")} switch  ${this.colors.dim("↑/↓")} scroll`
-      : `${this.colors.dim("Tab/←/→")} switch`;
-    const right = `${this.colors.dim("q")} close`;
-    const gap = Math.max(2, width - visibleWidth(left) - visibleWidth(right));
-    return left + " ".repeat(gap) + right;
-  }
-
-  private renderSessionTab(width: number): string[] {
-    const lines: string[] = [];
-    const timezone = getLocalTimezone();
-    const sep = this.colors.dim("─".repeat(Math.max(0, width)));
-
-    for (const provider of this.data.rateLimits) {
-      lines.push(this.renderProviderHeader(provider, width));
-      lines.push(sep);
-
-      if (provider.error) {
-        lines.push(this.colors.red(provider.error));
-        lines.push("");
-        continue;
-      }
-
-      if (!provider.windows.length) {
-        lines.push(this.colors.dim("No rate limit data"));
-        lines.push("");
-        continue;
-      }
-
-      for (const window of provider.windows) {
-        const pacePercent = getPacePercent(window);
-        const progressText = getWindowProgressText(window);
-        lines.push(`${window.label} (${progressText})`);
-        lines.push(
-          this.renderProgressBar(window.usedPercent, width, pacePercent),
-        );
-        lines.push(`Resets ${formatResetTime(window.resetsAt, timezone)}`);
-        lines.push("");
-      }
-    }
-
-    if (lines.length === 0) {
-      return [this.colors.dim("No providers configured")];
-    }
-
-    return lines;
-  }
-
-  private renderProviderHeader(
-    provider: ProviderRateLimits,
-    width: number,
-  ): string {
-    const status = this.renderStatus(provider);
-    const statusWidth = visibleWidth(status);
-    const leftWidth = Math.max(0, width - statusWidth);
-    const left = padRight(provider.provider, leftWidth);
-    return `${left}${status}`;
-  }
-
-  private renderStatus(provider: ProviderRateLimits): string {
-    switch (provider.status) {
-      case "operational":
-        return this.colors.green("● Operational");
-      case "degraded":
-        return this.colors.yellow("● Degraded");
-      case "outage":
-        return this.colors.red("● Outage");
-      default:
-        return this.colors.dim("○ Unknown");
-    }
-  }
-
-  private renderProgressBar(
-    usedPercent: number,
-    width: number,
-    pacePercent?: number | null,
-    colorMode: "usage" | "neutral" = "usage",
-  ): string {
-    const clamped = Math.max(0, Math.min(100, Math.round(usedPercent)));
-    const label = `${clamped}%`;
-    const labelWidth = visibleWidth(label);
-    const barWidth = Math.max(10, width - labelWidth - 1);
-    const filled = Math.round((clamped / 100) * barWidth);
-    const markerIndex =
-      pacePercent === null || pacePercent === undefined
-        ? null
-        : Math.max(
-            0,
-            Math.min(
-              barWidth - 1,
-              Math.round((pacePercent / 100) * (barWidth - 1)),
-            ),
-          );
-
-    let fillColor: keyof AnsiTheme = "accent";
-    if (colorMode === "usage") {
-      const projected = getProjectedPercent(clamped, pacePercent);
-      fillColor = "green";
-      if (projected >= 90) fillColor = "red";
-      else if (projected >= 80) fillColor = "yellow";
-    }
-
-    const parts: string[] = [];
-    for (let idx = 0; idx < barWidth; idx += 1) {
-      if (markerIndex === idx) {
-        parts.push(this.colors.cyan("│"));
-        continue;
-      }
-      if (idx < filled) {
-        parts.push(this.colors[fillColor]("━"));
-      } else {
-        parts.push(this.colors.dim("─"));
-      }
-    }
-
-    const coloredLabel = this.colors[fillColor](label);
-    return `${parts.join("")} ${coloredLabel}`;
-  }
-
-  private renderStatsTab(stats: TimeFilteredStats, width: number): string[] {
-    const layout = this.buildStatsLayout(width);
-    const lines: string[] = [];
-
-    const period = getPeriodProgress(this.activeTab);
-    if (period) {
-      lines.push(`${period.label} (${period.progressText})`);
-      lines.push(
-        this.renderProgressBar(
-          period.percent,
-          width,
-          period.percent,
-          "neutral",
-        ),
-      );
-      lines.push("");
-    }
-
-    if (stats.providers.size === 0) {
-      lines.push(this.colors.dim("No usage data for this period"));
-      return lines;
-    }
-
-    lines.push(this.renderStatsHeader(layout));
-    lines.push(this.colors.dim("─".repeat(layout.tableWidth)));
-
+  private handleStatsInput(
+    tab: Exclude<TabName, "session">,
+    key: string,
+  ): boolean {
+    const state = this.statsState[tab];
+    const stats = this.data.stats[tab];
     const providers = Array.from(stats.providers.entries()).sort(
       (a, b) => b[1].cost - a[1].cost,
     );
 
-    for (const [providerName, providerStats] of providers) {
-      const providerRow = this.renderStatsRow(layout, providerName, {
-        sessions: providerStats.sessions.size,
-        messages: providerStats.messages,
-        cost: providerStats.cost,
-        tokens: providerStats.tokens,
-      });
-      lines.push(providerRow);
-
-      const models = Array.from(providerStats.models.entries()).sort(
-        (a, b) => b[1].cost - a[1].cost,
-      );
-
-      for (const [modelName, modelStats] of models) {
-        const modelRow = this.renderStatsRow(layout, `  ${modelName}`, {
-          sessions: modelStats.sessions.size,
-          messages: modelStats.messages,
-          cost: modelStats.cost,
-          tokens: modelStats.tokens,
-        });
-        lines.push(this.colors.dim(modelRow));
+    if (key === "Enter" || key === " ") {
+      const [providerName] = providers[state.selectedProviderIndex] ?? [""];
+      if (providerName) {
+        if (state.expandedProviders.has(providerName)) {
+          state.expandedProviders.delete(providerName);
+        } else {
+          state.expandedProviders.add(providerName);
+        }
+        this.invalidate();
+        return true;
       }
     }
 
-    lines.push(this.colors.dim("─".repeat(layout.tableWidth)));
-    lines.push(
-      this.renderStatsRow(layout, "Totals", {
-        sessions: stats.totals.sessions,
-        messages: stats.totals.messages,
-        cost: stats.totals.cost,
-        tokens: stats.totals.tokens,
-      }),
-    );
-
-    return lines;
-  }
-
-  private buildStatsLayout(width: number): StatsLayout {
-    const columns: StatsColumn[] = STATS_COLUMNS.map((col) => ({
-      ...col,
-      width: col.minWidth,
-    }));
-    const columnsMin = columns.reduce((sum, col) => sum + col.width, 0);
-    let nameWidth = Math.max(MIN_NAME_WIDTH, width - columnsMin);
-
-    if (nameWidth < MIN_NAME_WIDTH) {
-      let deficit = MIN_NAME_WIDTH - nameWidth;
-      for (let i = columns.length - 1; i >= 0 && deficit > 0; i--) {
-        const col = columns[i];
-        if (!col) continue;
-        const reducible = Math.max(0, col.width - MIN_COLUMN_WIDTH);
-        const reduction = Math.min(deficit, reducible);
-        col.width -= reduction;
-        deficit -= reduction;
+    if (key === "j" || key === "ArrowDown") {
+      const maxIndex = providers.length - 1;
+      if (state.selectedProviderIndex < maxIndex) {
+        state.selectedProviderIndex++;
+        this.invalidate();
       }
-      nameWidth = Math.max(
-        MIN_NAME_WIDTH,
-        width - columns.reduce((sum, col) => sum + col.width, 0),
-      );
+      return true;
     }
 
-    const tableWidth =
-      nameWidth + columns.reduce((sum, col) => sum + col.width, 0);
-    return { nameWidth, columns, tableWidth };
-  }
-
-  private renderStatsHeader(layout: StatsLayout): string {
-    let header = padRight(
-      this.truncateText("Provider/Model", layout.nameWidth),
-      layout.nameWidth,
-    );
-    for (const column of layout.columns) {
-      const label = padLeft(
-        this.truncateText(column.label, column.width),
-        column.width,
-      );
-      header += column.dimmed ? this.colors.dim(label) : label;
+    if (key === "k" || key === "ArrowUp") {
+      if (state.selectedProviderIndex > 0) {
+        state.selectedProviderIndex--;
+        this.invalidate();
+      }
+      return true;
     }
-    return this.colors.dim(padRight(header, layout.tableWidth));
+
+    return false;
   }
 
-  private renderStatsRow(
-    layout: StatsLayout,
-    name: string,
-    stats: RowStats,
-  ): string {
-    let row = padRight(
-      this.truncateText(name, layout.nameWidth),
-      layout.nameWidth,
-    );
-    for (const column of layout.columns) {
-      const value = padLeft(column.getValue(stats), column.width);
-      row += column.dimmed ? this.colors.dim(value) : value;
+  handleInput(data: string): boolean {
+    if (matchesKey(data, "escape") || data === "q") {
+      this.onClose();
+      return true;
     }
-    return padRight(row, layout.tableWidth);
-  }
 
-  private truncateText(value: string, maxWidth: number): string {
-    if (visibleWidth(value) <= maxWidth) return value;
-    if (maxWidth <= 1) return value.slice(0, maxWidth);
-    return `${value.slice(0, Math.max(0, maxWidth - 1))}…`;
-  }
+    const tabs = this.getTabs();
 
-  private getStatsForTab(tab: TabName): TimeFilteredStats {
-    switch (tab) {
-      case "today":
-        return this.data.stats.today;
-      case "thisWeek":
-        return this.data.stats.thisWeek;
-      case "allTime":
-        return this.data.stats.allTime;
-      default:
-        return this.data.stats.allTime;
+    if (matchesKey(data, "tab")) {
+      this.activeTab = (this.activeTab + 1) % tabs.length;
+      this.scrollOffset = 0;
+      this.invalidate();
+      return true;
     }
-  }
-}
 
-class UsageContainer implements Component {
-  private loader: BorderedLoader;
-  private component: UsageComponent | null = null;
-  private colors: AnsiTheme;
-
-  constructor(
-    tui: TUI,
-    theme: Theme,
-    dataLoader: (signal: AbortSignal) => Promise<UsageData>,
-    done: () => void,
-  ) {
-    this.colors = createAnsiTheme(theme);
-    this.loader = new BorderedLoader(tui, theme, "Loading usage...");
-    this.loader.onAbort = () => done();
-
-    dataLoader(this.loader.signal)
-      .then((data) => {
-        if (this.loader.signal.aborted) return;
-        this.component = new UsageComponent(
-          this.colors,
-          data,
-          () => tui.requestRender(),
-          done,
-        );
-        tui.requestRender();
-      })
-      .catch(() => {
-        if (this.loader.signal.aborted) return;
-        this.component = new UsageComponent(
-          this.colors,
-          {
-            rateLimits: [],
-            stats: {
-              today: emptyStats(),
-              thisWeek: emptyStats(),
-              allTime: emptyStats(),
-            },
-          },
-          () => tui.requestRender(),
-          done,
-        );
-        tui.requestRender();
-      });
-  }
-
-  handleInput(data: string): void {
-    if (this.component) {
-      this.component.handleInput(data);
-      return;
+    if (matchesKey(data, "shift+tab")) {
+      this.activeTab = (this.activeTab - 1 + tabs.length) % tabs.length;
+      this.scrollOffset = 0;
+      this.invalidate();
+      return true;
     }
-    this.loader.handleInput(data);
+
+    // Let current tab handle input first
+    const currentTab = tabs[this.activeTab];
+    if (currentTab?.onInput?.(data)) {
+      return true;
+    }
+
+    // Default scroll handling
+    const maxVisible = 20;
+    const totalLines = this.cachedLines?.length ?? 0;
+    const maxScroll = Math.max(0, totalLines - maxVisible);
+
+    if (data === "j" || matchesKey(data, "down")) {
+      if (this.scrollOffset < maxScroll) {
+        this.scrollOffset++;
+      }
+      return true;
+    }
+
+    if (data === "k" || matchesKey(data, "up")) {
+      if (this.scrollOffset > 0) {
+        this.scrollOffset--;
+      }
+      return true;
+    }
+
+    if (data === " " || matchesKey(data, "pageDown")) {
+      this.scrollOffset = Math.min(this.scrollOffset + maxVisible, maxScroll);
+      return true;
+    }
+
+    if (matchesKey(data, "pageUp")) {
+      this.scrollOffset = Math.max(0, this.scrollOffset - maxVisible);
+      return true;
+    }
+
+    return false;
   }
 
   render(width: number): string[] {
-    if (this.component) return this.component.render(width);
-    return this.loader.render(width);
+    const tabs = this.getTabs();
+    const contentWidth = Math.max(1, width - 2);
+    const theme = this.theme;
+
+    if (!this.cachedLines || this.cachedWidth !== width) {
+      const tab = tabs[this.activeTab];
+      this.cachedLines = tab ? tab.buildContent(contentWidth, theme) : [];
+      this.cachedWidth = width;
+    }
+
+    const maxVisible = 20;
+    const totalLines = this.cachedLines.length;
+    const lines: string[] = [];
+
+    // Border top
+    const borderChar = "─";
+    lines.push(theme.fg("border", borderChar.repeat(width)));
+
+    // Title
+    lines.push(
+      truncateToWidthSafe(
+        ` ${theme.fg("accent", theme.bold("Provider Usage"))}`,
+        width,
+        theme,
+      ),
+    );
+
+    // Tab bar
+    lines.push(this.renderTabBar(width, theme, tabs));
+    lines.push("");
+
+    // Scroll indicator (top)
+    if (this.scrollOffset > 0) {
+      lines.push(
+        truncateToWidthSafe(
+          theme.fg("dim", `  ↑ ${this.scrollOffset} lines above`),
+          width,
+          theme,
+        ),
+      );
+    } else {
+      lines.push("");
+    }
+
+    // Content
+    const end = Math.min(this.scrollOffset + maxVisible, totalLines);
+    for (let i = this.scrollOffset; i < end; i++) {
+      lines.push(
+        truncateToWidthSafe(`  ${this.cachedLines[i] ?? ""}`, width, theme),
+      );
+    }
+
+    // Fill empty lines
+    const shown = end - this.scrollOffset;
+    for (let i = shown; i < maxVisible; i++) {
+      lines.push("");
+    }
+
+    // Scroll indicator (bottom)
+    const remaining = totalLines - this.scrollOffset - maxVisible;
+    if (remaining > 0) {
+      lines.push(
+        truncateToWidthSafe(
+          theme.fg("dim", `  ↓ ${remaining} lines below`),
+          width,
+          theme,
+        ),
+      );
+    } else {
+      lines.push("");
+    }
+
+    // Footer
+    lines.push("");
+    const footer = this.renderFooter(width, tabs, remaining > 0);
+    lines.push(truncateToWidthSafe(footer, width, theme));
+
+    // Border bottom
+    lines.push(theme.fg("border", borderChar.repeat(width)));
+
+    return ensureWidth(lines, width, theme);
+  }
+
+  private renderTabBar(width: number, theme: Theme, tabs: PanelTab[]): string {
+    const parts: string[] = [];
+
+    for (let i = 0; i < tabs.length; i++) {
+      const tab = tabs[i];
+      if (!tab) continue;
+      const active = i === this.activeTab;
+
+      if (active) {
+        parts.push(theme.fg("accent", theme.bold(` ${tab.label} `)));
+      } else {
+        parts.push(theme.fg("dim", ` ${tab.label} `));
+      }
+
+      if (i < tabs.length - 1) {
+        parts.push(theme.fg("borderMuted", "│"));
+      }
+    }
+
+    return truncateToWidthSafe(`  ${parts.join("")}`, width, theme);
+  }
+
+  private renderFooter(
+    width: number,
+    tabs: PanelTab[],
+    canScroll: boolean,
+  ): string {
+    const currentTab = tabs[this.activeTab];
+    const hasExpand = currentTab?.onInput !== undefined;
+
+    let left = "Tab/←/→ switch";
+    if (canScroll) left += "  j/k scroll";
+    if (hasExpand) left += "  Enter expand";
+
+    const right = "q close";
+
+    const leftWidth = visibleWidth(left);
+    const rightWidth = visibleWidth(right);
+    const gap = Math.max(2, width - leftWidth - rightWidth - 4);
+
+    return `  ${left}${" ".repeat(gap)}${right}`;
   }
 
   invalidate(): void {
-    this.component?.invalidate();
-  }
-
-  dispose(): void {
-    this.component?.dispose();
-    this.loader.dispose();
+    this.cachedLines = null;
+    this.cachedWidth = 0;
   }
 }
 
-function emptyStats(): TimeFilteredStats {
-  return {
-    providers: new Map(),
-    totals: {
-      sessions: 0,
-      messages: 0,
-      cost: 0,
-      tokens: { total: 0, input: 0, output: 0, cache: 0 },
-    },
-  };
-}
+// === Data loading ===
 
 async function loadUsageData(
   signal: AbortSignal,
@@ -867,6 +940,8 @@ async function loadUsageData(
   return { rateLimits, stats };
 }
 
+// === Command registration ===
+
 export function setupUsageCommand(pi: ExtensionAPI): void {
   pi.registerCommand("providers:usage", {
     description: "Show usage statistics dashboard",
@@ -877,13 +952,69 @@ export function setupUsageCommand(pi: ExtensionAPI): void {
       }
 
       const authStorage = cmdCtx.modelRegistry.authStorage;
+      const activeProvider = cmdCtx.model?.provider;
+
       const result = await cmdCtx.ui.custom((tui, theme, _kb, done) => {
-        return new UsageContainer(
-          tui,
-          theme,
-          (signal) => loadUsageData(signal, authStorage),
-          () => done(undefined),
-        );
+        // Show loader while fetching data
+        const loader = new BorderedLoader(tui, theme, "Loading usage...");
+        loader.onAbort = () => done(undefined);
+
+        let panel: ProvidersUsagePanel | null = null;
+
+        loadUsageData(loader.signal, authStorage)
+          .then((data) => {
+            if (loader.signal.aborted) return;
+            panel = new ProvidersUsagePanel(
+              tui,
+              theme,
+              data,
+              activeProvider,
+              () => done(undefined),
+            );
+            tui.requestRender();
+          })
+          .catch(() => {
+            if (loader.signal.aborted) return;
+            // Show empty data on error
+            const emptyData: UsageData = {
+              rateLimits: [],
+              stats: {
+                today: emptyStats(),
+                thisWeek: emptyStats(),
+                allTime: emptyStats(),
+              },
+            };
+            panel = new ProvidersUsagePanel(
+              tui,
+              theme,
+              emptyData,
+              activeProvider,
+              () => done(undefined),
+            );
+            tui.requestRender();
+          });
+
+        return {
+          handleInput: (data: string) => {
+            if (panel) {
+              return panel.handleInput(data);
+            }
+            return loader.handleInput(data);
+          },
+          render: (width: number) => {
+            if (panel) {
+              return panel.render(width);
+            }
+            return loader.render(width);
+          },
+          invalidate: () => {
+            panel?.invalidate();
+            loader.invalidate();
+          },
+          dispose: () => {
+            loader.dispose();
+          },
+        };
       });
 
       // RPC fallback
@@ -892,4 +1023,16 @@ export function setupUsageCommand(pi: ExtensionAPI): void {
       }
     },
   });
+}
+
+function emptyStats(): TimeFilteredStats {
+  return {
+    providers: new Map(),
+    totals: {
+      sessions: 0,
+      messages: 0,
+      cost: 0,
+      tokens: { total: 0, input: 0, output: 0, cache: 0 },
+    },
+  };
 }

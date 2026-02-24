@@ -51,11 +51,15 @@ function createTimeoutSignal(
 export async function fetchClaudeRateLimits(
   authStorage: AuthStorage,
   signal?: AbortSignal,
+  providerId?: string,
 ): Promise<ProviderRateLimits> {
-  const token = await authStorage.getApiKey("anthropic");
+  // Use providerId if specified (for accounts), otherwise default to base provider
+  const authKey = providerId ?? "anthropic";
+  const token = await authStorage.getApiKey(authKey);
   if (!token) {
     return {
-      provider: "Claude",
+      provider: "Claude Plan",
+      providerId: authKey,
       status: "unknown",
       windows: [],
       error: "Not configured",
@@ -147,7 +151,8 @@ export async function fetchClaudeRateLimits(
   }
 
   return {
-    provider: "Claude",
+    provider: "Claude Plan",
+    providerId: authKey,
     status,
     statusMessage,
     windows,
