@@ -8,7 +8,6 @@ import type {
 import { type Component, truncateToWidth } from "@mariozechner/pi-tui";
 import {
   configLoader,
-  getBaseProvider,
   getProviderDisplayName,
   getProviderSettings,
   type ProviderKey,
@@ -51,8 +50,7 @@ function getProviderKey(model: Model<any> | undefined): ProviderKey | null {
   if (provider === "openai-codex") return "openai-codex";
   if (provider === "synthetic") return "synthetic";
 
-  // Check for account pattern (e.g., "openai-codex-work")
-  return getBaseProvider(provider);
+  return null;
 }
 
 /**
@@ -138,19 +136,17 @@ function filterClaudeWindows(
 
 /**
  * Fetches rate limits for a specific provider.
- * For accounts, pass the account ID as providerId.
  */
 async function fetchProviderRateLimits(
   providerKey: ProviderKey,
   authStorage: AuthStorage,
   signal?: AbortSignal,
-  providerId?: string,
 ): Promise<ProviderRateLimits | null> {
   switch (providerKey) {
     case "anthropic":
-      return fetchClaudeRateLimits(authStorage, signal, providerId);
+      return fetchClaudeRateLimits(authStorage, signal);
     case "openai-codex":
-      return fetchCodexRateLimits(authStorage, signal, providerId);
+      return fetchCodexRateLimits(authStorage, signal);
     case "synthetic":
       return fetchSyntheticRateLimits(signal);
     default:
@@ -348,7 +344,7 @@ class UsageBarWidget implements Component {
 
     // Filter windows for Claude based on current model family
     const windows =
-      getBaseProvider(this.providerId) === "anthropic"
+      this.providerId === "anthropic"
         ? filterClaudeWindows(this.limits.windows, this.modelFamily)
         : this.limits.windows;
 
@@ -399,7 +395,7 @@ function computeVisibility(
   if (limits.error) return true;
 
   const windows =
-    getBaseProvider(providerId) === "anthropic"
+    providerId === "anthropic"
       ? filterClaudeWindows(limits.windows, modelFamily)
       : limits.windows;
 
@@ -522,8 +518,6 @@ async function refreshRateLimits(
     const limits = await fetchProviderRateLimits(
       providerKey,
       ctx.modelRegistry.authStorage,
-      undefined,
-      providerId,
     );
     if (limits) {
       cachedLimits = limits;

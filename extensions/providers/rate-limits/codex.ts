@@ -56,22 +56,19 @@ function normalizeWindowSeconds(seconds?: number | null): number | undefined {
 export async function fetchCodexRateLimits(
   authStorage: AuthStorage,
   signal?: AbortSignal,
-  providerId?: string,
 ): Promise<ProviderRateLimits> {
-  // Use providerId if specified (for accounts), otherwise default to base provider
-  const authKey = providerId ?? "openai-codex";
-  const token = await authStorage.getApiKey(authKey);
+  const token = await authStorage.getApiKey("openai-codex");
   if (!token) {
     return {
       provider: "Codex Plan",
-      providerId: authKey,
+      providerId: "openai-codex",
       status: "unknown",
       windows: [],
       error: "Not configured",
     };
   }
 
-  const credential = authStorage.get(authKey) as
+  const credential = authStorage.get("openai-codex") as
     | { accountId?: string; account_id?: string }
     | undefined;
   const accountId = credential?.accountId ?? credential?.account_id;
@@ -184,7 +181,7 @@ export async function fetchCodexRateLimits(
 
   return {
     provider: "Codex Plan",
-    providerId: authKey,
+    providerId: "openai-codex",
     plan,
     status,
     statusMessage,

@@ -150,19 +150,17 @@ function getClaudeModelFamily(
 
 /**
  * Fetches rate limits for a specific provider.
- * For accounts, pass the account ID as providerId.
  */
 async function fetchProviderRateLimits(
   providerKey: ProviderKey,
   authStorage: AuthStorage,
   signal?: AbortSignal,
-  providerId?: string,
 ): Promise<ProviderRateLimits | null> {
   switch (providerKey) {
     case "anthropic":
-      return fetchClaudeRateLimits(authStorage, signal, providerId);
+      return fetchClaudeRateLimits(authStorage, signal);
     case "openai-codex":
-      return fetchCodexRateLimits(authStorage, signal, providerId);
+      return fetchCodexRateLimits(authStorage, signal);
     case "synthetic":
       return fetchSyntheticRateLimits(signal);
     default:
@@ -280,13 +278,7 @@ async function checkAndWarnRateLimits(
   const authStorage = ctx.modelRegistry.authStorage;
 
   try {
-    const providerId = model?.provider;
-    const limits = await fetchProviderRateLimits(
-      providerKey,
-      authStorage,
-      undefined,
-      providerId,
-    );
+    const limits = await fetchProviderRateLimits(providerKey, authStorage);
     if (!limits) return;
 
     // Verify model hasn't changed during the async check

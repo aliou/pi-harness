@@ -17,7 +17,6 @@ export interface ProviderRateLimits {
   statusMessage?: string;
   windows: RateLimitWindow[];
   error?: string;
-  accountId?: string; // Set if this is an account provider
 }
 
 // === Stats tabs types ===

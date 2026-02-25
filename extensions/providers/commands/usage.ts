@@ -141,7 +141,7 @@ function buildSessionTabContent(
 
   // Filter out providers with widget: "never"
   const visibleProviders = data.rateLimits.filter((provider) => {
-    const id = provider.providerId ?? provider.accountId;
+    const id = provider.providerId;
     if (!id) return true;
     const settings = getProviderSettings(id);
     return settings.widget !== "never";
