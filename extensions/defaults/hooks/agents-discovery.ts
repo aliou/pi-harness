@@ -88,9 +88,10 @@ export function setupAgentsDiscoveryHook(
 
     // Send custom messages for each discovered AGENTS.md
     for (const file of discovered) {
+      const wrapped = `Automated AGENTS.md file read\n<agents_md>${file.content}</agents_md>`;
       pi.sendMessage({
         customType: AGENTS_DISCOVERY_MESSAGE_TYPE,
-        content: file.content,
+        content: wrapped,
         display: true,
         details: { path: file.path, content: file.content },
       });

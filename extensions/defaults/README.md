@@ -24,6 +24,7 @@ Pi's built-in discovery only loads AGENTS.md files from the cwd and its ancestor
 - Sends messages that are visible in the session history (persisted through compaction)
 - Collapsed display: "[AGENTS] ~/path/to/AGENTS.md" (accent/bold label, muted path)
 - Expanded display: markdown-rendered content of the AGENTS.md file below the header
+- Message content is wrapped in `<agents_md>` XML tags with "Automated AGENTS.md file read" prefix
 - Deduplicates per session (each AGENTS.md injected at most once)
 - Resets on session start/switch
 - Skips cwd's own AGENTS.md (already loaded by Pi)
