@@ -103,18 +103,6 @@ importers:
         specifier: 0.53.0
         version: 0.53.0(ws@8.19.0)(zod@3.25.76)
 
-  extensions/extension-dev:
-    dependencies:
-      '@mariozechner/pi-coding-agent':
-        specifier: 0.53.0
-        version: 0.53.0(ws@8.19.0)(zod@3.25.76)
-
-  extensions/guardrails:
-    dependencies:
-      '@mariozechner/pi-coding-agent':
-        specifier: 0.53.0
-        version: 0.53.0(ws@8.19.0)(zod@3.25.76)
-
   extensions/introspection:
     dependencies:
       '@aliou/pi-utils-ui':
@@ -145,18 +133,6 @@ importers:
         specifier: 0.53.0
         version: 0.53.0(ws@8.19.0)(zod@3.25.76)
 
-  extensions/presenter:
-    dependencies:
-      '@mariozechner/pi-coding-agent':
-        specifier: 0.53.0
-        version: 0.53.0(ws@8.19.0)(zod@3.25.76)
-
-  extensions/processes:
-    dependencies:
-      '@mariozechner/pi-coding-agent':
-        specifier: 0.53.0
-        version: 0.53.0(ws@8.19.0)(zod@3.25.76)
-
   extensions/providers:
     dependencies:
       '@aliou/pi-utils-settings':
@@ -182,12 +158,6 @@ importers:
         version: 0.53.0(ws@8.19.0)(zod@3.25.76)
 
   extensions/the-dumb-zone:
-    dependencies:
-      '@mariozechner/pi-coding-agent':
-        specifier: 0.53.0
-        version: 0.53.0(ws@8.19.0)(zod@3.25.76)
-
-  extensions/toolchain:
     dependencies:
       '@mariozechner/pi-coding-agent':
         specifier: 0.53.0

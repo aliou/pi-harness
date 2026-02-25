@@ -21,8 +21,8 @@ To install selectively (or disable specific extensions), edit your `settings.jso
     {
       "source": "git:github.com/aliou/pi-extensions",
       "extensions": [
-        "extensions/processes/index.ts",
         "extensions/defaults/index.ts",
+        "extensions/providers/index.ts",
         "!extensions/the-dumb-zone/index.ts"
       ]
     }
@@ -45,13 +45,12 @@ Standalone extensions published to npm, each in their own repo.
 
 | Extension | Description | README |
 |-----------|-------------|--------|
+| breadcrumbs | Session history tools (search, extract info, handoff) | [README](extensions/breadcrumbs/README.md) |
 | defaults | Sensible defaults and quality-of-life improvements | [README](extensions/defaults/README.md) |
-| mac-app | macOS UI automation via Accessibility | [README](extensions/mac-app/README.md) |
+| introspection | Inspect Pi agent internals: system prompt, tools, skills, and context usage | [README](extensions/introspection/README.md) |
 | neovim | Bidirectional Neovim integration (editor context, file reload, LSP diagnostics) | [README](extensions/neovim/README.md) |
 | planning | Save and execute implementation plans | [README](extensions/planning/README.md) |
-| presenter | Terminal notifications, title updates, sounds | [README](extensions/presenter/README.md) |
 | providers | Providers and usage dashboard (rate limits, session stats) | [README](extensions/providers/README.md) |
-| breadcrumbs | Session history tools (search, extract info, handoff) | [README](extensions/breadcrumbs/README.md) |
 | subagents | Framework for spawning specialized subagents (scout, oracle, reviewer, etc.) | [README](extensions/subagents/README.md) |
 | the-dumb-zone | Context window degradation warning | [README](extensions/the-dumb-zone/README.md) |
 
