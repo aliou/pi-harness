@@ -55,4 +55,10 @@ Create `~/.pi/agent/extensions/breadcrumbs.json` or `.pi/extensions/breadcrumbs.
 
 ## Session Protection
 
-The extension blocks direct agent access to the sessions directory (`~/.pi/agent/sessions`). Agents must use `find_sessions` and `read_session` tools instead.
+The extension gates direct agent access to the sessions directory (`~/.pi/agent/sessions`).
+
+- Direct **read** attempts trigger a user confirmation prompt (UI required). Approval is remembered for the rest of the current Pi session.
+- Direct **write/edit** attempts remain blocked.
+- Direct **bash** commands referencing the sessions directory remain blocked.
+
+Agents should prefer `find_sessions` and `read_session` instead of reading raw session JSONL.
