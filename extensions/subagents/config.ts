@@ -90,7 +90,7 @@ export interface ResolvedSubagentsConfig {
 }
 
 const DEFAULT_SCOUT_WEB_CONFIG: ResolvedScoutWebConfig = {
-  searchOrder: ["exa", "linkup", "synthetic"],
+  searchOrder: ["synthetic", "exa", "linkup"],
   fetchOrder: ["exa", "linkup"],
   providers: {
     exa: { enabled: true, searchMode: "auto" },
