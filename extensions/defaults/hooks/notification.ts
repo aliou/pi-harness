@@ -15,10 +15,26 @@ import type {
 
 const DEFAULT_SOUND = "/System/Library/Sounds/Blow.aiff";
 const ATTENTION_SOUND = "/System/Library/Sounds/Ping.aiff";
-const GUARDRAILS_DANGEROUS_EVENT = "guardrails:dangerous";
 
-interface GuardrailsDangerousEvent {
+const AD_NOTIFY_DANGEROUS_EVENT = "ad:notify:dangerous";
+const AD_NOTIFY_ATTENTION_EVENT = "ad:notify:attention";
+const AD_NOTIFY_DONE_EVENT = "ad:notify:done";
+const GUARDRAILS_DANGEROUS_EVENT = "guardrails:dangerous"; // compat
+
+interface DangerousEvent {
   description: string;
+}
+
+interface AttentionEvent {
+  description?: string;
+  reason?: string;
+}
+
+interface DoneEvent {
+  summary?: string;
+  status?: "ok" | "error";
+  loops?: number;
+  toolCalls?: number;
 }
 
 type ToolCallHandler = (
@@ -89,6 +105,36 @@ function notify(ctx: ExtensionContext, message: string, sound?: string): void {
   if (sound) playSound(sound);
 }
 
+function handleDangerousLikeEvent(
+  lastCtx: ExtensionContext | undefined,
+  data: unknown,
+): void {
+  if (!lastCtx) return;
+  const event = data as DangerousEvent;
+  const message = `Dangerous command detected: ${event.description}`;
+  notify(lastCtx, message, ATTENTION_SOUND);
+}
+
+function handleAttentionEvent(
+  lastCtx: ExtensionContext | undefined,
+  data: unknown,
+): void {
+  if (!lastCtx) return;
+  const event = data as AttentionEvent;
+  const message = event.description ?? event.reason ?? "Waiting for user input";
+  notify(lastCtx, message, ATTENTION_SOUND);
+}
+
+function handleDoneEvent(
+  lastCtx: ExtensionContext | undefined,
+  data: unknown,
+): void {
+  if (!lastCtx) return;
+  const event = data as DoneEvent;
+  const message = event.summary ?? "done";
+  notify(lastCtx, message, DEFAULT_SOUND);
+}
+
 export function setupNotificationHook(pi: ExtensionAPI) {
   let loopCount = 0;
   let toolCallCount = 0;
@@ -151,9 +197,15 @@ export function setupNotificationHook(pi: ExtensionAPI) {
     const wasRunning = loopCount > 0;
 
     if (wasRunning) {
-      const status = hadError ? "with errors" : "done";
-      const message = `${status} - ${loopCount} loops, ${toolCallCount} tools`;
-      notify(ctx, message, DEFAULT_SOUND);
+      const status = hadError ? "error" : "ok";
+      const summary = `${hadError ? "with errors" : "done"} - ${loopCount} loops, ${toolCallCount} tools`;
+      pi.events.emit(AD_NOTIFY_DONE_EVENT, {
+        source: "defaults:notification",
+        status,
+        loops: loopCount,
+        toolCalls: toolCallCount,
+        summary,
+      });
     }
 
     // Reset counters for next run
@@ -162,11 +214,20 @@ export function setupNotificationHook(pi: ExtensionAPI) {
     hadError = false;
   });
 
-  // Keep compatibility with guardrails dangerous-event notifications
+  pi.events.on(AD_NOTIFY_DANGEROUS_EVENT, (data: unknown) => {
+    handleDangerousLikeEvent(lastCtx, data);
+  });
+
+  // Keep temporary compatibility with guardrails emitter.
   pi.events.on(GUARDRAILS_DANGEROUS_EVENT, (data: unknown) => {
-    if (!lastCtx) return;
-    const event = data as GuardrailsDangerousEvent;
-    const message = `Dangerous command detected: ${event.description}`;
-    notify(lastCtx, message, ATTENTION_SOUND);
+    handleDangerousLikeEvent(lastCtx, data);
+  });
+
+  pi.events.on(AD_NOTIFY_ATTENTION_EVENT, (data: unknown) => {
+    handleAttentionEvent(lastCtx, data);
+  });
+
+  pi.events.on(AD_NOTIFY_DONE_EVENT, (data: unknown) => {
+    handleDoneEvent(lastCtx, data);
   });
 }

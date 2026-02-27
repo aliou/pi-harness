@@ -32,6 +32,10 @@ export interface UpdateSelectorResult {
   confirmed: boolean;
 }
 
+export interface UpdateSelectorOptions {
+  onSelectionReady?: () => void;
+}
+
 /**
  * Container that shows a loader while checking for updates, then swaps in a
  * FuzzyMultiSelector when results are ready.
@@ -51,6 +55,7 @@ class UpdateView extends Container {
   constructor(
     tui: TUI,
     private theme: Theme,
+    private options?: UpdateSelectorOptions,
   ) {
     super();
 
@@ -144,6 +149,7 @@ class UpdateView extends Container {
 
     this.buildSelectorLayout();
     this.invalidate();
+    this.options?.onSelectionReady?.();
   }
 
   private finish(message: string, confirmed: boolean): void {
@@ -223,11 +229,12 @@ class UpdateView extends Container {
 
 export async function selectUpdates(
   ctx: ExtensionContext,
+  options?: UpdateSelectorOptions,
 ): Promise<UpdateSelectorResult | undefined> {
   if (!ctx.hasUI) return undefined;
 
   return ctx.ui.custom<UpdateSelectorResult>((tui, theme, _kb, done) => {
-    const view = new UpdateView(tui, theme);
+    const view = new UpdateView(tui, theme, options);
     view.onDone = done;
     return view;
   });

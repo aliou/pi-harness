@@ -8,6 +8,8 @@ import type { ExtensionAPI } from "@mariozechner/pi-coding-agent";
 import { selectUpdates } from "../components/update-selector";
 import { applyUpdates } from "../lib/update";
 
+const AD_NOTIFY_ATTENTION_EVENT = "ad:notify:attention";
+
 export function registerDefaultsUpdateCommand(pi: ExtensionAPI): void {
   pi.registerCommand("defaults:update", {
     description: "Check for pinned package updates and apply selected ones",
@@ -17,7 +19,15 @@ export function registerDefaultsUpdateCommand(pi: ExtensionAPI): void {
         return;
       }
 
-      const selection = await selectUpdates(ctx);
+      const selection = await selectUpdates(ctx, {
+        onSelectionReady: () => {
+          pi.events.emit(AD_NOTIFY_ATTENTION_EVENT, {
+            source: "defaults:update",
+            reason: "Update selection requires user input",
+            description: "Select updates to apply",
+          });
+        },
+      });
 
       if (!selection || !selection.confirmed) {
         return;

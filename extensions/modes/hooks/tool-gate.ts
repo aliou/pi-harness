@@ -4,7 +4,8 @@ import type {
   ExtensionContext,
 } from "@mariozechner/pi-coding-agent";
 
-const GUARDRAILS_DANGEROUS_EVENT = "guardrails:dangerous";
+const AD_NOTIFY_DANGEROUS_EVENT = "ad:notify:dangerous";
+const GUARDRAILS_DANGEROUS_EVENT = "guardrails:dangerous"; // compat
 
 import { showModeConfirmDialog } from "../components/mode-confirm";
 import {
@@ -70,11 +71,15 @@ function emitDangerousEvent(
   description: string,
   command = "",
 ): void {
-  pi.events.emit(GUARDRAILS_DANGEROUS_EVENT, {
+  const payload = {
+    source: "modes:tool-gate",
     command,
     description,
     pattern: "(mode-gate)",
-  });
+  };
+
+  pi.events.emit(AD_NOTIFY_DANGEROUS_EVENT, payload);
+  pi.events.emit(GUARDRAILS_DANGEROUS_EVENT, payload);
 }
 
 async function confirmUnlistedTool(
