@@ -1,4 +1,5 @@
 packages:
   - "extensions/*"
+  - "integrations/*"
   - "packages/*"
   - "themes/*"

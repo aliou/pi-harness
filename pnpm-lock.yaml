@@ -121,15 +121,6 @@ importers:
         specifier: 0.53.0
         version: 0.53.0
 
-  extensions/neovim:
-    dependencies:
-      '@aliou/pi-utils-ui':
-        specifier: workspace:^
-        version: link:../../packages/ui
-      '@mariozechner/pi-coding-agent':
-        specifier: 0.53.0
-        version: 0.53.0(ws@8.19.0)(zod@3.25.76)
-
   extensions/planning:
     dependencies:
       '@aliou/pi-utils-settings':
@@ -168,6 +159,15 @@ importers:
 
   extensions/the-dumb-zone:
     dependencies:
+      '@mariozechner/pi-coding-agent':
+        specifier: 0.53.0
+        version: 0.53.0(ws@8.19.0)(zod@3.25.76)
+
+  integrations/neovim:
+    dependencies:
+      '@aliou/pi-utils-ui':
+        specifier: workspace:^
+        version: link:../../packages/ui
       '@mariozechner/pi-coding-agent':
         specifier: 0.53.0
         version: 0.53.0(ws@8.19.0)(zod@3.25.76)
