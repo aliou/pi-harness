@@ -69,7 +69,7 @@ const migrations: Migration<ExampleConfig>[] = [
     shouldRun: (config) => "fontsize" in (config.appearance ?? {}),
     run: (config) => {
       const appearance = config.appearance ?? {};
-      const fontSize = (appearance as Record<string, unknown>)["fontsize"];
+      const fontSize = (appearance as Record<string, unknown>).fontsize;
       const { fontsize: _, ...rest } = appearance as Record<string, unknown>;
       return {
         ...config,
