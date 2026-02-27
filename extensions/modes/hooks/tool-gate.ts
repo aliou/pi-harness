@@ -3,6 +3,9 @@ import type {
   ExtensionAPI,
   ExtensionContext,
 } from "@mariozechner/pi-coding-agent";
+
+const GUARDRAILS_DANGEROUS_EVENT = "guardrails:dangerous";
+
 import { showModeConfirmDialog } from "../components/mode-confirm";
 import {
   addSessionAllowedTool,
@@ -62,6 +65,18 @@ function formatNoUiReason(modeName: string, toolName: string): string {
   return `Blocked by ${modeName} mode: ${toolName} is not allowlisted (no UI to confirm)`;
 }
 
+function emitDangerousEvent(
+  pi: ExtensionAPI,
+  description: string,
+  command = "",
+): void {
+  pi.events.emit(GUARDRAILS_DANGEROUS_EVENT, {
+    command,
+    description,
+    pattern: "(mode-gate)",
+  });
+}
+
 async function confirmUnlistedTool(
   ctx: ExtensionContext,
   modeName: string,
@@ -81,6 +96,14 @@ export function setupToolGateHook(pi: ExtensionAPI): void {
     }
 
     if (mode.deniedTools.includes(event.toolName)) {
+      if (event.toolName === "bash") {
+        emitDangerousEvent(
+          pi,
+          `Blocked by ${mode.name} mode: bash is denied`,
+          getBashCommand(event.input),
+        );
+      }
+
       return {
         block: true,
         reason: formatBlockedReason(mode.name, event.toolName),
@@ -125,6 +148,12 @@ export function setupToolGateHook(pi: ExtensionAPI): void {
         reason: formatNoUiReason(mode.name, event.toolName),
       };
     }
+
+    emitDangerousEvent(
+      pi,
+      `Confirmation required by ${mode.name} mode: ${event.toolName} is not allowlisted`,
+      event.toolName === "bash" ? bashCommand : event.toolName,
+    );
 
     const decision = await confirmUnlistedTool(
       ctx,
