@@ -112,6 +112,15 @@ importers:
         specifier: 0.53.0
         version: 0.53.0(ws@8.19.0)(zod@3.25.76)
 
+  extensions/modes:
+    dependencies:
+      '@mariozechner/pi-coding-agent':
+        specifier: 0.53.0
+        version: 0.53.0(ws@8.19.0)(zod@3.25.76)
+      '@mariozechner/pi-tui':
+        specifier: 0.53.0
+        version: 0.53.0
+
   extensions/neovim:
     dependencies:
       '@aliou/pi-utils-ui':

@@ -48,6 +48,7 @@ Standalone extensions published to npm, each in their own repo.
 | breadcrumbs | Session history tools (search, extract info, handoff) | [README](extensions/breadcrumbs/README.md) |
 | defaults | Sensible defaults and quality-of-life improvements | [README](extensions/defaults/README.md) |
 | introspection | Inspect Pi agent internals: system prompt, tools, skills, and context usage | [README](extensions/introspection/README.md) |
+| modes | Hardcoded execution modes with tool gating, model defaults, and branch-aware restore | [README](extensions/modes/README.md) |
 | neovim | Bidirectional Neovim integration (editor context, file reload, LSP diagnostics) | [README](extensions/neovim/README.md) |
 | planning | Save and execute implementation plans | [README](extensions/planning/README.md) |
 | providers | Providers and usage dashboard (rate limits, session stats) | [README](extensions/providers/README.md) |
