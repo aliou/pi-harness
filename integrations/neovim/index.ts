@@ -10,17 +10,18 @@
  */
 
 import type { ExtensionAPI } from "@mariozechner/pi-coding-agent";
+import { registerRenderers } from "./components";
 import { type NvimConnectionState, setupNvimHooks } from "./hooks";
 import { setupNvimTools } from "./tools";
 
 export default function nvimContextExtension(pi: ExtensionAPI) {
-  // Shared connection state between hook and tool
   const state: NvimConnectionState = {
     socket: null,
     lockfile: null,
     modifiedFilesThisTurn: new Set(),
   };
 
+  registerRenderers(pi);
   setupNvimTools(pi, state);
   setupNvimHooks(pi, state);
 }

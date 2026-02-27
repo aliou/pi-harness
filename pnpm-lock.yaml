@@ -171,6 +171,9 @@ importers:
       '@mariozechner/pi-coding-agent':
         specifier: 0.53.0
         version: 0.53.0(ws@8.19.0)(zod@3.25.76)
+      '@mariozechner/pi-tui':
+        specifier: 0.53.0
+        version: 0.53.0
 
   packages/agent-kit:
     dependencies:

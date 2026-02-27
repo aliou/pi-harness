@@ -180,6 +180,12 @@ export function registerNvimContextHook(
 
     const instances = discoverNvim(ctx.cwd);
     if (instances.length === 0) {
+      pi.sendMessage({
+        customType: "nvim-connection",
+        content: "nvim: no instance found",
+        display: true,
+        details: { status: "none" },
+      });
       return;
     }
 
@@ -208,7 +214,15 @@ export function registerNvimContextHook(
       );
 
       if (!selected) {
-        ctx.ui.notify("nvim: No instance selected", "info");
+        pi.sendMessage({
+          customType: "nvim-connection",
+          content: `nvim: ${instances.length} instances found, none selected`,
+          display: true,
+          details: {
+            status: "multiple",
+            instanceCount: instances.length,
+          },
+        });
         return;
       }
 
@@ -223,16 +237,22 @@ export function registerNvimContextHook(
     }
 
     if (!selectedInstance) {
-      ctx.ui.notify("nvim: No instance available", "warning");
       return;
     }
 
     state.socket = selectedInstance.lockfile.socket;
     state.lockfile = selectedInstance.lockfilePath;
-    ctx.ui.notify(
-      `nvim: Connected to Neovim (PID ${selectedInstance.lockfile.pid})`,
-      "info",
-    );
+
+    pi.sendMessage({
+      customType: "nvim-connection",
+      content: `nvim: connected (PID ${selectedInstance.lockfile.pid})`,
+      display: true,
+      details: {
+        status: "connected",
+        pid: selectedInstance.lockfile.pid,
+        socket: selectedInstance.lockfile.socket,
+      },
+    });
 
     // Notify Neovim via RPC
     try {
