@@ -37,16 +37,14 @@ export function formatResetTime(date: Date | null, timezone?: string): string {
     timeZone: tz,
   };
   if (isToday) {
-    const time = date.toLocaleTimeString(undefined, timeFormat).toLowerCase();
-    return `${time} (${tz})`;
+    return date.toLocaleTimeString(undefined, timeFormat).toLowerCase();
   }
   const dateFormat: Intl.DateTimeFormatOptions = {
     month: "short",
     day: "numeric",
     ...timeFormat,
   };
-  const formatted = date.toLocaleString(undefined, dateFormat).toLowerCase();
-  return `${formatted} (${tz})`;
+  return date.toLocaleString(undefined, dateFormat).toLowerCase();
 }
 
 export function padLeft(value: string, len: number): string {
