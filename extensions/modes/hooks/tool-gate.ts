@@ -70,12 +70,16 @@ function emitDangerousEvent(
   pi: ExtensionAPI,
   description: string,
   command = "",
+  toolName?: string,
+  toolCallId?: string,
 ): void {
   const payload = {
     source: "modes:tool-gate",
     command,
     description,
     pattern: "(mode-gate)",
+    toolName,
+    toolCallId,
   };
 
   pi.events.emit(AD_NOTIFY_DANGEROUS_EVENT, payload);
@@ -106,6 +110,8 @@ export function setupToolGateHook(pi: ExtensionAPI): void {
           pi,
           `Blocked by ${mode.name} mode: bash is denied`,
           getBashCommand(event.input),
+          event.toolName,
+          event.toolCallId,
         );
       }
 
@@ -158,6 +164,8 @@ export function setupToolGateHook(pi: ExtensionAPI): void {
       pi,
       `Confirmation required by ${mode.name} mode: ${event.toolName} is not allowlisted`,
       event.toolName === "bash" ? bashCommand : event.toolName,
+      event.toolName,
+      event.toolCallId,
     );
 
     const decision = await confirmUnlistedTool(

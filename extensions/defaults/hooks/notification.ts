@@ -24,11 +24,15 @@ const GUARDRAILS_DANGEROUS_EVENT = "guardrails:dangerous"; // compat
 
 interface DangerousEvent {
   description: string;
+  toolName?: string;
+  toolCallId?: string;
 }
 
 interface AttentionEvent {
   description?: string;
   reason?: string;
+  toolName?: string;
+  toolCallId?: string;
 }
 
 interface DoneEvent {
@@ -44,6 +48,7 @@ type AttentionTitleEvent = {
   source: string;
   action: "start" | "end";
   toolCallId?: string;
+  toolName?: string;
 };
 
 function isAgentRunAborted(event: unknown): boolean {
@@ -140,12 +145,14 @@ function emitAttentionTitleEvent(
   pi: ExtensionAPI,
   action: "start" | "end",
   toolCallId?: string,
+  toolName?: string,
 ): void {
   const payload: AttentionTitleEvent = {
     source: "defaults:notification",
     action,
   };
   if (toolCallId) payload.toolCallId = toolCallId;
+  if (toolName) payload.toolName = toolName;
   pi.events.emit(AD_TERMINAL_TITLE_ATTENTION_EVENT, payload);
 }
 
@@ -157,7 +164,7 @@ function handleDangerousLikeEvent(
   if (!lastCtx) return;
   const event = data as DangerousEvent;
   const message = `Dangerous command detected: ${event.description}`;
-  emitAttentionTitleEvent(pi, "start");
+  emitAttentionTitleEvent(pi, "start", event.toolCallId, event.toolName);
   notify(lastCtx, message, ATTENTION_SOUND);
 }
 
@@ -169,7 +176,7 @@ function handleAttentionEvent(
   if (!lastCtx) return;
   const event = data as AttentionEvent;
   const message = event.description ?? event.reason ?? "Waiting for user input";
-  emitAttentionTitleEvent(pi, "start");
+  emitAttentionTitleEvent(pi, "start", event.toolCallId, event.toolName);
   notify(lastCtx, message, ATTENTION_SOUND);
 }
 
@@ -215,7 +222,12 @@ export function setupNotificationHook(pi: ExtensionAPI) {
       const message = notification.handler(event, ctx);
       if (message) {
         if (notification.sound === ATTENTION_SOUND) {
-          emitAttentionTitleEvent(pi, "start", event.toolCallId);
+          emitAttentionTitleEvent(
+            pi,
+            "start",
+            event.toolCallId,
+            event.toolName,
+          );
         }
         notify(ctx, message, notification.sound);
       }
@@ -235,7 +247,7 @@ export function setupNotificationHook(pi: ExtensionAPI) {
         (n) => n.toolName === result.toolName,
       );
       if (startNotification?.sound === ATTENTION_SOUND) {
-        emitAttentionTitleEvent(pi, "end", result.toolCallId);
+        emitAttentionTitleEvent(pi, "end", result.toolCallId, result.toolName);
       }
 
       const notification = endNotifications.find(

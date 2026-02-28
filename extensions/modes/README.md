@@ -48,10 +48,12 @@ pi.events.emit("guardrails:dangerous", {
   command: string,
   description: string,
   pattern: string,
+  toolName?: string,
+  toolCallId?: string,
 });
 ```
 
-`defaults` listens for this event and plays the attention sound.
+`defaults` listens for this event, plays the attention sound, and uses `toolName`/`toolCallId` (when present) to keep terminal-title attention aligned with the exact triggering tool call.
 
 ## Notes
 

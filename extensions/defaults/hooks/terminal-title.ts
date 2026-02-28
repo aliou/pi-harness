@@ -104,6 +104,7 @@ function removeAttentionMarker(title: string): string {
 type AttentionTitleEvent = {
   action?: "start" | "end";
   toolCallId?: string;
+  toolName?: string;
 };
 
 export function setupTerminalTitleHook(pi: ExtensionAPI) {
@@ -172,6 +173,11 @@ export function setupTerminalTitleHook(pi: ExtensionAPI) {
     }
 
     if (!lastCtx) return;
-    updateTitle(lastCtx, currentTitle);
+
+    const baseTitle = event.toolName
+      ? `π: ${getContextName(lastCtx.cwd)} (${event.toolName})`
+      : currentTitle;
+
+    updateTitle(lastCtx, baseTitle);
   });
 }
