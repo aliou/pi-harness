@@ -38,6 +38,36 @@ interface DoneEvent {
   toolCalls?: number;
 }
 
+const AD_TERMINAL_TITLE_ATTENTION_EVENT = "ad:terminal-title:attention";
+
+type AttentionTitleEvent = {
+  source: string;
+  action: "start" | "end";
+  toolCallId?: string;
+};
+
+function isAgentRunAborted(event: unknown): boolean {
+  if (!event || typeof event !== "object") return false;
+
+  const messages = (event as { messages?: unknown }).messages;
+  if (!Array.isArray(messages)) return false;
+
+  for (let i = messages.length - 1; i >= 0; i--) {
+    const message = messages[i];
+    if (!message || typeof message !== "object") continue;
+
+    const role = (message as { role?: unknown }).role;
+    if (role !== "assistant") continue;
+
+    const stopReason = (message as { stopReason?: unknown }).stopReason;
+    return (
+      typeof stopReason === "string" && stopReason.toLowerCase() === "aborted"
+    );
+  }
+
+  return false;
+}
+
 type ToolCallHandler = (
   event: ToolCallEvent,
   ctx: ExtensionContext,
@@ -106,23 +136,40 @@ function notify(ctx: ExtensionContext, message: string, sound?: string): void {
   if (sound) playSound(sound);
 }
 
+function emitAttentionTitleEvent(
+  pi: ExtensionAPI,
+  action: "start" | "end",
+  toolCallId?: string,
+): void {
+  const payload: AttentionTitleEvent = {
+    source: "defaults:notification",
+    action,
+  };
+  if (toolCallId) payload.toolCallId = toolCallId;
+  pi.events.emit(AD_TERMINAL_TITLE_ATTENTION_EVENT, payload);
+}
+
 function handleDangerousLikeEvent(
+  pi: ExtensionAPI,
   lastCtx: ExtensionContext | undefined,
   data: unknown,
 ): void {
   if (!lastCtx) return;
   const event = data as DangerousEvent;
   const message = `Dangerous command detected: ${event.description}`;
+  emitAttentionTitleEvent(pi, "start");
   notify(lastCtx, message, ATTENTION_SOUND);
 }
 
 function handleAttentionEvent(
+  pi: ExtensionAPI,
   lastCtx: ExtensionContext | undefined,
   data: unknown,
 ): void {
   if (!lastCtx) return;
   const event = data as AttentionEvent;
   const message = event.description ?? event.reason ?? "Waiting for user input";
+  emitAttentionTitleEvent(pi, "start");
   notify(lastCtx, message, ATTENTION_SOUND);
 }
 
@@ -167,6 +214,9 @@ export function setupNotificationHook(pi: ExtensionAPI) {
     if (notification) {
       const message = notification.handler(event, ctx);
       if (message) {
+        if (notification.sound === ATTENTION_SOUND) {
+          emitAttentionTitleEvent(pi, "start", event.toolCallId);
+        }
         notify(ctx, message, notification.sound);
       }
     }
@@ -181,6 +231,13 @@ export function setupNotificationHook(pi: ExtensionAPI) {
     for (const result of event.toolResults) {
       if (result.isError) hadError = true;
 
+      const startNotification = startNotifications.find(
+        (n) => n.toolName === result.toolName,
+      );
+      if (startNotification?.sound === ATTENTION_SOUND) {
+        emitAttentionTitleEvent(pi, "end", result.toolCallId);
+      }
+
       const notification = endNotifications.find(
         (n) => n.toolName === result.toolName,
       );
@@ -193,11 +250,12 @@ export function setupNotificationHook(pi: ExtensionAPI) {
     }
   });
 
-  pi.on("agent_end", async (_event, ctx) => {
+  pi.on("agent_end", async (event, ctx) => {
     lastCtx = ctx;
     const wasRunning = loopCount > 0;
+    const wasAborted = isAgentRunAborted(event);
 
-    if (wasRunning) {
+    if (wasRunning && !wasAborted) {
       const status = hadError ? "error" : "ok";
       const summary = `${hadError ? "with errors" : "done"} - ${loopCount} loops, ${toolCallCount} tools`;
       pi.events.emit(AD_NOTIFY_DONE_EVENT, {
@@ -216,16 +274,16 @@ export function setupNotificationHook(pi: ExtensionAPI) {
   });
 
   pi.events.on(AD_NOTIFY_DANGEROUS_EVENT, (data: unknown) => {
-    handleDangerousLikeEvent(lastCtx, data);
+    handleDangerousLikeEvent(pi, lastCtx, data);
   });
 
   // Keep temporary compatibility with guardrails emitter.
   pi.events.on(GUARDRAILS_DANGEROUS_EVENT, (data: unknown) => {
-    handleDangerousLikeEvent(lastCtx, data);
+    handleDangerousLikeEvent(pi, lastCtx, data);
   });
 
   pi.events.on(AD_NOTIFY_ATTENTION_EVENT, (data: unknown) => {
-    handleAttentionEvent(lastCtx, data);
+    handleAttentionEvent(pi, lastCtx, data);
   });
 
   pi.events.on(AD_NOTIFY_DONE_EVENT, (data: unknown) => {
