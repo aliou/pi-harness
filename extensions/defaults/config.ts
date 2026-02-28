@@ -11,21 +11,18 @@ export interface DefaultsConfig {
   catalog?: string[];
   catalogDepth?: number;
   childProjectDepth?: number;
-  agentsIgnorePaths?: string[];
 }
 
 export interface ResolvedDefaultsConfig {
   catalog: string[];
   catalogDepth: number;
   childProjectDepth: number;
-  agentsIgnorePaths: string[];
 }
 
 const DEFAULT_CONFIG: ResolvedDefaultsConfig = {
   catalog: [],
   catalogDepth: 3,
   childProjectDepth: 2,
-  agentsIgnorePaths: [],
 };
 
 export const configLoader = new ConfigLoader<

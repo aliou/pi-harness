@@ -3,9 +3,6 @@
  * Provides /ad:settings to edit the catalog array.
  */
 
-import fs from "node:fs";
-import os from "node:os";
-import path from "node:path";
 import {
   PathArrayEditor,
   registerSettingsCommand,
@@ -17,14 +14,6 @@ import {
   type DefaultsConfig,
   type ResolvedDefaultsConfig,
 } from "../config";
-
-function expandTilde(inputPath: string): string {
-  if (inputPath === "~") return os.homedir();
-  if (inputPath.startsWith("~/")) {
-    return path.join(os.homedir(), inputPath.slice(2));
-  }
-  return inputPath;
-}
 
 export function registerDefaultsSettings(pi: ExtensionAPI): void {
   registerSettingsCommand<DefaultsConfig, ResolvedDefaultsConfig>(pi, {
@@ -43,9 +32,6 @@ export function registerDefaultsSettings(pi: ExtensionAPI): void {
       const catalog = tabConfig?.catalog ?? resolved.catalog;
 
       const catalogDepth = tabConfig?.catalogDepth ?? resolved.catalogDepth;
-      const agentsIgnorePaths =
-        tabConfig?.agentsIgnorePaths ?? resolved.agentsIgnorePaths;
-
       return [
         {
           label: "Catalog",
@@ -87,58 +73,6 @@ export function registerDefaultsSettings(pi: ExtensionAPI): void {
               values: ["1", "2", "3", "4", "5"],
               description:
                 "How many directory levels deep to scan for skills and packages.",
-            },
-          ],
-        },
-        {
-          label: "AGENTS Discovery",
-          items: [
-            {
-              id: "agentsIgnorePaths",
-              label: "Ignore paths",
-              currentValue:
-                agentsIgnorePaths.length === 0
-                  ? "none"
-                  : `${agentsIgnorePaths.length} path${agentsIgnorePaths.length === 1 ? "" : "s"}`,
-              description:
-                "Absolute/relative paths to ignore for AGENTS.md discovery. File path ignores one file; directory path ignores AGENTS.md files under that directory.",
-              submenu: (_current, done) => {
-                const currentConfig = tabConfig ?? ({} as DefaultsConfig);
-                const currentArray =
-                  currentConfig.agentsIgnorePaths ?? resolved.agentsIgnorePaths;
-
-                return new PathArrayEditor({
-                  label: "Ignored AGENTS Paths",
-                  items: [...currentArray],
-                  theme: getSettingsListTheme(),
-                  validatePath: (value) => {
-                    const resolved = path.resolve(
-                      process.cwd(),
-                      expandTilde(value),
-                    );
-                    if (!fs.existsSync(resolved)) {
-                      return "Path must exist";
-                    }
-                    if (path.basename(resolved) !== "AGENTS.md") {
-                      return "Path must point to AGENTS.md";
-                    }
-                    return null;
-                  },
-                  onSave: (items: string[]) => {
-                    const updated = {
-                      ...currentConfig,
-                      agentsIgnorePaths: items,
-                    };
-                    ctx.setDraft(updated);
-                    done(
-                      items.length === 0
-                        ? "none"
-                        : `${items.length} path${items.length === 1 ? "" : "s"}`,
-                    );
-                  },
-                  onDone: () => done(undefined),
-                });
-              },
             },
           ],
         },
