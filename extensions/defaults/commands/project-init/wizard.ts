@@ -175,16 +175,11 @@ function getNixOptions(state: WizardState): NixOption[] {
     },
   ];
 
-  const exactlyOneExists =
-    (state.nixHasShell ? 1 : 0) + (state.nixHasFlake ? 1 : 0) === 1;
-
-  if (!exactlyOneExists) {
-    options.push({
-      value: "skip",
-      label: "Skip",
-      hint: "Do not create or modify Nix files.",
-    });
-  }
+  options.push({
+    value: "skip",
+    label: "Skip",
+    hint: "Do not create or modify Nix files.",
+  });
 
   return options;
 }
@@ -632,7 +627,7 @@ export async function showWizard(
     installedPackages: installed.packages,
     packageItems: buildPackageItems(catalog, installed.packages),
     skillItems: buildSkillItems(catalog, installed.skills),
-    nixChoice: hasFlake ? "flake.nix" : hasShell ? "shell.nix" : "skip",
+    nixChoice: hasFlake || hasShell ? "skip" : "shell.nix",
     nixHasShell: hasShell,
     nixHasFlake: hasFlake,
     generateAgents: true,
