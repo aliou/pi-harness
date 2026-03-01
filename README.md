@@ -75,6 +75,7 @@ Shared packages used by extensions, published to npm.
 
 | Integration | Description | README |
 |-------------|-------------|--------|
+| chrome | Chrome extension + native host bridge for Pi browser automation and sidepanel chat | [README](integrations/chrome/README.md) |
 | neovim | Bidirectional Neovim integration (editor context, file reload, LSP diagnostics) | [README](integrations/neovim/README.md) |
 
 ## Development

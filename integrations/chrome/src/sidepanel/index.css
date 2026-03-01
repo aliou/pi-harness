@@ -1,0 +1,121 @@
+@import "tailwindcss";
+@import "streamdown/styles.css";
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  background: #ffffff;
+  color: #18181b;
+  font-family: system-ui, -apple-system, sans-serif;
+  font-size: 14px;
+  color-scheme: light dark;
+}
+
+@media (prefers-color-scheme: dark) {
+  body {
+    background: #09090b;
+    color: #f4f4f5;
+  }
+}
+
+@keyframes blink {
+  50% {
+    opacity: 0;
+  }
+}
+
+.animate-blink {
+  animation: blink 1s steps(1) infinite;
+}
+
+@keyframes shimmer-slide {
+  from {
+    background-position: 0 0;
+  }
+  to {
+    background-position: -200% 0;
+  }
+}
+
+.shimmer-text {
+  background: linear-gradient(
+    90deg,
+    #71717a 0%,
+    #71717a 40%,
+    #d4d4d8 50%,
+    #71717a 60%,
+    #71717a 100%
+  );
+  background-size: 200% 100%;
+  background-clip: text;
+  -webkit-background-clip: text;
+  color: transparent;
+  animation: shimmer-slide 2s linear infinite;
+}
+
+.assistant-md [data-streamdown="paragraph"] {
+  margin-top: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.assistant-md [data-streamdown="heading-1"] {
+  margin-top: 0.75rem;
+  margin-bottom: 0.5rem;
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.assistant-md [data-streamdown="heading-2"],
+.assistant-md [data-streamdown="heading-3"] {
+  margin-top: 0.5rem;
+  margin-bottom: 0.25rem;
+  font-size: 0.95rem;
+  font-weight: 600;
+}
+
+.assistant-md [data-streamdown="unordered-list"],
+.assistant-md [data-streamdown="ordered-list"] {
+  padding-left: 1rem;
+  margin-top: 0.25rem;
+  margin-bottom: 0.25rem;
+}
+
+.assistant-md [data-streamdown="list-item"] {
+  margin-top: 0.125rem;
+  margin-bottom: 0.125rem;
+}
+
+.assistant-md [data-streamdown="inline-code"] {
+  padding: 0.1rem 0.25rem;
+  border-radius: 0.25rem;
+  background: #f4f4f5;
+  color: #27272a;
+  font-size: 0.9em;
+}
+
+.dark .assistant-md [data-streamdown="inline-code"] {
+  background: #27272a;
+  color: #e4e4e7;
+}
+
+.assistant-md [data-streamdown="code-block"] {
+  margin-top: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.assistant-md [data-streamdown="code-block"] pre {
+  background: #f4f4f5;
+  color: #27272a;
+  border-radius: 0.375rem;
+  padding: 0.5rem;
+}
+
+.dark .assistant-md [data-streamdown="code-block"] pre {
+  background: #18181b;
+  color: #e4e4e7;
+}

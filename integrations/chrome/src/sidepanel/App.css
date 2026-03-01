@@ -1,0 +1,19 @@
+@keyframes blink {
+  50% { opacity: 0; }
+}
+.animate-blink {
+  animation: blink 1s steps(1) infinite;
+}
+
+@keyframes shimmer-slide {
+  from { background-position: 0 0; }
+  to { background-position: -200% 0; }
+}
+.shimmer-text {
+  background: linear-gradient(90deg, #71717a 0%, #71717a 40%, #d4d4d8 50%, #71717a 60%, #71717a 100%);
+  background-size: 200% 100%;
+  background-clip: text;
+  -webkit-background-clip: text;
+  color: transparent;
+  animation: shimmer-slide 2s linear infinite;
+}
