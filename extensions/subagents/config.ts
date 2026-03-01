@@ -9,7 +9,9 @@ export const SUPPORTED_PROVIDERS = [
   "openrouter",
   "anthropic",
   "openai-codex",
+  "mistral",
   "synthetic",
+  "zai",
 ] as const;
 export type SupportedProvider = (typeof SUPPORTED_PROVIDERS)[number];
 
@@ -109,7 +111,8 @@ const DEFAULT_CONFIG: ResolvedSubagentsConfig = {
     scout: {
       candidates: [
         { provider: "openrouter", model: "google/gemini-2.5-flash-lite" },
-        { provider: "openrouter", model: "google/gemini-2.5-flash" },
+        { provider: "zai", model: "glm-4.7" },
+        { provider: "mistral", model: "ministral-8b-2512" },
       ],
       enabled: true,
       web: DEFAULT_SCOUT_WEB_CONFIG,
@@ -117,36 +120,40 @@ const DEFAULT_CONFIG: ResolvedSubagentsConfig = {
     lookout: {
       candidates: [
         { provider: "openrouter", model: "google/gemini-2.5-flash-lite" },
-        { provider: "openrouter", model: "google/gemini-2.5-flash" },
+        { provider: "zai", model: "glm-4.7" },
+        { provider: "mistral", model: "ministral-8b-2512" },
       ],
       enabled: true,
     },
     oracle: {
-      candidates: [{ provider: "openai-codex", model: "gpt-5.3-codex" }],
+      candidates: [
+        { provider: "openai-codex", model: "gpt-5.3-codex" },
+        { provider: "synthetic", model: "hf:Qwen/Qwen3.5-397B-A17B" },
+        { provider: "mistral", model: "magistral-medium-2509" },
+      ],
       enabled: true,
     },
     reviewer: {
-      candidates: [{ provider: "anthropic", model: "claude-sonnet-4-6" }],
+      candidates: [
+        { provider: "anthropic", model: "claude-sonnet-4-6" },
+        { provider: "mistral", model: "mistral-large-2512" },
+        { provider: "synthetic", model: "hf:Qwen/Qwen3.5-397B-A17B" },
+      ],
       enabled: true,
     },
     jester: {
       candidates: [
-        {
-          provider: "openrouter",
-          model: "meta-llama/llama-3.3-70b-instruct",
-        },
-        { provider: "openrouter", model: "openai/gpt-5-nano" },
+        { provider: "zai", model: "glm-4.5-air" },
+        { provider: "mistral", model: "ministral-3b-2512" },
       ],
       enabled: true,
     },
     worker: {
       candidates: [
-        { provider: "openrouter", model: "qwen/qwen3-coder-next" },
-        { provider: "openrouter", model: "qwen/qwen3-coder" },
-        {
-          provider: "synthetic",
-          model: "hf:Qwen/Qwen3-Coder-480B-A35B-Instruct",
-        },
+        { provider: "anthropic", model: "claude-sonnet-4-6" },
+        { provider: "synthetic", model: "hf:MiniMaxAI/MiniMax-M2.5" },
+        { provider: "mistral", model: "devstral-2512" },
+        { provider: "zai", model: "glm-4.7" },
       ],
       enabled: true,
     },
