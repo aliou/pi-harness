@@ -6,26 +6,21 @@ Hardcoded mode system for Pi with tool gating, model switching, and per-branch r
 
 - `default`
   - No tool restrictions
-  - No mode label in editor
+  - Shows mode label in editor
   - No provider/model override
-
-- `plan`
-  - Read-only planning mode
-  - Blocks `write`, `edit`, `bash`
-  - Provider/model: `openai-codex / gpt-5.3-codex`
 
 - `research`
   - Read-only research mode + restricted bash
   - Blocks `write`, `edit`
-  - Allows bash only for allowlisted read/search commands via shell AST parsing
+  - Requires explicit confirmation for each `bash` call
   - Provider/model: `anthropic / claude-opus-4-6`
 
 ## Controls
 
 - `/mode` opens selector
-- `/mode <default|plan|research>` switches directly
+- `/mode <default|research>` switches directly
 - `Ctrl+U` cycles modes
-- `--agent-mode <default|plan|research>` sets startup mode
+- `--agent-mode <default|research>` sets startup mode
 
 ## Behavior
 
@@ -59,4 +54,4 @@ pi.events.emit("guardrails:dangerous", {
 
 - No config file and no enabled toggle by design
 - Editor border line color follows normal thinking-level behavior
-- Mode label uses hardcoded ANSI colors (plan magenta, research cyan)
+- Mode label uses hardcoded ANSI color (research cyan)

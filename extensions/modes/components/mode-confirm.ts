@@ -16,6 +16,7 @@ export async function showModeConfirmDialog(
   modeName: string,
   toolName: string,
   bashCommand?: string,
+  allowSession = true,
 ): Promise<ConfirmResult> {
   const result = await ctx.ui.custom<ConfirmResult>(
     (_tui, theme, _kb, done) => {
@@ -56,7 +57,9 @@ export async function showModeConfirmDialog(
         new Text(
           theme.fg(
             "dim",
-            "y/enter: allow | a: allow for session | n/esc: deny",
+            allowSession
+              ? "y/enter: allow | a: allow for session | n/esc: deny"
+              : "y/enter: allow | n/esc: deny",
           ),
           1,
           0,
@@ -81,7 +84,7 @@ export async function showModeConfirmDialog(
             done("allow");
             return;
           }
-          if (data === "a" || data === "A") {
+          if (allowSession && (data === "a" || data === "A")) {
             done("allow-session");
             return;
           }

@@ -8,22 +8,10 @@ export interface ModeDefinition {
   model?: string;
   instructions?: string;
   bashAllowedCommands?: string[];
+  bashConfirmEachCall?: boolean;
 }
 
-export const MODE_ORDER: string[] = ["default", "plan", "research"];
-
-const PLAN_INSTRUCTIONS = [
-  "You are in PLAN MODE.",
-  "",
-  "Rules:",
-  "- Do not make changes. Never use write/edit/bash to modify state.",
-  "- Read files in full to build complete context.",
-  "- Explore related code paths and dependencies before planning.",
-  "- Ask clarifying questions when requirements are ambiguous.",
-  "",
-  "Output a structured numbered implementation plan.",
-  "For each step include: what changes, why, and key risks.",
-].join("\n");
+export const MODE_ORDER: string[] = ["default", "research"];
 
 const RESEARCH_INSTRUCTIONS = [
   "You are in RESEARCH MODE.",
@@ -43,27 +31,6 @@ export const MODES: Record<string, ModeDefinition> = {
     allowedTools: [],
     deniedTools: [],
     labelColor: (text: string) => text,
-  },
-  plan: {
-    name: "plan",
-    label: "plan",
-    allowedTools: [
-      "read",
-      "find_sessions",
-      "read_session",
-      "scout",
-      "lookout",
-      "oracle",
-      "reviewer",
-      "jester",
-      "synthetic_web_search",
-      "get_current_time",
-    ],
-    deniedTools: ["write", "edit", "bash"],
-    labelColor: (text: string) => `\u001b[35m${text}\u001b[0m`,
-    provider: "openai-codex",
-    model: "gpt-5.3-codex",
-    instructions: PLAN_INSTRUCTIONS,
   },
   research: {
     name: "research",
@@ -85,23 +52,7 @@ export const MODES: Record<string, ModeDefinition> = {
     labelColor: (text: string) => `\u001b[36m${text}\u001b[0m`,
     provider: "anthropic",
     model: "claude-opus-4-6",
-    bashAllowedCommands: [
-      "rg",
-      "find",
-      "ls",
-      "grep",
-      "cat",
-      "head",
-      "tail",
-      "wc",
-      "file",
-      "stat",
-      "du",
-      "tree",
-      "which",
-      "echo",
-      "pwd",
-    ],
+    bashConfirmEachCall: true,
     instructions: RESEARCH_INSTRUCTIONS,
   },
 };

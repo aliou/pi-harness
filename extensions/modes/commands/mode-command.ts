@@ -19,7 +19,7 @@ export function registerModeControls(
   applyMode: ApplyModeFn,
 ): void {
   pi.registerCommand("mode", {
-    description: "Switch mode (default, plan, research)",
+    description: "Switch mode (default, research)",
     handler: async (args, ctx) => {
       const requested = args?.trim();
 

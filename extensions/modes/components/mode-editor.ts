@@ -8,7 +8,7 @@ export class ModeEditor extends CustomEditor {
     const lines = super.render(width);
     const mode = this.modeProvider?.();
 
-    if (!mode || mode.name === "default" || width < 10 || lines.length === 0) {
+    if (!mode || width < 10 || lines.length === 0) {
       return lines;
     }
 

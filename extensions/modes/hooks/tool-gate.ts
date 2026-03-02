@@ -91,9 +91,16 @@ async function confirmUnlistedTool(
   modeName: string,
   toolName: string,
   bashCommand?: string,
+  allowSession = true,
 ): Promise<"allow" | "allow-session" | "deny"> {
   if (!ctx.hasUI) return "deny";
-  return showModeConfirmDialog(ctx, modeName, toolName, bashCommand);
+  return showModeConfirmDialog(
+    ctx,
+    modeName,
+    toolName,
+    bashCommand,
+    allowSession,
+  );
 }
 
 export function setupToolGateHook(pi: ExtensionAPI): void {
@@ -128,18 +135,24 @@ export function setupToolGateHook(pi: ExtensionAPI): void {
       event.toolName === "bash" ? extractBashCommandNames(bashCommand) : null;
 
     if (mode.allowedTools.includes(event.toolName)) {
-      if (event.toolName !== "bash" || !mode.bashAllowedCommands) {
+      if (event.toolName !== "bash") {
         return;
       }
 
-      const allowedBash = new Set(mode.bashAllowedCommands);
-      if (bashCommandNames && bashCommandNames.length > 0) {
-        const allAllowed = bashCommandNames.every((name) =>
-          allowedBash.has(name),
-        );
-        if (allAllowed) return;
+      if (mode.bashConfirmEachCall) {
+        // explicit per-call confirmation required for bash
+      } else if (!mode.bashAllowedCommands) {
+        return;
+      } else {
+        const allowedBash = new Set(mode.bashAllowedCommands);
+        if (bashCommandNames && bashCommandNames.length > 0) {
+          const allAllowed = bashCommandNames.every((name) =>
+            allowedBash.has(name),
+          );
+          if (allAllowed) return;
+        }
+        // fall through to confirmation for parse failure or disallowed command
       }
-      // fall through to confirmation for parse failure or disallowed command
     } else {
       if (sessionAllowed.has(event.toolName)) {
         return;
@@ -148,6 +161,7 @@ export function setupToolGateHook(pi: ExtensionAPI): void {
 
     if (
       event.toolName === "bash" &&
+      !mode.bashConfirmEachCall &&
       isSessionAllowedBash(sessionAllowed, bashCommandNames)
     ) {
       return;
@@ -173,6 +187,7 @@ export function setupToolGateHook(pi: ExtensionAPI): void {
       mode.name,
       event.toolName,
       event.toolName === "bash" ? bashCommand : undefined,
+      !(event.toolName === "bash" && mode.bashConfirmEachCall),
     );
 
     if (decision === "allow") {
@@ -180,9 +195,9 @@ export function setupToolGateHook(pi: ExtensionAPI): void {
     }
 
     if (decision === "allow-session") {
-      if (event.toolName === "bash") {
+      if (event.toolName === "bash" && !mode.bashConfirmEachCall) {
         addSessionAllowForBash(bashCommandNames);
-      } else {
+      } else if (event.toolName !== "bash") {
         addSessionAllowedTool(event.toolName);
       }
       return;

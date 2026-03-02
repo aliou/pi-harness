@@ -16,8 +16,7 @@ import { getCurrentMode } from "../state";
 
 function modeDescription(name: string): string {
   if (name === "default") return "No restrictions";
-  if (name === "plan") return "Read-only planning mode";
-  return "Read-only + restricted bash";
+  return "Read-only research mode (bash confirm each call)";
 }
 
 export async function showModeSelector(

@@ -4,16 +4,15 @@ Hardcoded mode system for Pi with tool gating and model switching.
 
 ## Modes
 
-- `default`: no restrictions.
-- `plan`: read-only tooling, planning-focused instructions.
-- `research`: read-only tooling + restricted bash.
+- `default`: no restrictions, mode label shown in editor.
+- `research`: read-only tooling + restricted bash (explicit confirm per call).
 
 ## Controls
 
 - `/mode`
-- `/mode <default|plan|research>`
+- `/mode <default|research>`
 - `Ctrl+U` cycle
-- `--agent-mode <default|plan|research>`
+- `--agent-mode <default|research>`
 
 ## Notes
 
