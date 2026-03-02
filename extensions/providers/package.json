@@ -32,7 +32,7 @@
     "README.md"
   ],
   "dependencies": {
-    "@aliou/pi-utils-settings": "workspace:^"
+    "@aliou/pi-utils-settings": "^0.6.0"
   },
   "peerDependencies": {
     "@mariozechner/pi-coding-agent": ">=0.51.0"

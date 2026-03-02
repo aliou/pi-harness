@@ -8,8 +8,8 @@
   },
   "dependencies": {
     "@aliou/pi-agent-kit": "workspace:^",
-    "@aliou/pi-utils-settings": "workspace:^",
-    "@aliou/pi-utils-ui": "workspace:^"
+    "@aliou/pi-utils-settings": "^0.6.0",
+    "@aliou/pi-utils-ui": "^0.1.1"
   },
   "peerDependencies": {
     "@mariozechner/pi-coding-agent": ">=0.51.0"

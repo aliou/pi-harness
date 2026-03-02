@@ -13,10 +13,6 @@
     "extensions": [
       "./extensions",
       "extensions/*/index.ts"
-    ],
-    "themes": [
-      "./themes",
-      "!themes/**/package.json"
     ]
   },
   "scripts": {
