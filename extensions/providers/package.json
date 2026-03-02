@@ -19,9 +19,6 @@
       "./index.ts"
     ]
   },
-  "publishConfig": {
-    "access": "public"
-  },
   "files": [
     "*.ts",
     "providers",
