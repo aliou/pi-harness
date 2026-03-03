@@ -7,6 +7,10 @@ import type {
   ExtensionContext,
 } from "@mariozechner/pi-coding-agent";
 import { listPlans } from "../lib/plan-io";
+import {
+  createPlanExecutionWidget,
+  PLAN_EXECUTION_ENTRY_TYPE,
+} from "../lib/plan-widget";
 
 async function notifyRecentPlans(ctx: ExtensionContext): Promise<void> {
   const plans = await listPlans(ctx.cwd);
@@ -49,9 +53,38 @@ function runInBackground(task: () => Promise<void>): void {
   });
 }
 
+function restorePlanExecutionWidget(ctx: ExtensionContext): void {
+  const entries = ctx.sessionManager.getBranch() as Array<{
+    type?: string;
+    customType?: string;
+    data?: { title?: unknown; filename?: unknown };
+  }>;
+
+  const last = entries
+    .filter(
+      (entry) =>
+        entry.type === "custom" &&
+        entry.customType === PLAN_EXECUTION_ENTRY_TYPE,
+    )
+    .at(-1);
+
+  const title = last?.data?.title;
+  const filename = last?.data?.filename;
+
+  if (typeof title !== "string" || typeof filename !== "string") {
+    return;
+  }
+
+  ctx.ui.setWidget(
+    "plan-execution",
+    createPlanExecutionWidget({ title, filename }),
+  );
+}
+
 export function setupSessionStartHook(pi: ExtensionAPI) {
   pi.on("session_start", async (_event, ctx) => {
     if (!ctx.hasUI) return;
+    restorePlanExecutionWidget(ctx);
     runInBackground(() => notifyRecentPlans(ctx));
   });
 }

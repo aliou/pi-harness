@@ -11,12 +11,10 @@ import { spawnSync } from "node:child_process";
 import * as fs from "node:fs/promises";
 import * as path from "node:path";
 
-import {
-  DynamicBorder,
-  type ExtensionAPI,
-  type ExtensionCommandContext,
+import type {
+  ExtensionAPI,
+  ExtensionCommandContext,
 } from "@mariozechner/pi-coding-agent";
-import { Container, Text } from "@mariozechner/pi-tui";
 import { configLoader } from "../lib/config";
 import type { ArchiveResult } from "../lib/plan-selector";
 import { selectPlan } from "../lib/plan-selector";
@@ -26,6 +24,10 @@ import {
   readPlan,
   updatePlanStatus,
 } from "../lib/plan-utils";
+import {
+  createPlanExecutionWidget,
+  PLAN_EXECUTION_ENTRY_TYPE,
+} from "../lib/plan-widget";
 import type { PlanInfo } from "../lib/types";
 
 /**
@@ -42,12 +44,13 @@ As you complete each step:
 - Check off completed items in the Implementation Order
 - Update the Implementation Progress section with what was done
 - If you encounter issues or need to deviate from the plan, note it in Implementation Progress
+- Persist meaningful progress using \`update_plan\` with the latest full plan markdown body
 
 **When finished:**
-- Update the frontmatter \`status\` field to \`completed\`
+- Set \`status\` to \`completed\` using \`update_plan\`
 
 **If stopping early:**
-- Update \`status\` to \`cancelled\` (can resume later) or \`abandoned\` (won't continue)
+- Set \`status\` to \`cancelled\` (can resume later) or \`abandoned\` (won't continue) using \`update_plan\`
 - Note the reason in Implementation Progress
 
 Here is the plan:
@@ -215,22 +218,14 @@ async function executePlan(
 
   await updatePlanStatus(plan.path, "in-progress");
 
-  ctx.ui.setWidget("plan-execution", (_tui, theme) => {
-    const container = new Container();
-    container.addChild(new DynamicBorder((s: string) => theme.fg("muted", s)));
-    const header = theme.fg(
-      "accent",
-      theme.bold(`Executing Plan: ${planTitle}`),
-    );
-    const pathLine = theme.fg("dim", plan.path);
-    container.addChild(new Text(`${header}\n${pathLine}`, 1, 0));
-    return container;
-  });
+  const widgetState = { title: planTitle, filename: plan.filename };
+  ctx.ui.setWidget("plan-execution", createPlanExecutionWidget(widgetState));
+  pi.appendEntry(PLAN_EXECUTION_ENTRY_TYPE, widgetState);
 
   const planContent = await readPlan(plan.path);
 
   pi.sendUserMessage(
-    `${EXECUTE_PLAN_PROMPT}<plan>\n${planContent}\n</plan>\n\nPlan path: ${plan.path}`,
+    `${EXECUTE_PLAN_PROMPT}<plan>\n${planContent}\n</plan>\n\nPlan filename: ${plan.filename}`,
   );
 }
 

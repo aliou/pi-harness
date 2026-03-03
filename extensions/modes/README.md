@@ -11,7 +11,7 @@ Hardcoded mode system for Pi with tool gating, model switching, and per-branch r
 
 - `research`
   - Read-only research mode
-  - Active tools: `read`, `ls`, `find`, `grep` (+ any available research helpers like `scout`)
+  - Active tools: `read`, `ls`, `find`, `grep`, `create_plan`, `update_plan` (+ any available research helpers like `scout`)
   - Blocks `write`, `edit`, `bash`
   - Provider/model: `anthropic / claude-opus-4-6`
 

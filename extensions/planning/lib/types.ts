@@ -3,6 +3,7 @@
  */
 
 export type PlanStatus =
+  | "draft"
   | "pending"
   | "in-progress"
   | "completed"

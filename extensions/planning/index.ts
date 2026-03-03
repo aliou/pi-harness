@@ -9,6 +9,8 @@
  *
  * Tools:
  * - ask_user - Gather user input through structured multiple-choice questions
+ * - create_plan - Creates a draft plan scaffold with deduced frontmatter
+ * - update_plan - Updates frontmatter status/dependencies and full plan content
  */
 
 import type { ExtensionAPI } from "@mariozechner/pi-coding-agent";

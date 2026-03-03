@@ -13,6 +13,14 @@ Commands for turning conversations into implementation plans and managing saved 
 
 Gather user input during task execution through structured multiple-choice questions. Present 1-4 questions at once, each with 2-4 predefined options. Users can always choose "Other" to provide custom text. Supports single-select or multi-select mode.
 
+### `create_plan`
+
+Creates an empty plan file scaffold with deduced frontmatter (`date`, `directory`, optional `project`) and `status: draft`. Takes title + optional dependencies/dependents.
+
+### `update_plan`
+
+Updates an existing plan file by replacing the full plan markdown body and updating frontmatter fields (`status`, `dependencies`, `dependents`).
+
 ## Usage
 
 ### Creating Plans

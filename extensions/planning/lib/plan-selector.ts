@@ -412,6 +412,8 @@ class PlanSelector implements Component {
         return this.theme.fg("success", value);
       case "in-progress":
         return this.theme.fg("warning", value);
+      case "draft":
+        return this.theme.fg("accent", value);
       case "pending":
         return this.theme.fg("dim", value);
       case "cancelled":
@@ -667,6 +669,7 @@ function buildGroupedView(viewRoots: ViewNode[]) {
 
   const orderedStatuses = [
     "in-progress",
+    "draft",
     "pending",
     "completed",
     "cancelled",
@@ -808,6 +811,7 @@ function groupNodesByStatus(
 
   const orderedStatuses = [
     "in-progress",
+    "draft",
     "pending",
     "completed",
     "cancelled",
