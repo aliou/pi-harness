@@ -1,14 +1,12 @@
 import type { Model } from "@mariozechner/pi-ai";
 import type {
-  AuthStorage,
   ExtensionAPI,
   ExtensionContext,
 } from "@mariozechner/pi-coding-agent";
 import { getProviderSettings, type ProviderKey } from "../config";
-import { fetchClaudeRateLimits } from "../rate-limits/claude";
-import { fetchCodexRateLimits } from "../rate-limits/codex";
+import { getProviderKeyFromModel } from "../provider-registry";
+import { fetchProviderRateLimits } from "../rate-limits/fetch-provider";
 import { assessWindowRisk, type RiskSeverity } from "../rate-limits/projection";
-import { fetchSyntheticRateLimits } from "../rate-limits/synthetic";
 import type { ProviderRateLimits, RateLimitWindow } from "../types";
 import { formatResetTime } from "../utils";
 import { forceShowWidget } from "./usage-bar";
@@ -121,20 +119,6 @@ function inferWindowSeconds(label: string): number | null {
 }
 
 /**
- * Maps a model provider to the rate limit provider key.
- */
-// biome-ignore lint/suspicious/noExplicitAny: Model type requires any for generic API
-function getProviderKey(model: Model<any> | undefined): ProviderKey | null {
-  if (!model) return null;
-  const provider = model.provider.toLowerCase();
-  if (provider === "anthropic") return "anthropic";
-  if (provider === "openai-codex") return "openai-codex";
-  if (provider === "synthetic") return "synthetic";
-
-  return null;
-}
-
-/**
  * Detects the Claude model family (opus/sonnet) from the model ID.
  */
 function getClaudeModelFamily(
@@ -146,26 +130,6 @@ function getClaudeModelFamily(
   if (modelId.includes("opus")) return "opus";
   if (modelId.includes("sonnet")) return "sonnet";
   return null;
-}
-
-/**
- * Fetches rate limits for a specific provider.
- */
-async function fetchProviderRateLimits(
-  providerKey: ProviderKey,
-  authStorage: AuthStorage,
-  signal?: AbortSignal,
-): Promise<ProviderRateLimits | null> {
-  switch (providerKey) {
-    case "anthropic":
-      return fetchClaudeRateLimits(authStorage, signal);
-    case "openai-codex":
-      return fetchCodexRateLimits(authStorage, signal);
-    case "synthetic":
-      return fetchSyntheticRateLimits(signal);
-    default:
-      return null;
-  }
 }
 
 /**
@@ -268,7 +232,7 @@ async function checkAndWarnRateLimits(
 ): Promise<void> {
   if (!ctx.hasUI) return;
 
-  const providerKey = getProviderKey(model);
+  const providerKey = getProviderKeyFromModel(model);
   if (!providerKey) return;
 
   // Skip if warnings are disabled for this provider
@@ -347,10 +311,11 @@ function triggerRateLimitCheck(
 }
 
 export function setupRateLimitWarningHooks(pi: ExtensionAPI): void {
-  // Session start: reset local warning state only. Defer checks until model
-  // change or first completed agent turn.
-  pi.on("session_start", async (_event, _ctx) => {
+  // Session start: reset local warning state and run an immediate check for the
+  // current model/provider so warnings can appear without requiring a model toggle.
+  pi.on("session_start", async (_event, ctx) => {
     windowAlerts.clear();
+    triggerRateLimitCheck(ctx, ctx.model, false);
   });
 
   // Check after agent turn - only warn for newly crossed thresholds

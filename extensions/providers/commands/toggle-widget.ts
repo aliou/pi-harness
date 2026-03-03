@@ -1,25 +1,13 @@
 import type { ExtensionAPI } from "@mariozechner/pi-coding-agent";
-import { configLoader, getProviderSettings, type ProviderKey } from "../config";
+import { configLoader, getProviderSettings } from "../config";
 import { refreshWidget } from "../hooks/usage-bar";
-
-function getProviderKey(
-  ctx: Parameters<Parameters<ExtensionAPI["registerCommand"]>[1]["handler"]>[1],
-): ProviderKey | null {
-  const model = ctx.model;
-  if (!model) return null;
-  const provider = model.provider.toLowerCase();
-  if (provider === "anthropic") return "anthropic";
-  if (provider === "openai-codex") return "openai-codex";
-  if (provider === "synthetic") return "synthetic";
-
-  return null;
-}
+import { getProviderKeyFromModel } from "../provider-registry";
 
 export function setupToggleBarCommand(pi: ExtensionAPI): void {
   pi.registerCommand("providers:toggle-widget", {
     description: "Toggle the usage bar widget",
     handler: async (_args, cmdCtx) => {
-      const providerKey = getProviderKey(cmdCtx);
+      const providerKey = getProviderKeyFromModel(cmdCtx.model);
       if (!providerKey) {
         cmdCtx.ui.notify("No supported provider active", "warning");
         return;

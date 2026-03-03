@@ -17,7 +17,6 @@ import {
   assessWindowRisk,
   getPacePercent,
   getSeverityColor,
-  inferWindowSeconds,
 } from "../rate-limits/projection";
 import type {
   ProviderRateLimits,
@@ -173,7 +172,15 @@ function buildSessionTabContent(
     }
 
     for (const window of provider.windows) {
-      lines.push(...renderWindowBlock(window, width, theme, timezone));
+      lines.push(
+        ...renderWindowBlock(
+          provider.providerId,
+          window,
+          width,
+          theme,
+          timezone,
+        ),
+      );
     }
 
     lines.push("");
@@ -239,7 +246,49 @@ function renderProviderHeader(
   return lines;
 }
 
+function formatUiResetTime(date: Date | null, timezone: string): string {
+  if (!date) return "Unknown";
+
+  const now = new Date();
+  const sameDay =
+    date.getFullYear() === now.getFullYear() &&
+    date.getMonth() === now.getMonth() &&
+    date.getDate() === now.getDate();
+
+  if (sameDay) {
+    const remainingMs = date.getTime() - now.getTime();
+    if (remainingMs <= 0) return "soon";
+    const totalMinutes = Math.ceil(remainingMs / (1000 * 60));
+    const hours = Math.floor(totalMinutes / 60);
+    const minutes = totalMinutes % 60;
+    if (hours > 0) {
+      return minutes > 0 ? `in ${hours}h ${minutes}m` : `in ${hours}h`;
+    }
+    return `in ${minutes}m`;
+  }
+
+  return formatResetTime(date, timezone);
+}
+
+function formatWindowUsedLabel(
+  providerId: string | undefined,
+  window: RateLimitWindow,
+): string {
+  const percent = Math.round(window.usedPercent);
+  const normalized = (providerId ?? "").toLowerCase();
+  const isSynthetic = normalized === "synthetic";
+  const isZai = normalized === "z-ai" || normalized === "zai";
+  const limit = window.limitValue;
+
+  if ((isSynthetic || isZai) && Number.isFinite(limit ?? NaN)) {
+    return `${percent}%/${Math.round(limit as number).toLocaleString()}`;
+  }
+
+  return `${percent}%`;
+}
+
 function renderWindowBlock(
+  providerId: string | undefined,
   window: RateLimitWindow,
   width: number,
   theme: Theme,
@@ -250,28 +299,11 @@ function renderWindowBlock(
 
   const risk = assessWindowRisk(window);
   const pacePercent = getPacePercent(window);
-  const usedStr = `${Math.round(window.usedPercent)}%`;
+  const usedStr = formatWindowUsedLabel(providerId, window);
   const projected = Math.round(risk.projectedPercent);
   const severityColor = getSeverityColor(risk.severity);
 
-  // Window label with progress
-  const windowSeconds =
-    window.windowSeconds ?? inferWindowSeconds(window.label);
-  let progressText = "";
-  if (windowSeconds && window.resetsAt) {
-    const totalMs = windowSeconds * 1000;
-    const remainingMs = window.resetsAt.getTime() - Date.now();
-    const elapsedMs = Math.min(totalMs, Math.max(0, totalMs - remainingMs));
-    const elapsedH = Math.floor(elapsedMs / (1000 * 60 * 60));
-    const elapsedM = Math.floor((elapsedMs % (1000 * 60 * 60)) / (1000 * 60));
-    const totalH = Math.floor(windowSeconds / (60 * 60));
-    progressText =
-      elapsedH > 0 || totalH > 0
-        ? `${elapsedH}.${Math.floor(elapsedM / 6)}h/${totalH}h`
-        : `${elapsedM}m/${Math.floor(windowSeconds / 60)}m`;
-  }
-
-  lines.push(`  ${theme.fg("accent", window.label)} (${progressText})`);
+  lines.push(`  ${theme.fg("accent", window.label)}`);
 
   // Bar line
   const bar = renderProgressBar(
@@ -285,16 +317,12 @@ function renderWindowBlock(
   lines.push(`  ${bar} ${usedColored}`);
 
   // Metadata line: projected, pace, reset
-  const resetStr = formatResetTime(window.resetsAt, timezone);
+  const resetStr = formatUiResetTime(window.resetsAt, timezone);
   let paceStr = "";
   if (pacePercent !== null) {
     const paceDiff = window.usedPercent - pacePercent;
-    if (paceDiff > 10) {
+    if (paceDiff > 0) {
       paceStr = `${Math.round(Math.abs(paceDiff))}% ahead pace`;
-    } else if (paceDiff < -10) {
-      paceStr = `${Math.round(Math.abs(paceDiff))}% behind pace`;
-    } else {
-      paceStr = "within pace";
     }
   }
 

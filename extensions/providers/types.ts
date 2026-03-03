@@ -7,6 +7,9 @@ export interface RateLimitWindow {
   usedPercent: number;
   resetsAt: Date | null;
   windowSeconds?: number;
+  usedValue?: number;
+  limitValue?: number;
+  unit?: string;
 }
 
 export interface ProviderRateLimits {

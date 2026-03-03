@@ -1,6 +1,5 @@
 import type { Model } from "@mariozechner/pi-ai";
 import type {
-  AuthStorage,
   ExtensionAPI,
   ExtensionContext,
   Theme,
@@ -10,16 +9,14 @@ import {
   configLoader,
   getProviderDisplayName,
   getProviderSettings,
-  type ProviderKey,
 } from "../config";
-import { fetchClaudeRateLimits } from "../rate-limits/claude";
-import { fetchCodexRateLimits } from "../rate-limits/codex";
+import { getProviderKeyFromModel } from "../provider-registry";
+import { fetchProviderRateLimits } from "../rate-limits/fetch-provider";
 import {
   assessWindowRisk,
   getSeverityColor,
   inferWindowSeconds,
 } from "../rate-limits/projection";
-import { fetchSyntheticRateLimits } from "../rate-limits/synthetic";
 import type { ProviderRateLimits, RateLimitWindow } from "../types";
 
 const WIDGET_ID = "usage-bar";
@@ -34,23 +31,6 @@ let forceVisible = false;
 
 function getRefreshIntervalMs(): number {
   return configLoader.getConfig().refreshIntervalMinutes * 60 * 1000;
-}
-
-/**
- * Maps a model provider to the base provider key.
- * Handles both base providers and account IDs.
- */
-// biome-ignore lint/suspicious/noExplicitAny: Model type requires any for generic API
-function getProviderKey(model: Model<any> | undefined): ProviderKey | null {
-  if (!model) return null;
-  const provider = model.provider.toLowerCase();
-
-  // Check for exact base provider match
-  if (provider === "anthropic") return "anthropic";
-  if (provider === "openai-codex") return "openai-codex";
-  if (provider === "synthetic") return "synthetic";
-
-  return null;
 }
 
 /**
@@ -134,63 +114,6 @@ function filterClaudeWindows(
   return filtered;
 }
 
-/**
- * Fetches rate limits for a specific provider.
- */
-async function fetchProviderRateLimits(
-  providerKey: ProviderKey,
-  authStorage: AuthStorage,
-  signal?: AbortSignal,
-): Promise<ProviderRateLimits | null> {
-  switch (providerKey) {
-    case "anthropic":
-      return fetchClaudeRateLimits(authStorage, signal);
-    case "openai-codex":
-      return fetchCodexRateLimits(authStorage, signal);
-    case "synthetic":
-      return fetchSyntheticRateLimits(signal);
-    default:
-      return null;
-  }
-}
-
-/**
- * Formats durations as decimals based on the total window size.
- */
-function getDurationUnit(totalSeconds: number): {
-  label: "d" | "h" | "m";
-  seconds: number;
-} {
-  if (totalSeconds >= 24 * 60 * 60)
-    return { label: "d", seconds: 24 * 60 * 60 };
-  if (totalSeconds >= 60 * 60) return { label: "h", seconds: 60 * 60 };
-  return { label: "m", seconds: 60 };
-}
-
-function formatDurationDecimal(
-  seconds: number,
-  unit: { label: "d" | "h" | "m"; seconds: number },
-): string {
-  if (!Number.isFinite(seconds) || seconds <= 0) return `0${unit.label}`;
-  const value = seconds / unit.seconds;
-  const rounded = Math.round(value * 10) / 10;
-  const text = Number.isInteger(rounded)
-    ? rounded.toFixed(0)
-    : rounded.toFixed(1);
-  return `${text}${unit.label}`;
-}
-
-function formatDurationPairSeconds(
-  elapsedSeconds: number,
-  totalSeconds: number,
-): string {
-  if (!Number.isFinite(totalSeconds) || totalSeconds <= 0) return "??/??";
-  const unit = getDurationUnit(totalSeconds);
-  const elapsedText = formatDurationDecimal(elapsedSeconds, unit);
-  const totalText = formatDurationDecimal(totalSeconds, unit);
-  return `${elapsedText}/${totalText}`;
-}
-
 function getPacePercent(window: RateLimitWindow): number | null {
   const windowSeconds =
     window.windowSeconds ?? inferWindowSeconds(window.label);
@@ -201,16 +124,6 @@ function getPacePercent(window: RateLimitWindow): number | null {
   const elapsedMs = totalMs - remainingMs;
   const percent = (elapsedMs / totalMs) * 100;
   return Math.max(0, Math.min(100, percent));
-}
-
-function getWindowProgressText(window: RateLimitWindow): string {
-  const windowSeconds =
-    window.windowSeconds ?? inferWindowSeconds(window.label);
-  if (!windowSeconds || !window.resetsAt) return "??/??";
-  const totalMs = windowSeconds * 1000;
-  const remainingMs = window.resetsAt.getTime() - Date.now();
-  const elapsedMs = Math.min(totalMs, Math.max(0, totalMs - remainingMs));
-  return formatDurationPairSeconds(elapsedMs / 1000, windowSeconds);
 }
 
 type FillColor = "success" | "warning" | "error";
@@ -263,25 +176,40 @@ function createProgressBar(
 
 /**
  * Calculates fixed width for a window (everything except the bar).
- * Format: "(elapsed/total) [bar] X%"
+ * Format: "[bar] X%"
  */
-function getWindowFixedWidth(window: RateLimitWindow): number {
-  const progressText = getWindowProgressText(window);
+function formatWindowCap(
+  providerId: string,
+  window: RateLimitWindow,
+): string | null {
+  const normalized = providerId.toLowerCase();
+  const isSynthetic = normalized === "synthetic";
+  const isZai = normalized === "z-ai" || normalized === "zai";
+  if (!isSynthetic && !isZai) return null;
+  if (!Number.isFinite(window.limitValue ?? NaN)) return null;
+  return Math.round(window.limitValue as number).toLocaleString();
+}
+
+function getWindowFixedWidth(
+  providerId: string,
+  window: RateLimitWindow,
+): number {
   const percent = Math.round(window.usedPercent);
-  // "(elapsed/total) " + " X%"
-  // "(" + progress + ") " + " " + percent + "%"
-  return 1 + progressText.length + 2 + 1 + String(percent).length + 1;
+  const cap = formatWindowCap(providerId, window);
+  const suffix = cap ? `/${cap}` : "";
+  // " " + percent + "%" + optional "/cap"
+  return 1 + String(percent).length + 1 + suffix.length;
 }
 
 /**
  * Renders a single rate limit window as a compact string.
  */
 function renderWindow(
+  providerId: string,
   window: RateLimitWindow,
   barWidth: number,
   theme: Theme,
 ): string {
-  const progressText = getWindowProgressText(window);
   const percent = Math.round(window.usedPercent);
   const pacePercent = getPacePercent(window);
   const risk = assessWindowRisk(window);
@@ -293,9 +221,11 @@ function renderWindow(
     fillColor,
     pacePercent,
   );
-  const percentLabel = theme.fg(fillColor, `${percent}%`);
+  const cap = formatWindowCap(providerId, window);
+  const percentText = cap ? `${percent}%/${cap}` : `${percent}%`;
+  const percentLabel = theme.fg(fillColor, percentText);
 
-  return `(${progressText}) ${bar} ${percentLabel}`;
+  return `${bar} ${percentLabel}`;
 }
 
 /**
@@ -359,7 +289,7 @@ class UsageBarWidget implements Component {
     let fixedWidth = displayName.length;
     fixedWidth += pipeSeparatorWidth * windows.length; // separator after provider + between windows
     for (const window of windows) {
-      fixedWidth += getWindowFixedWidth(window);
+      fixedWidth += getWindowFixedWidth(this.providerId, window);
     }
 
     // Remaining width is distributed among progress bars
@@ -371,7 +301,7 @@ class UsageBarWidget implements Component {
     parts.push(th.fg("accent", displayName));
 
     for (const window of windows) {
-      parts.push(renderWindow(window, barWidth, th));
+      parts.push(renderWindow(this.providerId, window, barWidth, th));
     }
 
     const pipeSeparator = th.fg("dim", " | ");
@@ -500,7 +430,7 @@ async function refreshRateLimits(
     return;
   }
 
-  const providerKey = getProviderKey(ctx.model);
+  const providerKey = getProviderKeyFromModel(ctx.model);
   if (!providerKey) {
     cachedLimits = null;
     cachedProviderId = null;

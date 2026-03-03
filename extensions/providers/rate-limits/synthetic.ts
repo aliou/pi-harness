@@ -34,6 +34,9 @@ function mapSyntheticToRateLimits(
       usedPercent: (data.subscription.requests / data.subscription.limit) * 100,
       resetsAt: new Date(data.subscription.renewsAt),
       windowSeconds: 5 * 60 * 60,
+      usedValue: data.subscription.requests,
+      limitValue: data.subscription.limit,
+      unit: "req",
     });
   }
 
@@ -45,6 +48,9 @@ function mapSyntheticToRateLimits(
         (data.search.hourly.requests / data.search.hourly.limit) * 100,
       resetsAt: new Date(data.search.hourly.renewsAt),
       windowSeconds: 60 * 60,
+      usedValue: data.search.hourly.requests,
+      limitValue: data.search.hourly.limit,
+      unit: "req",
     });
   }
 
@@ -56,6 +62,9 @@ function mapSyntheticToRateLimits(
         (data.freeToolCalls.requests / data.freeToolCalls.limit) * 100,
       resetsAt: new Date(data.freeToolCalls.renewsAt),
       windowSeconds: 24 * 60 * 60,
+      usedValue: data.freeToolCalls.requests,
+      limitValue: data.freeToolCalls.limit,
+      unit: "calls",
     });
   }
 
