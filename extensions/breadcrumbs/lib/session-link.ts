@@ -8,7 +8,8 @@ import type {
   SessionManager,
   Theme,
 } from "@mariozechner/pi-coding-agent";
-import { Box, Text } from "@mariozechner/pi-tui";
+import { getMarkdownTheme } from "@mariozechner/pi-coding-agent";
+import { Box, Markdown, Text } from "@mariozechner/pi-tui";
 
 export type SessionLinkType = "handoff" | "continue";
 
@@ -187,7 +188,14 @@ export function setupSessionLinkSourceRenderer(pi: ExtensionAPI) {
       if (expanded) {
         // Show the full content below the header
         box.addChild(new Text("", 0, 0)); // spacer
-        box.addChild(new Text(theme.fg("muted", content), 0, 0));
+
+        try {
+          const md = new Markdown(content, 0, 0, getMarkdownTheme());
+          box.addChild(md);
+        } catch {
+          // Fallback to plain text if markdown rendering fails
+          box.addChild(new Text(theme.fg("muted", content), 0, 0));
+        }
       } else {
         box.addChild(new Text(theme.fg("dim", "Press Ctrl+O to expand"), 0, 0));
       }
