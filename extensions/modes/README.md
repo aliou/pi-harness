@@ -10,9 +10,9 @@ Hardcoded mode system for Pi with tool gating, model switching, and per-branch r
   - No provider/model override
 
 - `research`
-  - Read-only research mode + restricted bash
-  - Blocks `write`, `edit`
-  - Requires explicit confirmation for each `bash` call
+  - Read-only research mode
+  - Active tools: `read`, `ls`, `find`, `grep` (+ any available research helpers like `scout`)
+  - Blocks `write`, `edit`, `bash`
   - Provider/model: `anthropic / claude-opus-4-6`
 
 ## Controls
@@ -24,7 +24,8 @@ Hardcoded mode system for Pi with tool gating, model switching, and per-branch r
 
 ## Behavior
 
-- Enforced at execution time via `tool_call` hook (not `setActiveTools`)
+- Enforced at execution time via `tool_call` hook
+- Also applies denylist-only active tools via `pi.setActiveTools()` on each mode switch (all tools minus mode `deniedTools`)
 - Mode state persisted with `appendEntry("mode-state", ...)`
 - Restores mode per branch using `sessionManager.getBranch()`
 - Appends mode instructions to system prompt on each turn

@@ -57,6 +57,13 @@ export async function applyMode(
   setCurrentMode(mode);
   clearSessionAllowedTools();
 
+  // Tool set policy: denylist-only.
+  // On each switch, start from all available tools and remove denied tools.
+  const allToolNames = pi.getAllTools().map((tool) => tool.name);
+  const denied = new Set(mode.deniedTools);
+  const active = allToolNames.filter((name) => !denied.has(name));
+  pi.setActiveTools(active);
+
   if (!options?.silent) {
     pi.appendEntry("mode-state", { mode: modeName });
     sendModeSwitchMessage(

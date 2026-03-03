@@ -16,7 +16,7 @@ import { getCurrentMode } from "../state";
 
 function modeDescription(name: string): string {
   if (name === "default") return "No restrictions";
-  return "Read-only research mode (bash confirm each call)";
+  return "Read-only research mode (read + grep/find/ls only)";
 }
 
 export async function showModeSelector(

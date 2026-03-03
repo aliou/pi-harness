@@ -18,7 +18,7 @@ const RESEARCH_INSTRUCTIONS = [
   "",
   "Rules:",
   "- Do not modify files or system state.",
-  "- You may use bash only for read/search/inspection commands.",
+  "- Use read + grep/find/ls for local code exploration.",
   "- Prefer deep exploration and evidence-backed findings.",
   "",
   "Output clear findings with sources, assumptions, and open questions.",
@@ -35,9 +35,12 @@ export const MODES: Record<string, ModeDefinition> = {
   research: {
     name: "research",
     label: "research",
+    // This list is used both for tool gating and (when applied) as the active tool set.
     allowedTools: [
       "read",
-      "bash",
+      "ls",
+      "find",
+      "grep",
       "find_sessions",
       "read_session",
       "scout",
@@ -48,11 +51,10 @@ export const MODES: Record<string, ModeDefinition> = {
       "synthetic_web_search",
       "get_current_time",
     ],
-    deniedTools: ["write", "edit"],
+    deniedTools: ["write", "edit", "bash"],
     labelColor: (text: string) => `\u001b[36m${text}\u001b[0m`,
     provider: "anthropic",
     model: "claude-opus-4-6",
-    bashConfirmEachCall: true,
     instructions: RESEARCH_INSTRUCTIONS,
   },
 };
