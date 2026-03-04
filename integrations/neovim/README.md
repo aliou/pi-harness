@@ -133,6 +133,7 @@ API:
    - Ensure `nvim` is on PATH
    - Check `:PiNvimStatus` shows RPC is running
    - Verify lockfile exists: `ls ~/.local/share/nvim/pi-nvim/`
+   - Discovery matches exact CWD first, then Neovim instances whose CWD is a child of Pi's CWD
 
 2. **Multiple Neovim instances:**
    - Pi will prompt to select one

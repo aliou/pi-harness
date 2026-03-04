@@ -18,19 +18,30 @@ local source = require('pi-nvim.actions.source')
 ---@return pi.ContextSelection?
 ---@diagnostic disable-next-line: unused-local
 function M.get_visual_selection(bufnr, mode)
-  local start = vim.fn.getpos("'<")
-  local finish = vim.fn.getpos("'>")
+  -- Use "v" (visual start) and "." (cursor) for the active selection.
+  -- The '< and '> marks only update after leaving visual mode, so they
+  -- reflect the *previous* selection while visual mode is still active.
+  local start = vim.fn.getpos("v")
+  local finish = vim.fn.getpos(".")
 
   if start[2] == 0 or finish[2] == 0 then
     return nil
   end
 
-  -- getregion() deals with linewise/charwise/blockwise selections.
+  -- getregion() deals with linewise/charwise/blockwise selections
+  -- and handles unordered positions (start after finish)
   local lines = vim.fn.getregion(start, finish, { type = mode })
 
+  -- Normalize so start <= end for the returned range
+  local s_line, s_col = start[2], start[3]
+  local e_line, e_col = finish[2], finish[3]
+  if s_line > e_line or (s_line == e_line and s_col > e_col) then
+    s_line, s_col, e_line, e_col = e_line, e_col, s_line, s_col
+  end
+
   return {
-    start = { line = start[2], col = start[3] },
-    ['end'] = { line = finish[2], col = finish[3] },
+    start = { line = s_line, col = s_col },
+    ['end'] = { line = e_line, col = e_col },
     text = table.concat(lines, '\n'),
   }
 end
@@ -53,7 +64,8 @@ function M.execute()
   }
 
   local mode = vim.api.nvim_get_mode().mode
-  if mode == 'v' or mode == 'V' or mode == '\22' then
+  local current_win = vim.api.nvim_get_current_win()
+  if (mode == 'v' or mode == 'V' or mode == '\22') and winnr == current_win then
     result.selection = M.get_visual_selection(bufnr, mode)
   end
 
