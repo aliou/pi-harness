@@ -34,6 +34,8 @@ export type ExecFn = (
   options?: ExecOptions,
 ) => Promise<ExecResult>;
 
+const LOCKFILE_NAME_PATTERN = /^[0-9a-f]{8}-\d+\.json$/;
+
 function getNvimAppName(): string {
   return process.env.NVIM_APPNAME && process.env.NVIM_APPNAME.length > 0
     ? process.env.NVIM_APPNAME
@@ -94,8 +96,112 @@ function isProcessRunning(pid: number): boolean {
   try {
     process.kill(pid, 0);
     return true;
-  } catch {
+  } catch (error) {
+    if (
+      error &&
+      typeof error === "object" &&
+      "code" in error &&
+      error.code === "EPERM"
+    ) {
+      // Process exists but we do not have permission to signal it
+      return true;
+    }
     return false;
+  }
+}
+
+function normalizePathForComparison(inputPath: string): string {
+  const resolved = path.resolve(inputPath);
+  try {
+    return fs.realpathSync.native(resolved);
+  } catch {
+    return resolved;
+  }
+}
+
+/**
+ * Check if Neovim's CWD is inside Pi's CWD (child directory)
+ *
+ * Called as isRelatedCwd(piCwd, nvimCwd). Only matches when Neovim is
+ * in a subdirectory of Pi's working directory, not the reverse
+ */
+function isRelatedCwd(piCwd: string, nvimCwd: string): boolean {
+  const pi = normalizePathForComparison(piCwd) + path.sep;
+  const nvim = normalizePathForComparison(nvimCwd) + path.sep;
+  return nvim.startsWith(pi);
+}
+
+function relatedPathDepth(piCwd: string, nvimCwd: string): number {
+  const pi = normalizePathForComparison(piCwd);
+  const nvim = normalizePathForComparison(nvimCwd);
+  const relative = path.relative(pi, nvim);
+
+  if (relative.length === 0) {
+    return 0;
+  }
+
+  return relative.split(path.sep).filter((segment) => segment.length > 0)
+    .length;
+}
+
+function isLockfileName(fileName: string): boolean {
+  return LOCKFILE_NAME_PATTERN.test(fileName);
+}
+
+function isValidLockfile(value: unknown): value is Lockfile {
+  if (!value || typeof value !== "object") {
+    return false;
+  }
+
+  const maybe = value as Partial<Lockfile>;
+  return (
+    typeof maybe.socket === "string" &&
+    maybe.socket.length > 0 &&
+    typeof maybe.cwd === "string" &&
+    maybe.cwd.length > 0 &&
+    typeof maybe.pid === "number" &&
+    Number.isInteger(maybe.pid) &&
+    maybe.pid > 0
+  );
+}
+
+function removeLockfileSilently(lockfilePath: string): void {
+  try {
+    fs.unlinkSync(lockfilePath);
+  } catch {
+    // ignore
+  }
+}
+
+/**
+ * Read and validate a single lockfile, removing it if stale or corrupt
+ */
+function readLockfile(
+  lockfilePath: string,
+  fileName: string,
+): DiscoveredInstance | null {
+  if (!isLockfileName(fileName)) {
+    return null;
+  }
+
+  try {
+    const raw = fs.readFileSync(lockfilePath, "utf8");
+    const parsed = JSON.parse(raw) as unknown;
+
+    if (!isValidLockfile(parsed)) {
+      removeLockfileSilently(lockfilePath);
+      return null;
+    }
+
+    if (!isProcessRunning(parsed.pid)) {
+      removeLockfileSilently(lockfilePath);
+      return null;
+    }
+
+    return { lockfilePath, lockfile: parsed };
+  } catch {
+    removeLockfileSilently(lockfilePath);
+    return null;
   }
 }
 
@@ -104,43 +210,44 @@ export function discoverNvim(cwd: string): DiscoverResult {
   const hash = cwdHash(cwd);
   const prefix = `${hash}-`;
 
-  const instances: DiscoveredInstance[] = [];
+  const exactMatches: DiscoveredInstance[] = [];
+  const relatedMatches: DiscoveredInstance[] = [];
 
-  // Check all possible data directories
   for (const dataDir of dataDirs) {
     if (!fs.existsSync(dataDir)) {
       continue;
     }
 
-    const candidates = fs
-      .readdirSync(dataDir)
-      .filter((f) => f.startsWith(prefix) && f.endsWith(".json"))
-      .map((f) => path.join(dataDir, f));
+    const lockfileNames = fs.readdirSync(dataDir).filter(isLockfileName);
 
-    // Filter stale lockfiles
-    for (const lockfilePath of candidates) {
-      try {
-        const raw = fs.readFileSync(lockfilePath, "utf8");
-        const lockfile = JSON.parse(raw) as Lockfile;
+    for (const fileName of lockfileNames) {
+      const lockfilePath = path.join(dataDir, fileName);
+      const instance = readLockfile(lockfilePath, fileName);
+      if (!instance) continue;
 
-        if (!lockfile.pid || !isProcessRunning(lockfile.pid)) {
-          fs.unlinkSync(lockfilePath);
-          continue;
-        }
-
-        instances.push({ lockfilePath, lockfile });
-      } catch {
-        // Corrupt lockfile, remove
-        try {
-          fs.unlinkSync(lockfilePath);
-        } catch {
-          // ignore
-        }
+      if (fileName.startsWith(prefix)) {
+        exactMatches.push(instance);
+      } else if (isRelatedCwd(cwd, instance.lockfile.cwd)) {
+        relatedMatches.push(instance);
       }
     }
   }
 
-  return instances;
+  if (exactMatches.length > 0) {
+    return exactMatches;
+  }
+
+  // Prefer nearest related directories to reduce noisy selection prompts
+  return relatedMatches.sort((a, b) => {
+    const depthDelta =
+      relatedPathDepth(cwd, a.lockfile.cwd) -
+      relatedPathDepth(cwd, b.lockfile.cwd);
+    if (depthDelta !== 0) {
+      return depthDelta;
+    }
+
+    return a.lockfile.cwd.localeCompare(b.lockfile.cwd);
+  });
 }
 
 export type NvimAction = string | { type: string; [key: string]: unknown };
