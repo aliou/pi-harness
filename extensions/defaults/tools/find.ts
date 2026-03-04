@@ -1,11 +1,9 @@
-import { spawnSync } from "node:child_process";
 import { existsSync } from "node:fs";
 import { homedir } from "node:os";
 import { resolve } from "node:path";
-import type { ExtensionAPI } from "@mariozechner/pi-coding-agent";
-import {
-  DEFAULT_MAX_BYTES,
-  type FindToolDetails,
+import type {
+  ExtensionAPI,
+  FindToolDetails,
 } from "@mariozechner/pi-coding-agent";
 import { Type } from "@sinclair/typebox";
 
@@ -21,6 +19,19 @@ const BLOCKED_PATHS = new Set([
   "/etc",
   "/opt",
   "/usr",
+  "/System",
+  "/Library",
+  "/Applications",
+  "/Volumes",
+  "/nix",
+  "/snap",
+  "/proc",
+  "/sys",
+  "/dev",
+  "/run",
+  "/boot",
+  "/sbin",
+  "/bin",
 ]);
 
 export function setupFindTool(pi: ExtensionAPI): void {
@@ -122,44 +133,27 @@ export function setupFindTool(pi: ExtensionAPI): void {
         absoluteSearchPath,
       ];
 
-      // Run fd command
-      const result = spawnSync("fd", fdArgs, {
-        encoding: "utf-8",
-        maxBuffer: DEFAULT_MAX_BYTES,
-        signal: signal as unknown as AbortSignal,
+      // Run fd command using pi.exec
+      const result = await pi.exec("fd", fdArgs, {
+        signal: signal ?? undefined,
+        cwd: ctx.cwd,
       });
 
-      // Handle fd not found in PATH
-      if (result.error) {
-        const errorMessage = result.error.message || "";
-        if (
-          errorMessage.includes("ENOENT") ||
-          errorMessage.includes("not found")
-        ) {
-          return {
-            content: [
-              {
-                type: "text" as const,
-                text: "Error: 'fd' command not found. Please install fd and ensure it's in your PATH.",
-              },
-            ],
-            details: {},
-          };
-        }
-        // Handle other fd errors
+      // Handle abort
+      if (result.killed && signal?.aborted) {
         return {
           content: [
             {
               type: "text" as const,
-              text: `Error running fd: ${errorMessage}`,
+              text: "Search was aborted",
             },
           ],
           details: {},
         };
       }
 
-      // Handle non-zero exit status
-      if (result.status !== 0) {
+      // Handle non-zero exit with no stdout
+      if (result.code !== 0 && !result.stdout) {
         return {
           content: [
             {
@@ -171,8 +165,14 @@ export function setupFindTool(pi: ExtensionAPI): void {
         };
       }
 
-      // No results found
-      if (!result.stdout.trim()) {
+      // Process results - relativize paths to searchPath
+      const allResults = result.stdout
+        .trim()
+        .split("\n")
+        .filter((line) => line.trim());
+
+      // Handle empty results
+      if (allResults.length === 0) {
         return {
           content: [
             {
@@ -185,12 +185,6 @@ export function setupFindTool(pi: ExtensionAPI): void {
           },
         };
       }
-
-      // Process results - relativize paths to searchPath
-      const allResults = result.stdout
-        .trim()
-        .split("\n")
-        .filter((line) => line.trim());
 
       const results = allResults.map((absolutePath) => {
         // Make path relative to searchPath
