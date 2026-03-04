@@ -1,5 +1,6 @@
 import { spawnSync } from "node:child_process";
 import { existsSync } from "node:fs";
+import { homedir } from "node:os";
 import { resolve } from "node:path";
 import type { ExtensionAPI } from "@mariozechner/pi-coding-agent";
 import {
@@ -9,6 +10,18 @@ import {
 import { Type } from "@sinclair/typebox";
 
 const DEFAULT_LIMIT = 1000;
+
+const BLOCKED_PATHS = new Set([
+  homedir(),
+  "/",
+  "/Users",
+  "/home",
+  "/tmp",
+  "/var",
+  "/etc",
+  "/opt",
+  "/usr",
+]);
 
 export function setupFindTool(pi: ExtensionAPI): void {
   const wrappedSchema = Type.Object({
@@ -68,6 +81,19 @@ export function setupFindTool(pi: ExtensionAPI): void {
 
       // Resolve the search path relative to the context's working directory
       const absoluteSearchPath = resolve(ctx.cwd, searchPath || ".");
+
+      // Block searching in overly broad directories
+      if (BLOCKED_PATHS.has(absoluteSearchPath)) {
+        return {
+          content: [
+            {
+              type: "text" as const,
+              text: `Searching '${absoluteSearchPath}' is not allowed — too broad. Narrow the search to a specific project or subdirectory.`,
+            },
+          ],
+          details: {},
+        };
+      }
 
       // Check if path exists
       if (!existsSync(absoluteSearchPath)) {
