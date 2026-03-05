@@ -38,8 +38,25 @@ Standalone extensions published to npm, each in their own repo.
 |-----------|-------------|------|-----|
 | extension-dev | Tools and commands for developing and updating Pi extensions | [repo](https://github.com/aliou/pi-extension-dev) | [@aliou/pi-extension-dev](https://www.npmjs.com/package/@aliou/pi-extension-dev) |
 | guardrails | Security hooks to prevent potentially dangerous operations | [repo](https://github.com/aliou/pi-guardrails) | [@aliou/pi-guardrails](https://www.npmjs.com/package/@aliou/pi-guardrails) |
+| linkup | Web search and content fetching via Linkup API | [repo](https://github.com/aliou/pi-linkup) | [@aliou/pi-linkup](https://www.npmjs.com/package/@aliou/pi-linkup) |
 | processes | Background process management without blocking the conversation | [repo](https://github.com/aliou/pi-processes) | [@aliou/pi-processes](https://www.npmjs.com/package/@aliou/pi-processes) |
+| synthetic | Synthetic as a model provider for open-source models | [repo](https://github.com/aliou/pi-synthetic) | [@aliou/pi-synthetic](https://www.npmjs.com/package/@aliou/pi-synthetic) |
 | toolchain | Opinionated toolchain enforcement | [repo](https://github.com/aliou/pi-toolchain) | [@aliou/pi-toolchain](https://www.npmjs.com/package/@aliou/pi-toolchain) |
+
+## Published Utilities
+
+Shared packages used by extensions, published to npm.
+
+| Package | Description | Repo | npm |
+|---------|-------------|------|-----|
+| pi-utils-settings | Config loading, settings UI, and TUI components | [repo](https://github.com/aliou/pi-utils-settings) | [@aliou/pi-utils-settings](https://www.npmjs.com/package/@aliou/pi-utils-settings) |
+| pi-utils-ui | Shared TUI abstractions (tool components, widgets, primitives) | [repo](https://github.com/aliou/pi-utils-ui) | [@aliou/pi-utils-ui](https://www.npmjs.com/package/@aliou/pi-utils-ui) |
+
+## Published Themes
+
+| Theme | Repo | npm |
+|-------|------|-----|
+| jellybeans | [repo](https://github.com/aliou/pi-theme-jellybeans) | [@aliou/pi-theme-jellybeans](https://www.npmjs.com/package/@aliou/pi-theme-jellybeans) |
 
 ## All Extensions
 
@@ -49,17 +66,16 @@ Standalone extensions published to npm, each in their own repo.
 | defaults | Sensible defaults and quality-of-life improvements | [README](extensions/defaults/README.md) |
 | introspection | Inspect Pi agent internals: system prompt, tools, skills, and context usage | [README](extensions/introspection/README.md) |
 | modes | Hardcoded execution modes with tool gating, model defaults, and branch-aware restore | [README](extensions/modes/README.md) |
-| neovim | Bidirectional Neovim integration (editor context, file reload, LSP diagnostics) | [README](extensions/neovim/README.md) |
 | planning | Save and execute implementation plans | [README](extensions/planning/README.md) |
 | providers | Providers and usage dashboard (rate limits, session stats) | [README](extensions/providers/README.md) |
 | subagents | Framework for spawning specialized subagents (scout, oracle, reviewer, etc.) | [README](extensions/subagents/README.md) |
 | the-dumb-zone | Context window degradation warning | [README](extensions/the-dumb-zone/README.md) |
 
-## Themes
+## Integrations
 
-| Theme | README |
-|-------|--------|
-| jellybeans | [README](themes/jellybeans/README.md) |
+| Integration | Description | README |
+|-------------|-------------|--------|
+| neovim | Bidirectional Neovim integration (editor context, file reload, LSP diagnostics) | [README](integrations/neovim/README.md) |
 
 ## Development
 
