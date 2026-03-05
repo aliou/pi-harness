@@ -52,6 +52,7 @@ export const MODES: Record<string, ModeDefinition> = {
       "get_current_time",
       "create_plan",
       "update_plan",
+      "ask_user",
     ],
     deniedTools: ["write", "edit", "bash"],
     labelColor: (text: string) => `\u001b[36m${text}\u001b[0m`,
