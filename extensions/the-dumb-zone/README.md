@@ -56,4 +56,4 @@ export const WIDGET_ALERT_COOLDOWN_MS = 30000;
 
 ## Dependencies
 
-- `@aliou/tui-utils` - for themed box rendering
+- `@aliou/pi-utils-ui` - for themed box rendering
