@@ -23,10 +23,10 @@ Symlink or copy to Pi extensions directory:
 
 ```bash
 # If pi-extensions is cloned locally:
-ln -sf /path/to/pi-extensions/extensions/neovim ~/.pi/agent/extensions/neovim
+ln -sf /path/to/pi-extensions/integrations/neovim ~/.pi/agent/extensions/neovim
 
 # Or copy:
-cp -R /path/to/pi-extensions/extensions/neovim ~/.pi/agent/extensions/
+cp -R /path/to/pi-extensions/integrations/neovim ~/.pi/agent/extensions/
 ```
 
 ### 2. Neovim Plugin
