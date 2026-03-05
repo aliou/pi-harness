@@ -7,18 +7,25 @@ All packages in this repository are published under the `@aliou` scope, not `@an
 ## Structure
 
 - `extensions/` - Custom Pi extensions
-- `packages/` - Shared packages (e.g., tsconfig)
+- `integrations/` - Editor and browser integrations (neovim, chrome)
+- `packages/` - Shared packages (e.g., tsconfig, agent-kit)
+- `scripts/` - Build and CI scripts
+- `archive/` - Lightweight gist-based extensions tracked as submodules
 
 ## Extensions
 
 - `breadcrumbs` - Session history tools. Search past sessions, extract information, hand off context to new sessions.
 - `defaults` - Personal sensible defaults and quality-of-life improvements (directory-aware read, flexible edit parameters, AGENTS.md discovery, git rebase helper, notifications, terminal title, auto session naming).
 - `introspection` - Inspect Pi agent internals: system prompt, tools, skills, context usage.
-- `neovim` - Bidirectional integration between Pi and Neovim.
+- `modes` - Hardcoded execution modes with tool gating, model defaults, and branch-aware restore.
 - `planning` - Turn conversations into implementation plans and manage saved plans.
 - `providers` - Register custom providers and show unified rate-limit and usage dashboards.
 - `subagents` - Framework for spawning specialized subagents with custom tools, consistent UI rendering, and logging.
 - `the-dumb-zone` - Detects when an AI session is degrading and shows a warning overlay.
+
+## Integrations
+
+- `neovim` - Bidirectional integration between Pi and Neovim.
 
 ## Development
 
