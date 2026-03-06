@@ -5,13 +5,15 @@ import type {
 import { ModeEditor } from "../components/mode-editor";
 import { DEFAULT_MODE, MODE_ORDER, MODES } from "../modes";
 import {
+  clearPreviousModel,
   clearSessionAllowedTools,
   getCurrentMode,
+  getPreviousModel,
   setCurrentMode,
+  setPreviousModel,
   setRequestRender,
   triggerRender,
 } from "../state";
-import { debugNotify } from "./debug";
 import { sendModeSwitchMessage } from "./mode-switch";
 
 export function getLastModeFromBranch(ctx: ExtensionContext): string | null {
@@ -44,21 +46,28 @@ export async function applyMode(
   }
 
   const previousModeName = getCurrentMode().name;
-  debugNotify(
-    ctx,
-    `applyMode start: ${previousModeName} -> ${modeName}${options?.silent ? " (silent)" : ""}`,
-  );
-
   if (previousModeName === modeName) {
-    debugNotify(ctx, `applyMode noop: already in ${modeName}`);
     return;
+  }
+
+  let targetModelId: string | undefined;
+
+  if (previousModeName === "default" && modeName !== "default" && ctx.model) {
+    setPreviousModel(ctx.model);
+  }
+
+  if (previousModeName !== "default" && modeName === "default") {
+    targetModelId = getPreviousModel()?.id;
+  } else if (mode.provider && mode.model) {
+    targetModelId =
+      ctx.modelRegistry.find(mode.provider, mode.model)?.id ?? mode.model;
+  } else {
+    targetModelId = ctx.model?.id;
   }
 
   setCurrentMode(mode);
   clearSessionAllowedTools();
 
-  // Tool set policy: denylist-only.
-  // On each switch, start from all available tools and remove denied tools.
   const allToolNames = pi.getAllTools().map((tool) => tool.name);
   const denied = new Set(mode.deniedTools);
   const active = allToolNames.filter((name) => !denied.has(name));
@@ -68,13 +77,18 @@ export async function applyMode(
     pi.appendEntry("mode-state", { mode: modeName });
     sendModeSwitchMessage(
       pi,
-      { mode: modeName, from: previousModeName },
+      { mode: modeName, from: previousModeName, model: targetModelId },
       `Switched to ${modeName.toUpperCase()} mode.`,
     );
-    ctx.ui.notify(`Mode: ${modeName}`, "info");
   }
 
-  if (mode.provider && mode.model) {
+  if (previousModeName !== "default" && modeName === "default") {
+    const savedModel = getPreviousModel();
+    if (savedModel) {
+      await pi.setModel(savedModel);
+      clearPreviousModel();
+    }
+  } else if (mode.provider && mode.model) {
     const found = ctx.modelRegistry.find(mode.provider, mode.model);
     if (found) {
       await pi.setModel(found);
@@ -87,7 +101,6 @@ export async function applyMode(
   }
 
   triggerRender();
-  debugNotify(ctx, `applyMode done: current=${getCurrentMode().name}`);
 }
 
 export function setupEditor(ctx: ExtensionContext): void {
@@ -96,16 +109,10 @@ export function setupEditor(ctx: ExtensionContext): void {
     return;
   }
 
-  debugNotify(ctx, "setupEditor: installing ModeEditor");
-
   ctx.ui.setEditorComponent((tui, theme, keybindings) => {
     const editor = new ModeEditor(tui, theme, keybindings);
     editor.modeProvider = () => getCurrentMode();
     setRequestRender(() => editor.requestRenderNow());
-    debugNotify(
-      ctx,
-      `setupEditor: ModeEditor ready (mode=${getCurrentMode().name})`,
-    );
     return editor;
   });
 }
@@ -115,50 +122,60 @@ export async function restoreModeForSession(
   ctx: ExtensionContext,
   includeFlag: boolean,
 ): Promise<void> {
-  debugNotify(
-    ctx,
-    `restoreModeForSession start (includeFlag=${String(includeFlag)})`,
-  );
+  clearPreviousModel();
 
   const restored = getLastModeFromBranch(ctx);
   const baseMode = restored ?? DEFAULT_MODE.name;
-  debugNotify(ctx, `restoreModeForSession branch mode=${restored ?? "<none>"}`);
 
   const from = getCurrentMode().name;
   await applyMode(pi, ctx, baseMode, { silent: true });
   if (from !== baseMode && restored) {
+    let targetModelId: string | undefined;
+    if (baseMode === DEFAULT_MODE.name) {
+      targetModelId = getPreviousModel()?.id ?? ctx.model?.id;
+    } else {
+      const mode = MODES[baseMode];
+      targetModelId =
+        mode?.provider && mode.model
+          ? (ctx.modelRegistry.find(mode.provider, mode.model)?.id ??
+            mode.model)
+          : ctx.model?.id;
+    }
+
     sendModeSwitchMessage(
       pi,
-      { mode: baseMode, from },
+      { mode: baseMode, from, model: targetModelId },
       `Restored ${baseMode.toUpperCase()} mode.`,
     );
-    ctx.ui.notify(`Restored mode: ${baseMode}`, "info");
   }
 
   if (includeFlag) {
     const modeFlag = pi.getFlag("agent-mode");
-    debugNotify(
-      ctx,
-      `restoreModeForSession --agent-mode flag=${String(modeFlag)}`,
-    );
     if (typeof modeFlag === "string" && modeFlag.trim()) {
       const requested = modeFlag.trim();
       const fromFlag = getCurrentMode().name;
       await applyMode(pi, ctx, requested, { silent: true });
       if (fromFlag !== requested) {
+        let targetModelId: string | undefined;
+        if (requested === DEFAULT_MODE.name) {
+          targetModelId = getPreviousModel()?.id ?? ctx.model?.id;
+        } else {
+          const mode = MODES[requested];
+          targetModelId =
+            mode?.provider && mode.model
+              ? (ctx.modelRegistry.find(mode.provider, mode.model)?.id ??
+                mode.model)
+              : ctx.model?.id;
+        }
+
         sendModeSwitchMessage(
           pi,
-          { mode: requested, from: fromFlag },
+          { mode: requested, from: fromFlag, model: targetModelId },
           `Flag set ${requested.toUpperCase()} mode.`,
         );
-        ctx.ui.notify(`Flag mode: ${requested}`, "info");
       }
     }
   }
 
   setupEditor(ctx);
-  debugNotify(
-    ctx,
-    `restoreModeForSession done (current=${getCurrentMode().name})`,
-  );
 }
