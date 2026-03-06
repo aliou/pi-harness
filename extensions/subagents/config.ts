@@ -118,7 +118,8 @@ const DEFAULT_CONFIG: ResolvedSubagentsConfig = {
     scout: {
       candidates: [
         { provider: "openrouter", model: "google/gemini-2.5-flash-lite" },
-        { provider: "zai", model: "glm-4.7" },
+        { provider: "synthetic", model: "hf:zai-org/GLM-4.7-Flash" },
+        { provider: "zai", model: "glm-4.7-flash" },
         { provider: "mistral", model: "ministral-8b-2512" },
       ],
       enabled: true,
@@ -127,7 +128,8 @@ const DEFAULT_CONFIG: ResolvedSubagentsConfig = {
     lookout: {
       candidates: [
         { provider: "openrouter", model: "google/gemini-2.5-flash-lite" },
-        { provider: "zai", model: "glm-4.7" },
+        { provider: "synthetic", model: "hf:zai-org/GLM-4.7-Flash" },
+        { provider: "zai", model: "glm-4.7-flash" },
         { provider: "mistral", model: "ministral-8b-2512" },
       ],
       enabled: true,
