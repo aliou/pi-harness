@@ -61,12 +61,12 @@ The extension gates direct agent access to the sessions directory (`~/.pi/agent/
 
 - Direct **read** attempts trigger a user confirmation prompt (UI required). Approval is remembered for the rest of the current Pi session.
 - Direct **write/edit** attempts remain blocked.
-- Direct **bash** commands referencing the sessions directory are blocked in `confirm` mode.
+- Direct **bash** commands referencing the sessions directory trigger a user confirmation prompt (UI required). Approval is remembered for the rest of the current Pi session.
 
 Use `breadcrumbs:read-session-files` to control gating in-memory for current runtime:
 - `breadcrumbs:read-session-files status` - show current mode (`confirm` or `allow`)
-- `breadcrumbs:read-session-files allow` - allow direct reads without confirmation and allow bash commands touching the sessions dir
-- `breadcrumbs:read-session-files confirm` - restore confirmation prompts and bash blocking
+- `breadcrumbs:read-session-files allow` - allow direct reads and bash commands touching the sessions dir without confirmation
+- `breadcrumbs:read-session-files confirm` - restore confirmation prompts for reads and bash
 - `breadcrumbs:read-session-files` - toggle between `confirm` and `allow`
 
 Agents should prefer `find_sessions` and `read_session` instead of reading raw session JSONL.

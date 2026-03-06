@@ -1,7 +1,7 @@
 /**
  * Prevent direct agent access to the sessions directory.
  *
- * Blocks read, write, edit, and bash commands that target session files.
+ * Gates read, write, edit, and bash commands that target session files.
  * Agents should use find_sessions and read_session tools instead.
  */
 
@@ -59,7 +59,7 @@ const FILE_TOOLS = new Set(["read", "write", "edit"]);
  * Default behavior:
  * - read: prompt the user for confirmation (UI required). If no UI, deny.
  * - write/edit: still blocked unconditionally.
- * - bash: still blocked for session-dir commands.
+ * - bash: prompt the user for confirmation (UI required). If no UI, deny.
  *
  * Optional runtime override:
  * - sessionReadAccessMode = "allow": direct session-file reads and bash
@@ -69,6 +69,9 @@ export function setupProtectSessionsDirHook(pi: ExtensionAPI) {
   // Session-only allowlist for explicit user approvals.
   // Keyed by resolved absolute path.
   const allowedReadPaths = new Set<string>();
+
+  // Set of bash commands (full command string) approved for this session.
+  const allowedBashCommands = new Set<string>();
 
   pi.on("tool_call", async (event, ctx) => {
     // File tools: check path / file_path parameter.
@@ -144,12 +147,40 @@ export function setupProtectSessionsDirHook(pi: ExtensionAPI) {
         command.includes(sessionsDir) ||
         command.includes("/.pi/agent/sessions")
       ) {
-        if (getSessionReadAccessMode() === "allow") {
-          return;
+        // Allow all when runtime mode is "allow".
+        if (getSessionReadAccessMode() === "allow") return;
+
+        // Allow if previously approved for this session.
+        if (allowedBashCommands.has(command)) return;
+
+        // In print/RPC mode, deny by default (safe fallback).
+        if (!ctx.hasUI) {
+          ctx.ui.notify(
+            "Blocked: session-dir bash (no UI to confirm)",
+            "warning",
+          );
+          return {
+            block: true,
+            reason:
+              "Bash commands targeting session files require explicit user confirmation, but no UI is available.",
+          };
         }
 
-        ctx.ui.notify("Blocked: use find_sessions / read_session", "warning");
-        return { block: true, reason: BLOCK_MESSAGE };
+        const title = "Run bash command on sessions dir?";
+        const msg =
+          "The agent is trying to run a bash command that targets the sessions directory:\n\n" +
+          `${command}\n\n` +
+          "Allow this command? (This approval is only for the current session.)";
+
+        const confirm = await ctx.ui.confirm(title, msg);
+        if (!confirm) {
+          ctx.ui.notify("Denied: session-dir bash", "warning");
+          return { block: true, reason: "User denied session-dir bash" };
+        }
+
+        allowedBashCommands.add(command);
+        ctx.ui.notify("Allowed: session-dir bash (this session)", "info");
+        return;
       }
     }
 
