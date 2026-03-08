@@ -240,12 +240,14 @@ export function writeSessionLinkSource(
  * @param targetSessionId - The new session ID to link to
  * @param goal - The session link goal
  * @param linkType - Whether this is a "handoff" or "continue" link
+ * @param parentId - The leaf ID of the parent session (for tree structure)
  */
 export function writeSessionLinkMarker(
   sessionFile: string,
   targetSessionId: string,
   goal: string,
   linkType: SessionLinkType,
+  parentId: string,
 ): void {
   const entry = {
     type: "custom_message",
@@ -254,6 +256,7 @@ export function writeSessionLinkMarker(
     timestamp: new Date().toISOString(),
     content: "",
     display: true,
+    parentId,
     details: {
       targetSessionId,
       goal,

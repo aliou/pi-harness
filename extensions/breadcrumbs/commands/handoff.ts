@@ -159,7 +159,13 @@ export function setupHandoffCommand(pi: ExtensionAPI) {
       }
 
       const parentSessionId = ctx.sessionManager.getSessionId() ?? "unknown";
+      const parentLeafId = ctx.sessionManager.getLeafId();
       const currentSessionFile = ctx.sessionManager.getSessionFile();
+
+      if (!parentLeafId) {
+        ctx.ui.notify("Failed to get parent session leaf ID", "error");
+        return;
+      }
 
       // Extract context with a streaming progress UI
       const extracted = await ctx.ui.custom<ExtractedHandoffContext | null>(
@@ -235,6 +241,7 @@ export function setupHandoffCommand(pi: ExtensionAPI) {
               newSessionId,
               goal,
               "handoff",
+              parentLeafId,
             );
           }
           writeSessionLinkSource(

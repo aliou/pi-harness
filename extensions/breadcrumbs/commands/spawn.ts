@@ -23,7 +23,13 @@ export function setupSpawnCommand(pi: ExtensionAPI) {
 
       const note = args.trim() || "";
       const parentSessionId = ctx.sessionManager.getSessionId() ?? "unknown";
+      const parentLeafId = ctx.sessionManager.getLeafId();
       const currentSessionFile = ctx.sessionManager.getSessionFile();
+
+      if (!parentLeafId) {
+        ctx.ui.notify("Failed to get parent session leaf ID", "error");
+        return;
+      }
 
       const result = await ctx.newSession({
         parentSession: currentSessionFile,
@@ -35,6 +41,7 @@ export function setupSpawnCommand(pi: ExtensionAPI) {
               newSessionId,
               note,
               "continue",
+              parentLeafId,
             );
           }
           writeSessionLinkSource(sm, parentSessionId, note, "continue");
