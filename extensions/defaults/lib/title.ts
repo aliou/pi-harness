@@ -21,24 +21,21 @@ const MAX_RETRIES = 2;
 const FALLBACK_LENGTH = 50;
 const TITLE_ENTRY_TYPE = "ad:session-title";
 
-const TITLE_PROMPT = `Generate a short title for this coding session based on the conversation below.
+const TITLE_PROMPT = `You are generating a succinct title for a coding session based on the provided conversation.
 
-Rules:
-- Maximum 50 characters, sentence case.
-- Capture the main intent or task.
-- Reuse the user's own words and technical terms. Do not paraphrase.
-- Match the user's language (e.g. if they write in French, the title must be in French).
-- Use common abbreviations and acronyms when the user does (e.g. API, DB, auth, CI).
-- Output ONLY the title text. Nothing else.
+Requirements:
+- Maximum 50 characters
+- Sentence case (capitalize only first word and proper nouns)
+- Capture the main intent or task
+- Reuse the user's exact words and technical terms
+- Match the user's language (if they write in French, respond in French)
+- No quotes, colons, or markdown formatting
+- No generic titles like "Coding session" or "Help with code"
+- No explanations or commentary
 
-Do NOT:
-- Add quotes, colons, or markdown formatting.
-- Start with "Title:", "Summary:", or similar meta-prefixes.
-- Use generic titles like "Coding session", "Help with code", "New conversation".
-- Add explanations, commentary, or multiple options.
-- Invent terms or context not present in the conversation.
+Output ONLY the title text. Nothing else.
 
-Examples of good titles:
+Examples:
 - Debug 500 errors in auth middleware
 - Add refresh token support
 - Refactor user service tests
@@ -106,33 +103,20 @@ export async function generateTitle(
     throw new Error(`No API key for provider: ${TITLE_MODEL.provider}`);
   }
 
-  // TODO: set temperature to 0.3 when pi-ai exposes it
-  // Pack both user and assistant text into user messages to avoid constructing
-  // a full AssistantMessage (which requires api, provider, model, usage, etc).
+  // Build the conversation description using XML-style tags (like Claude Code)
+  // This avoids "User message:" labels that the model might echo as titles
+  const description = assistantText
+    ? `<user>${userText}</user>\n<assistant>${assistantText}</assistant>`
+    : userText;
+
   const messages: Message[] = [
     {
       role: "user",
-      content: [{ type: "text", text: `User message:\n${userText}` }],
-      timestamp: Date.now(),
-    },
-    ...(assistantText
-      ? [
-          {
-            role: "user" as const,
-            content: [
-              {
-                type: "text" as const,
-                text: `Assistant response:\n${assistantText}`,
-              },
-            ],
-            timestamp: Date.now(),
-          },
-        ]
-      : []),
-    {
-      role: "user",
       content: [
-        { type: "text", text: "Generate a title for this conversation." },
+        {
+          type: "text",
+          text: `${TITLE_PROMPT}\n\n<conversation>\n${description}\n</conversation>\n\nGenerate a title:`,
+        },
       ],
       timestamp: Date.now(),
     },

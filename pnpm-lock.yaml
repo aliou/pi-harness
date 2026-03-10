@@ -99,6 +99,9 @@ importers:
 
   extensions/defaults:
     dependencies:
+      '@aliou/pi-agent-kit':
+        specifier: workspace:*
+        version: link:../../packages/agent-kit
       '@aliou/pi-utils-settings':
         specifier: ^0.7.1
         version: 0.7.1(@mariozechner/pi-coding-agent@0.57.1(ws@8.19.0)(zod@3.25.76))
