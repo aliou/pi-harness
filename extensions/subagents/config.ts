@@ -118,7 +118,8 @@ const DEFAULT_CONFIG: ResolvedSubagentsConfig = {
     scout: {
       candidates: [
         { provider: "openrouter", model: "google/gemini-2.5-flash-lite" },
-        { provider: "synthetic", model: "hf:zai-org/GLM-4.7-Flash" },
+        { provider: "openrouter", model: "z-ai/glm-4.7-flash" },
+        // { provider: "synthetic", model: "hf:zai-org/GLM-4.7-Flash" },
         { provider: "zai", model: "glm-4.7-flash" },
         { provider: "mistral", model: "ministral-8b-2512" },
       ],
@@ -128,7 +129,8 @@ const DEFAULT_CONFIG: ResolvedSubagentsConfig = {
     lookout: {
       candidates: [
         { provider: "openrouter", model: "google/gemini-2.5-flash-lite" },
-        { provider: "synthetic", model: "hf:zai-org/GLM-4.7-Flash" },
+        { provider: "openrouter", model: "z-ai/glm-4.7-flash" },
+        // { provider: "synthetic", model: "hf:zai-org/GLM-4.7-Flash" },
         { provider: "zai", model: "glm-4.7-flash" },
         { provider: "mistral", model: "ministral-8b-2512" },
       ],
@@ -151,6 +153,7 @@ const DEFAULT_CONFIG: ResolvedSubagentsConfig = {
     jester: {
       candidates: [
         { provider: "zai", model: "glm-4.5-air" },
+        { provider: "zai", model: "glm-4.7-flash" },
         { provider: "mistral", model: "ministral-3b-2512" },
       ],
       enabled: true,
@@ -158,7 +161,7 @@ const DEFAULT_CONFIG: ResolvedSubagentsConfig = {
     worker: {
       candidates: [
         { provider: "anthropic", model: "claude-sonnet-4-6" },
-        { provider: "synthetic", model: "hf:MiniMaxAI/MiniMax-M2.5" },
+        // { provider: "synthetic", model: "hf:MiniMaxAI/MiniMax-M2.5" },
         { provider: "mistral", model: "devstral-2512" },
         { provider: "zai", model: "glm-4.7" },
       ],
