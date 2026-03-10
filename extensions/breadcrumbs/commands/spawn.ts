@@ -44,7 +44,16 @@ export function setupSpawnCommand(pi: ExtensionAPI) {
               parentLeafId,
             );
           }
-          writeSessionLinkSource(sm, parentSessionId, note, "continue");
+          const sourceContent = `Session spawned from ${parentSessionId}. Use \`read_session\` to access the parent session context:
+
+read_session({ sessionId: "${parentSessionId}", goal: "Get the last assistant message with context" })`;
+          writeSessionLinkSource(
+            sm,
+            parentSessionId,
+            note,
+            "continue",
+            sourceContent,
+          );
         },
       });
 
