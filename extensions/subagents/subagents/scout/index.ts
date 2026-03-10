@@ -49,20 +49,25 @@ import type { ScoutDetails, ScoutInput } from "./types";
 export const SCOUT_GUIDANCE = `
 ## Scout
 
-Use scout for web research and GitHub codebase exploration. It can fetch URLs, search the web, and deeply explore GitHub repositories.
+Use scout for deep web research and deep GitHub repository/code research.
 
 **When to use:**
-- Fetching content from URLs (articles, documentation, webpages)
-- Searching the web for information
-- Exploring GitHub repositories (code, structure, commits, issues, PRs)
-- Understanding how open-source projects work
-- Finding implementations across codebases
-- Analyzing code evolution through commit history
+- Multi-source research requiring synthesis/citations
+- Deep repository exploration (architecture, code patterns, commit history, issue/PR context)
+- Questions that require traversing many files/pages or comparing multiple sources
+- Open-ended investigations (best practices, ecosystem scans, implementation studies)
 
-**When NOT to use:**
+**When NOT to use (prefer direct tools):**
+- Quick checks or single-fact lookups
+- Simple GitHub metadata/status checks (use \`gh\` CLI)
+- Straightforward URL retrieval from one page (use \`curl\` or \`web_fetch\` directly)
 - Local codebase search (use lookout instead)
 - Testing API endpoints (use curl instead)
 - Making POST/PUT/DELETE requests
+
+**Rule of thumb:**
+- If one direct command can answer it, do not use scout.
+- Use scout when the task needs research depth, synthesis, or broad traversal.
 
 **Inputs:**
 - \`url\`: Specific URL to fetch
@@ -75,11 +80,9 @@ At least one of url, query, or repo is required.
 **Note:** Scout always provides LLM-analyzed responses. For raw markdown content without analysis, use the \`web_fetch\` tool instead.
 
 **Examples:**
-- Fetch a URL: \`{ url: "https://example.com/docs", prompt: "What is the API rate limit?" }\`
-- Web search: \`{ query: "typescript best practices 2025", prompt: "Summarize the top 3 practices" }\`
-- Explore repo: \`{ repo: "facebook/react", prompt: "how is useState implemented?" }\`
-- GitHub search: \`{ query: "useState implementation", repo: "facebook/react", prompt: "explain the implementation" }\`
-- Issue/PR: \`{ url: "https://github.com/owner/repo/issues/123", prompt: "what is the current status?" }\`
+- Deep web research: \`{ query: "oauth token exchange security best practices 2026", prompt: "Compare top recommendations and trade-offs with sources" }\`
+- Deep repo research: \`{ repo: "facebook/react", prompt: "Explain how hooks scheduling evolved across recent commits" }\`
+- Cross-source investigation: \`{ repo: "owner/repo", query: "related RFC discussion", prompt: "Correlate code changes with issue/PR decisions" }\`
 
 **GitHub capabilities:**
 - Read files and list directories
@@ -159,7 +162,14 @@ export function createScoutTool(): ToolDefinition<
   return {
     name: "scout",
     label: "Scout",
-    description: `Research assistant for web content and GitHub codebase exploration.
+    description: `Deep research assistant for web content and GitHub codebase exploration.
+
+Use this for multi-source synthesis and deep repo/code investigations.
+Do not use this for quick checks that one direct command can answer.
+
+Prefer direct tools for quick checks:
+- Simple GitHub metadata/status -> gh CLI
+- Single-page URL retrieval -> curl or web_fetch
 
 Inputs (at least one of url, query, or repo required):
 - url: Specific URL to fetch
@@ -167,12 +177,10 @@ Inputs (at least one of url, query, or repo required):
 - repo: GitHub repository to focus on (owner/repo format)
 - prompt: Question to answer based on content
 
-Use cases:
-- Fetch a URL: { url: "https://...", prompt: "What is the API rate limit?" }
-- Web search: { query: "how to...", prompt: "Summarize best practices" }
-- Explore repo: { repo: "facebook/react", prompt: "how is useState implemented?" }
-- GitHub search: { query: "useState", repo: "facebook/react", prompt: "explain implementation" }
-- Fetch issue/PR: { url: "https://github.com/owner/repo/issues/123", prompt: "what is the status?" }
+Good use cases:
+- Deep web research: { query: "oauth security best practices 2026", prompt: "Compare recommendations with citations" }
+- Deep repo research: { repo: "facebook/react", prompt: "Explain how hooks scheduling evolved across commits" }
+- Cross-source investigation: { repo: "owner/repo", query: "related RFC", prompt: "Correlate code changes with issue/PR decisions" }
 
 Pass relevant skills (e.g., 'ios-26', 'drizzle-orm') to provide specialized context for the task.`,
 

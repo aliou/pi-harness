@@ -75,7 +75,7 @@ export function buildAgentsPrompt(
 
   parts.push("");
   parts.push(
-    "Use the scout tool if available to research anything about the project's dependencies or best practices.",
+    "Use scout only for deep dependency/best-practice research that needs multi-source synthesis. For quick checks, prefer direct commands/tools.",
   );
 
   return parts.join("\n");
