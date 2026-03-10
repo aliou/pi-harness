@@ -4,11 +4,11 @@ Sensible defaults and quality-of-life improvements for Pi.
 
 ## Features
 
-### Directory-aware read
+### Hashline-tagged read
 
-Overrides the built-in `read` tool to handle directories gracefully. When the agent calls `read` on a directory path, it returns a directory listing (via the native `ls` tool) instead of failing with an `EISDIR` error.
+Overrides the built-in `read` tool. File output is tagged with `LINE#HASH` markers on every line (for example `5#KT:content`), which the `edit` tool uses to identify lines precisely. It also handles directories gracefully: when the agent calls `read` on a directory path, it returns a directory listing via `ls` instead of failing with `EISDIR`.
 
-- Files: delegated to native `read` (truncation, image handling, etc.)
+- Files: delegated to native `read`, with hashline markers prepended to each text line
 - Directories: delegated to native `ls` (sorted entries, truncation)
 - Non-existent paths: error from underlying tool
 
@@ -56,15 +56,29 @@ Updates the terminal title with a project breadcrumb (e.g. `pi: project > subdir
 
 Breadcrumbs are built from the project root (detected via `.git`, `.root`, `pnpm-workspace.yaml`) to the current directory, truncated to 2 levels.
 
-### Flexible edit parameters
+### Hashline-based editing
 
-Overrides the built-in `edit` tool to accept `new_text` as an alias for `newText`. Models sometimes emit `new_text` (snake_case) instead of the expected `newText` (camelCase), causing a validation error. This wrapper normalises either form before delegating to the native implementation. If neither `newText` nor `new_text` is provided, it returns a clear error message.
+Replaces the built-in `edit` tool with a hashline-based editor. The `read` tool tags each line with a `LINE#HASH` marker, and the `edit` tool references those tags instead of requiring exact text matches. This avoids whitespace and exact-match failures.
+
+- Supports multiple edit operations per call, applied bottom-up to preserve line numbers
+- Operations: `replace`, `insert_after`, `insert_before`, `delete`
+- Targets use tag syntax: single line `5#KT` or range `5#KT-8#VR`
+- Stale tags are detected and errors include corrected tags with nearby context
+- Hashes use xxHash32 on whitespace-normalized content, with line-number mixing for symbol-only lines
 
 ### Auto session naming
 
 Automatically names sessions based on first user message after first turn completes.
 
 Uses `google/gemini-2.5-flash-lite` to generate a 3-7 word title in sentence case.
+
+### Bash with `cwd` parameter
+
+Overrides the built-in `bash` tool to add an optional `cwd` parameter. This avoids fragile `cd dir && command` patterns and fails explicitly when the target directory does not exist.
+
+### System prompt additions
+
+Appends tool usage guidance to the system prompt at agent start. This nudges the model toward better tool choices, such as using `write` instead of `echo` or heredocs, using `read`/`find` instead of shell exploration, and parallelizing independent read-only operations.
 
 ### `/theme` command
 

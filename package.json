@@ -42,10 +42,10 @@
     "@aliou/biome-plugins": "^0.4.0",
     "@biomejs/biome": "^2.0.0",
     "@changesets/cli": "^2.27.11",
-    "@mariozechner/pi-agent-core": "0.53.0",
-    "@mariozechner/pi-ai": "0.53.0",
-    "@mariozechner/pi-coding-agent": "0.53.0",
-    "@mariozechner/pi-tui": "0.53.0",
+    "@mariozechner/pi-agent-core": "0.57.1",
+    "@mariozechner/pi-ai": "0.57.1",
+    "@mariozechner/pi-coding-agent": "0.57.1",
+    "@mariozechner/pi-tui": "0.57.1",
     "@sinclair/typebox": "^0.34.41",
     "@types/better-sqlite3": "^7.6.13",
     "@types/node": "^22.0.0",
@@ -55,7 +55,7 @@
   },
   "pnpm": {
     "overrides": {
-      "@mariozechner/pi-coding-agent": "0.53.0",
+      "@mariozechner/pi-coding-agent": "0.57.1",
       "@mariozechner/pi-agent-core": "$@mariozechner/pi-coding-agent",
       "@mariozechner/pi-ai": "$@mariozechner/pi-coding-agent",
       "@mariozechner/pi-tui": "$@mariozechner/pi-coding-agent"

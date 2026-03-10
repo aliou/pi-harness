@@ -8,10 +8,11 @@
   },
   "dependencies": {
     "@aliou/pi-utils-settings": "^0.7.1",
-    "@aliou/pi-utils-ui": "^0.1.2"
+    "@aliou/pi-utils-ui": "^0.1.2",
+    "xxhash-wasm": "^1.1.0"
   },
   "peerDependencies": {
-    "@mariozechner/pi-coding-agent": ">=0.51.0"
+    "@mariozechner/pi-coding-agent": ">=0.57.0"
   },
   "peerDependenciesMeta": {
     "@mariozechner/pi-coding-agent": {

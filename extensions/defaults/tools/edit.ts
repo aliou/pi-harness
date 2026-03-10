@@ -1,90 +1,206 @@
-import type { ExtensionAPI } from "@mariozechner/pi-coding-agent";
-import { createEditTool } from "@mariozechner/pi-coding-agent";
+import { writeFile } from "node:fs/promises";
+import { resolve } from "node:path";
+import { StringEnum } from "@mariozechner/pi-ai";
+import type {
+  EditToolDetails,
+  ExtensionAPI,
+} from "@mariozechner/pi-coding-agent";
 import { Type } from "@sinclair/typebox";
+import {
+  applyEdits,
+  type EditOp,
+  generateDiff,
+  parseTarget,
+  readFileLines,
+  validateTags,
+} from "../lib/hashline";
 
 /**
- * Override the built-in edit tool to accept snake_case aliases.
+ * Override the built-in edit tool with hashline-based editing.
  *
- * Models sometimes emit `old_text`/`new_text` instead of `oldText`/`newText`.
- * This wrapper accepts both, normalizes to camelCase, then delegates to native.
- *
+ * Instead of exact text matching, this tool uses LINE#HASH tags from read output
+ * to identify lines. This eliminates whitespace/exact-match errors and enables
+ * multiple edits per call.
  */
 export function setupEditTool(pi: ExtensionAPI): void {
-  const cwd = process.cwd();
-  const nativeEdit = createEditTool(cwd);
-
-  const wrappedSchema = Type.Object({
+  const editSchema = Type.Object({
     path: Type.String({ description: "Path to the file to edit" }),
-    oldText: Type.Optional(
-      Type.String({
-        description: "Exact text to find and replace (must match exactly)",
+    edits: Type.Array(
+      Type.Object({
+        op: StringEnum([
+          "replace",
+          "insert_after",
+          "insert_before",
+          "delete",
+        ] as const),
+        target: Type.String({
+          description: "Line tag '5#KT' or range '5#KT-8#VR'",
+        }),
+        content: Type.Optional(
+          Type.Array(Type.String(), {
+            description:
+              "New lines. Required for replace/insert_after/insert_before. Omit for delete.",
+          }),
+        ),
       }),
-    ),
-    old_text: Type.Optional(
-      Type.String({
+      {
         description:
-          "Alias for oldText. Exact text to find and replace (must match exactly)",
-      }),
-    ),
-    newText: Type.Optional(
-      Type.String({
-        description: "New text to replace the old text with",
-      }),
-    ),
-    new_text: Type.Optional(
-      Type.String({
-        description:
-          "Alias for newText. New text to replace the old text with.",
-      }),
+          "Edit operations using LINE#HASH tags from read output. Applied bottom-up.",
+      },
     ),
   });
 
   pi.registerTool({
-    ...nativeEdit,
-    parameters: wrappedSchema,
-    async execute(toolCallId, params, signal, onUpdate, _ctx) {
-      const { old_text, oldText, new_text, newText, path } = params as {
+    name: "edit",
+    label: "Edit File",
+    description:
+      "Edit a file using LINE#HASH tags from read output. Supports multiple operations per call.",
+    parameters: editSchema,
+    // TODO: promptGuidelines not recognized by current pi-coding-agent types
+    // promptGuidelines: [
+    //   "Reference lines using LINE#HASH tags from read output.",
+    //   "Multiple edits per call. They are applied bottom-up (highest line first).",
+    //   "Operations: replace (single line or range), insert_after (single line only), insert_before (single line only), delete (single line or range).",
+    //   "For ranges: '5#KT-8#VR' covers lines 5 through 8 inclusive.",
+    //   "If tags are stale, the error shows updated tags. Retry with those.",
+    //   "Use edit instead of sed for in-place file edits.",
+    // ],
+    async execute(_toolCallId, params, _signal, _onUpdate, ctx) {
+      const { path, edits } = params as {
         path: string;
-        oldText?: string;
-        old_text?: string;
-        newText?: string;
-        new_text?: string;
+        edits: Array<{
+          op: "replace" | "insert_after" | "insert_before" | "delete";
+          target: string;
+          content?: string[];
+        }>;
       };
 
-      const resolvedOldText = oldText ?? old_text;
-      const resolvedNewText = newText ?? new_text;
+      const absolutePath = resolve(ctx.cwd, path);
 
-      if (resolvedOldText === undefined) {
+      // Read current file content
+      let fileLines: string[];
+      try {
+        fileLines = await readFileLines(absolutePath);
+      } catch (err) {
         return {
           content: [
             {
               type: "text" as const,
-              text: 'Error: Either "oldText" or "old_text" must be provided.',
+              text: `Error reading file: ${err instanceof Error ? err.message : String(err)}`,
             },
           ],
           details: {},
         };
       }
 
-      if (resolvedNewText === undefined) {
+      // Validate all tags
+      const validation = await validateTags(
+        fileLines,
+        edits.map((e) => ({ target: e.target, op: e.op })),
+      );
+      if (!validation.valid) {
         return {
           content: [
             {
               type: "text" as const,
-              text: 'Error: Either "newText" or "new_text" must be provided.',
+              text: `Tag validation failed: ${validation.error}\n\n${validation.context ?? ""}\n\nCorrected tag: ${validation.correctedTags ?? "N/A"}`,
             },
           ],
           details: {},
         };
       }
 
-      const normalizedParams = {
+      // Parse targets into EditOps
+      const editOps: EditOp[] = [];
+      for (const edit of edits) {
+        const parsed = parseTarget(edit.target);
+        if (!parsed) {
+          return {
+            content: [
+              {
+                type: "text" as const,
+                text: `Invalid target format: ${edit.target}`,
+              },
+            ],
+            details: {},
+          };
+        }
+
+        // Validate that insert operations use single-line targets
+        if (
+          (edit.op === "insert_after" || edit.op === "insert_before") &&
+          parsed.start.line !== parsed.end.line
+        ) {
+          return {
+            content: [
+              {
+                type: "text" as const,
+                text: `Insert operations require a single-line target, got range: ${edit.target}`,
+              },
+            ],
+            details: {},
+          };
+        }
+
+        // Validate content is provided for non-delete operations
+        if (edit.op !== "delete" && !edit.content) {
+          return {
+            content: [
+              {
+                type: "text" as const,
+                text: `Operation '${edit.op}' requires content`,
+              },
+            ],
+            details: {},
+          };
+        }
+
+        editOps.push({
+          op: edit.op,
+          target: parsed,
+          content: edit.content,
+        });
+      }
+
+      // Apply edits
+      const newLines = applyEdits(fileLines, editOps);
+
+      // Write the file
+      try {
+        await writeFile(absolutePath, `${newLines.join("\n")}\n`, "utf-8");
+      } catch (err) {
+        return {
+          content: [
+            {
+              type: "text" as const,
+              text: `Error writing file: ${err instanceof Error ? err.message : String(err)}`,
+            },
+          ],
+          details: {},
+        };
+      }
+
+      // Generate diff for TUI rendering
+      const { diff, firstChangedLine } = generateDiff(
+        fileLines,
+        newLines,
         path,
-        oldText: resolvedOldText,
-        newText: resolvedNewText,
+      );
+
+      const details: EditToolDetails = {
+        diff,
+        firstChangedLine,
       };
 
-      return nativeEdit.execute(toolCallId, normalizedParams, signal, onUpdate);
+      return {
+        content: [
+          {
+            type: "text" as const,
+            text: `Successfully applied ${edits.length} edit(s) to ${path}.`,
+          },
+        ],
+        details,
+      };
     },
   });
 }

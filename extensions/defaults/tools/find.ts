@@ -57,6 +57,10 @@ export function setupFindTool(pi: ExtensionAPI): void {
     description:
       "Find files by name using the `fd` command-line tool. Supports glob patterns and regex. Searches recursively from the specified path.",
     parameters: wrappedSchema,
+    // TODO: promptGuidelines not recognized by current pi-coding-agent types
+    // promptGuidelines: [
+    //   "Use find instead of find or fd in bash for locating files.",
+    // ],
     async execute(
       _toolCallId: string,
       params: {
