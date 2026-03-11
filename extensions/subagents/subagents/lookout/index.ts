@@ -40,7 +40,7 @@ import { createLookoutToolFormatter } from "./tool-formatter";
 import { createLookoutTools } from "./tools";
 import type { LookoutDetails, LookoutInput } from "./types";
 
-const LOOKOUT_DEFAULT_SKILLS = ["ast-grep"] as const;
+const LOOKOUT_DEFAULT_SKILLS = [] as const;
 
 /** System prompt guidance for lookout tool usage */
 export const LOOKOUT_GUIDANCE = `
@@ -64,7 +64,7 @@ Use the \`lookout\` tool to find code by functionality or concept in the local c
 { "query": "Where is the database connection pool configured?" }
 \`\`\`
 
-Lookout automatically loads the vendored \`ast-grep\` skill for structural-search guidance. You can still pass extra skills.
+Lookout uses codemogger for semantic code search (natural language queries matched against code structure via embeddings).
 
 **Custom directory:** Pass \`cwd\` to search a specific directory instead of the current project:
 \`\`\`json
@@ -110,13 +110,12 @@ export function createLookoutTool(): ToolDefinition<
     label: "Lookout",
     description: `Local codebase search by functionality or concept.
 
-Uses ast-grep structural search + grep/find for comprehensive code discovery.
+Uses codemogger semantic search + grep/find for comprehensive code discovery.
 Returns relevant files with line ranges.
 
 Example: { "query": "where do we handle authentication" }
 
-Pass relevant skills (e.g., 'ios-26', 'drizzle-orm') to provide specialized context for the task.
-Automatically loads the vendored 'ast-grep' skill for structural search guidance.`,
+Pass relevant skills (e.g., 'ios-26', 'drizzle-orm') to provide specialized context for the task.`,
     parameters,
 
     async execute(

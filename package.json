@@ -35,6 +35,7 @@
     "@aliou/sesame": "^0.4.0",
     "@aliou/sh": "^0.1.0",
     "better-sqlite3": "^12.6.2",
+    "codemogger": "^0.1.4",
     "xxhash-wasm": "^1.1.0",
     "yaml": "^2.8.2"
   },
