@@ -3,13 +3,13 @@
   "version": "0.1.0",
   "type": "module",
   "private": true,
-  "description": "Shared subagent executor, model resolver, types, and components for pi extensions",
+  "description": "Shared subagent executor, model resolver, types, and components for the Pi harness",
   "exports": {
     ".": "./index.ts"
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/aliou/pi-extensions",
+    "url": "https://github.com/aliou/pi-harness",
     "directory": "packages/agent-kit"
   },
   "files": [

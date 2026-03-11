@@ -1,10 +1,12 @@
-# Neovim Extension for Pi
+# Neovim integration for Pi
 
 Bidirectional integration between Pi and Neovim.
 
+This package should be thought of as a Neovim plugin that bundles the Pi extension it needs. You do not install the Pi extension separately. When `pi-nvim` starts Pi, it adds the bundled extension automatically for that Pi process.
+
 ## Features
 
-**Pi Extension (for the agent):**
+**Bundled Pi extension (used by the agent):**
 - `nvim_context` tool: Query editor state (context, splits, diagnostics, current_function)
 - Auto-connect to Neovim on session start
 - Inject visible splits into system prompt
@@ -12,32 +14,18 @@ Bidirectional integration between Pi and Neovim.
 - Send LSP errors for modified files at turn end
 - `/neovim:settings` command to configure Neovim integration behavior
 
-**Neovim Plugin (for the editor):**
+**Neovim plugin (installed in the editor):**
 - RPC server exposing editor state
 - Terminal integration for Pi CLI
 
 ## Installation
 
-### 1. Pi Extension
-
-Symlink or copy to Pi extensions directory:
-
-```bash
-# If pi-extensions is cloned locally:
-ln -sf /path/to/pi-extensions/integrations/neovim ~/.pi/agent/extensions/neovim
-
-# Or copy:
-cp -R /path/to/pi-extensions/integrations/neovim ~/.pi/agent/extensions/
-```
-
-### 2. Neovim Plugin
-
-Add the extension to your Neovim runtimepath. The `lua/` directory at the extension root is runtimepath-compatible.
+Install this package as a Neovim plugin. The `lua/` directory at the package root is runtimepath-compatible.
 
 **lazy.nvim:**
 ```lua
 {
-  dir = "~/.pi/agent/extensions/neovim",
+  dir = "/path/to/pi-harness/integrations/neovim",
   config = function()
     require("pi-nvim").setup()
   end
@@ -47,14 +35,14 @@ Add the extension to your Neovim runtimepath. The `lua/` directory at the extens
 **mini.deps:**
 ```lua
 local add = MiniDeps.add
-add({ source = "~/.pi/agent/extensions/neovim" })
+add({ source = "/path/to/pi-harness/integrations/neovim" })
 require("pi-nvim").setup()
 ```
 
 **packer.nvim:**
 ```lua
 use {
-  "~/.pi/agent/extensions/neovim",
+  "/path/to/pi-harness/integrations/neovim",
   config = function()
     require("pi-nvim").setup()
   end
@@ -64,9 +52,12 @@ use {
 **Manual:**
 ```lua
 -- In init.lua
-vim.opt.runtimepath:append(vim.fn.expand("~/.pi/agent/extensions/neovim"))
+vim.opt.runtimepath:append(vim.fn.expand("/path/to/pi-harness/integrations/neovim"))
 require("pi-nvim").setup()
 ```
+
+When you open Pi through `pi-nvim`, the plugin starts Pi with the bundled extension enabled.
+
 
 ## Configuration
 

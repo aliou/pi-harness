@@ -335,7 +335,7 @@ function ensureProjectNpmRoot(npmRoot: string): void {
     const pkgPath = join(npmRoot, "package.json");
     writeFileSync(
       pkgPath,
-      `${JSON.stringify({ name: "pi-extensions", private: true }, null, 2)}\n`,
+      `${JSON.stringify({ name: "pi-harness", private: true }, null, 2)}\n`,
       "utf8",
     );
   }

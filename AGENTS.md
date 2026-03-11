@@ -1,22 +1,21 @@
-# Pi Extensions
+# pi-harness
 
-This repository hosts custom extensions for [Pi](https://github.com/mariozechner/pi-coding-agent), a coding agent.
+My personal harness around [Pi](https://github.com/badlogic/pi-mono/) for coding-agent work.
 
-All packages in this repository are published under the `@aliou` scope, not `@anthropic` or `@anthropic-ai`.
+All packages in this repository use the `@aliou` scope where applicable, not `@anthropic` or `@anthropic-ai`.
 
 ## Structure
 
-- `extensions/` - Custom Pi extensions
-- `integrations/` - Editor and browser integrations (neovim, chrome)
-- `packages/` - Shared packages (e.g., tsconfig, agent-kit)
-- `scripts/` - Build and CI scripts
-- `archive/` - Lightweight gist-based extensions tracked as submodules
+- `extensions/` - Private Pi extensions bundled in this repository
+- `integrations/` - Editor and browser integrations such as Neovim and Chrome
+- `packages/` - Shared internal package code
+- `scripts/` - Build and install helpers
 
 ## Extensions
 
-- `breadcrumbs` - Session history tools. Search past sessions, extract information, hand off context to new sessions.
-- `defaults` - Personal sensible defaults and quality-of-life improvements (directory-aware read, flexible edit parameters, AGENTS.md discovery, git rebase helper, notifications, terminal title, auto session naming).
-- `introspection` - Inspect Pi agent internals: system prompt, tools, skills, context usage.
+- `breadcrumbs` - Session history tools. Search past sessions, extract information, and hand off context to new sessions.
+- `defaults` - Personal sensible defaults and quality-of-life improvements.
+- `introspection` - Inspect Pi agent internals: system prompt, tools, skills, and context usage.
 - `modes` - Hardcoded execution modes with tool gating, model defaults, and branch-aware restore.
 - `planning` - Turn conversations into implementation plans and manage saved plans.
 - `providers` - Register custom providers and show unified rate-limit and usage dashboards.
@@ -26,6 +25,7 @@ All packages in this repository are published under the `@aliou` scope, not `@an
 ## Integrations
 
 - `neovim` - Bidirectional integration between Pi and Neovim.
+- `chrome` - Browser automation and sidepanel chat integration.
 
 ## Development
 
@@ -35,25 +35,9 @@ Uses pnpm workspaces. Nix environment available via `flake.nix`.
 pnpm install
 pnpm typecheck
 pnpm lint
-pnpm run check:public-deps
 ```
 
-### Public vs Private Packages
+## Notes
 
-This monorepo contains both published (public) and internal (private) packages:
-
-- **Public packages**: Published to npm, installable by users
-  - Must have `"private": false` or `"publishConfig": { "access": "public" }"`
-  - Cannot depend on private workspace packages
-  - Examples: `@aliou/pi-utils-settings`, `@aliou/pi-utils-ui`
-
-- **Private packages**: Internal only, not published
-  - Have `"private": true` in package.json
-  - Can depend on anything
-  - Examples: Extensions, `@aliou/pi-agent-kit`
-
-**Important**: Public packages cannot depend on private workspace packages. This is enforced by:
-- Pre-commit hook that blocks invalid commits
-- CI check that prevents merging invalid dependencies
-
-Run `pnpm run check:public-deps` to validate dependencies. See `scripts/README.md` for details.
+- This repo is my private Pi harness infrastructure first. Not every package here is intended to be published as a standalone package.
+- Keep repository-level docs focused on my Pi harness. Extension-specific details belong in the extension README files.

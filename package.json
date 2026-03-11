@@ -1,5 +1,5 @@
 {
-  "name": "@aliou/pi-extensions",
+  "name": "@aliou/pi-harness",
   "private": true,
   "type": "module",
   "keywords": [
@@ -7,7 +7,7 @@
   ],
   "repository": {
     "type": "git",
-    "url": "https://github.com/aliou/pi-extensions"
+    "url": "https://github.com/aliou/pi-harness"
   },
   "pi": {
     "extensions": [
@@ -17,17 +17,13 @@
   },
   "scripts": {
     "postinstall": "node scripts/resolve-workspace-deps.mjs",
-    "check:public-deps": "node scripts/check-public-deps.mjs",
     "chrome:dev": "pnpm --filter ./integrations/chrome run dev",
     "chrome:build": "pnpm --filter ./integrations/chrome run build",
     "lint": "biome check .",
     "format": "biome check --write .",
     "typecheck": "tsc --build",
     "test": "vitest run",
-    "test:watch": "vitest",
-    "changeset": "changeset",
-    "version": "changeset version",
-    "release": "pnpm changeset publish"
+    "test:watch": "vitest"
   },
   "dependencies": {
     "@aliou/pi-linkup": "^0.7.1",
@@ -42,7 +38,6 @@
   "devDependencies": {
     "@aliou/biome-plugins": "^0.4.0",
     "@biomejs/biome": "^2.0.0",
-    "@changesets/cli": "^2.27.11",
     "@mariozechner/pi-agent-core": "0.57.1",
     "@mariozechner/pi-ai": "0.57.1",
     "@mariozechner/pi-coding-agent": "0.57.1",

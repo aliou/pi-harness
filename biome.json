@@ -12,7 +12,7 @@
     "useIgnoreFile": true
   },
   "files": {
-    "includes": ["**/*.ts", "**/*.json", "!archive"],
+    "includes": ["**/*.ts", "**/*.json"],
     "ignoreUnknown": true
   },
   "assist": {

@@ -1,6 +1,6 @@
 # @aliou/pi-agent-kit
 
-Shared subagent infrastructure for pi extensions. Extracted from the subagents extension to allow cross-extension reuse without relative path imports.
+Shared subagent infrastructure for my Pi harness. Extracted from the subagents extension to allow cross-extension reuse without relative path imports.
 
 ## What's included
 

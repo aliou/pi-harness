@@ -11,7 +11,7 @@ Contributors submit PRs from their forks. To push changes back (commit message f
 
 ```bash
 # Extract fork owner from PR (visible in gh pr view or the PR URL)
-git remote add <owner> git@github.com:<owner>/pi-extensions.git
+git remote add <owner> git@github.com:<owner>/pi-harness.git
 git fetch <owner>
 git checkout <owner>/<branch> -b <branch>
 ```
