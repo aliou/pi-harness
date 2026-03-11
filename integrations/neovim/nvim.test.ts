@@ -108,7 +108,7 @@ describe("discoverNvim", () => {
     const pid = 777;
     const lockfilePath = writeLockfile(dataDir, "/repo/sub", pid);
 
-    killSpy.mockImplementation((targetPid, signal) => {
+    killSpy.mockImplementation((targetPid: number, signal: number) => {
       if (targetPid === pid && signal === 0) {
         const error = new Error(
           "operation not permitted",

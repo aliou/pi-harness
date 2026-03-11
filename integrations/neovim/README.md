@@ -20,7 +20,7 @@ This package should be thought of as a Neovim plugin that bundles the Pi extensi
 
 ## Installation
 
-Install this package as a Neovim plugin. The `lua/` directory at the package root is runtimepath-compatible.
+Install this extension as a Neovim plugin. The `lua/` directory at the extension root is runtimepath-compatible.
 
 **lazy.nvim:**
 ```lua

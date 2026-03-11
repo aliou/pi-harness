@@ -1,7 +1,7 @@
 /**
  * @aliou/pi-agent-kit
  *
- * Shared subagent infrastructure for pi extensions:
+ * Shared subagent infrastructure for my Pi harness:
  * - executeSubagent: core executor with streaming, tool tracking, and usage
  * - resolveModel: model resolution by provider + ID
  * - Logging: run logger, path utilities

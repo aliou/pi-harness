@@ -6,11 +6,6 @@
  */
 
 import {
-  createExecutionTimer,
-  wrapToolDefinitionsWithTiming,
-} from "@aliou/pi-agent-kit";
-
-import {
   createRenderCache,
   FailedToolCalls,
   MarkdownResponse,
@@ -32,6 +27,10 @@ import type {
   ToolRenderResultOptions,
 } from "@mariozechner/pi-coding-agent";
 import { Type } from "@sinclair/typebox";
+import {
+  createExecutionTimer,
+  wrapToolDefinitionsWithTiming,
+} from "../../../../packages/agent-kit";
 import { isDebugEnabled } from "../../config";
 import {
   executeSubagent,

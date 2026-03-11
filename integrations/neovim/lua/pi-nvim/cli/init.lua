@@ -9,8 +9,8 @@ local watch = require('pi-nvim.cli.watch')
 ---@return string
 local function get_plugin_root()
   local src = debug.getinfo(1, 'S').source:sub(2) -- Remove leading @
-  -- src is: /path/to/extensions/neovim/lua/pi-nvim/cli/init.lua
-  -- We want: /path/to/extensions/neovim
+  -- src is: /path/to/integrations/neovim/lua/pi-nvim/cli/init.lua
+  -- We want: /path/to/integrations/neovim
   return vim.fn.fnamemodify(src, ':h:h:h:h')
 end
 

@@ -8,10 +8,6 @@
 import { readdirSync, statSync } from "node:fs";
 import { join } from "node:path";
 import {
-  createExecutionTimer,
-  wrapToolDefinitionsWithTiming,
-} from "@aliou/pi-agent-kit";
-import {
   FailedToolCalls,
   MarkdownResponse,
   renderToolTextFallback,
@@ -32,6 +28,10 @@ import type {
   ToolRenderResultOptions,
 } from "@mariozechner/pi-coding-agent";
 import { Type } from "@sinclair/typebox";
+import {
+  createExecutionTimer,
+  wrapToolDefinitionsWithTiming,
+} from "../../../packages/agent-kit";
 import {
   executeSubagent,
   resolveModel,

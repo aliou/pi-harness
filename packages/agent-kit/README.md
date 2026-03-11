@@ -1,6 +1,6 @@
-# @aliou/pi-agent-kit
+# agent-kit
 
-Shared subagent infrastructure for my Pi harness. Extracted from the subagents extension to allow cross-extension reuse without relative path imports.
+Shared subagent infrastructure for my Pi harness. Import it internally through the root package `#agent-kit` subpath import.
 
 ## What's included
 
@@ -19,7 +19,7 @@ import {
   ToolPreview,
   type SubagentToolCall,
   type SubagentUsage,
-} from "@aliou/pi-agent-kit";
+} from "#agent-kit";
 ```
 
 ## Logging

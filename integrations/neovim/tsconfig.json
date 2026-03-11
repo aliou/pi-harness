@@ -12,11 +12,8 @@
     "noUnusedParameters": true,
     "noImplicitReturns": true,
     "noFallthroughCasesInSwitch": true,
-    "noImplicitOverride": true,
-    "paths": {
-      "#agent-kit": ["./packages/agent-kit/index.ts"],
-      "#agent-kit/*": ["./packages/agent-kit/*"]
-    }
+    "noImplicitOverride": true
   },
-  "include": ["extensions/**/*.ts", "packages/**/*.ts"]
+  "include": ["**/*.ts"],
+  "exclude": ["node_modules", "lua", "doc"]
 }

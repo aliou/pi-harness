@@ -21,7 +21,7 @@ Add the extension directory to your runtimepath and call setup:
 >lua
     -- Example with lazy.nvim (adjust path as needed)
     {
-      dir = "~/.pi/agent/extensions/neovim",
+      dir = "/path/to/pi-harness/integrations/neovim",
       config = function()
         require("pi-nvim").setup()
       end
@@ -30,7 +30,7 @@ Add the extension directory to your runtimepath and call setup:
 
 Or manually:
 >lua
-    vim.opt.runtimepath:append("~/.pi/agent/extensions/neovim")
+    vim.opt.runtimepath:append("/path/to/pi-harness/integrations/neovim")
     require("pi-nvim").setup()
 <
 

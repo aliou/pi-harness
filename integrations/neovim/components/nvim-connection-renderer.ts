@@ -8,6 +8,19 @@ interface NvimConnectionDetails {
   instanceCount?: number;
 }
 
+function renderMessageContent(
+  content: string | Array<{ type: string; text?: string }>,
+): string {
+  if (typeof content === "string") return content;
+  return content
+    .filter(
+      (item): item is { type: string; text: string } =>
+        item.type === "text" && typeof item.text === "string",
+    )
+    .map((item) => item.text)
+    .join("\n");
+}
+
 export function registerNvimConnectionRenderer(pi: ExtensionAPI) {
   pi.registerMessageRenderer("nvim-connection", (message, _options, theme) => {
     const details = message.details as NvimConnectionDetails | undefined;
@@ -17,7 +30,11 @@ export function registerNvimConnectionRenderer(pi: ExtensionAPI) {
 
     if (!details) {
       box.addChild(
-        new Text(`${tag} ${theme.fg("dim", message.content)}`, 0, 0),
+        new Text(
+          `${tag} ${theme.fg("dim", renderMessageContent(message.content))}`,
+          0,
+          0,
+        ),
       );
       return box;
     }
@@ -56,7 +73,11 @@ export function registerNvimConnectionRenderer(pi: ExtensionAPI) {
 
       default: {
         box.addChild(
-          new Text(`${tag} ${theme.fg("dim", message.content)}`, 0, 0),
+          new Text(
+            `${tag} ${theme.fg("dim", renderMessageContent(message.content))}`,
+            0,
+            0,
+          ),
         );
         return box;
       }

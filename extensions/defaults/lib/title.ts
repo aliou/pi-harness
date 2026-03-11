@@ -1,9 +1,9 @@
-import { executeSubagent, resolveModel } from "@aliou/pi-agent-kit";
 import { getModel, type TextContent } from "@mariozechner/pi-ai";
 import type {
   ExtensionAPI,
   ExtensionContext,
 } from "@mariozechner/pi-coding-agent";
+import { executeSubagent, resolveModel } from "../../../packages/agent-kit";
 
 const TITLE_MODEL = {
   provider: "openrouter",

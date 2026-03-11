@@ -5,6 +5,10 @@
   "keywords": [
     "pi-package"
   ],
+  "imports": {
+    "#agent-kit": "./packages/agent-kit/index.ts",
+    "#agent-kit/*": "./packages/agent-kit/*"
+  },
   "repository": {
     "type": "git",
     "url": "https://github.com/aliou/pi-harness"
@@ -16,9 +20,8 @@
     ]
   },
   "scripts": {
-    "postinstall": "node scripts/resolve-workspace-deps.mjs",
-    "chrome:dev": "pnpm --filter ./integrations/chrome run dev",
-    "chrome:build": "pnpm --filter ./integrations/chrome run build",
+    "chrome:dev": "pnpm --dir integrations/chrome run dev",
+    "chrome:build": "pnpm --dir integrations/chrome run build",
     "lint": "biome check .",
     "format": "biome check --write .",
     "typecheck": "tsc --build",

@@ -30,7 +30,7 @@ pnpm build
 1. Build once:
 
 ```bash
-pnpm --filter ./integrations/chrome build
+pnpm chrome:build
 ```
 
 2. Load extension in Chrome:

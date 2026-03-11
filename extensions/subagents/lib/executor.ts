@@ -5,11 +5,6 @@
  * Supports streaming text updates, tool execution tracking, logging, and usage tracking.
  */
 
-import {
-  createExecutionTimer,
-  markExecutionEnd,
-  markExecutionStart,
-} from "@aliou/pi-agent-kit";
 import type { AssistantMessage } from "@mariozechner/pi-ai";
 import type { ExtensionContext } from "@mariozechner/pi-coding-agent";
 import {
@@ -19,6 +14,11 @@ import {
   SessionManager,
   SettingsManager,
 } from "@mariozechner/pi-coding-agent";
+import {
+  createExecutionTimer,
+  markExecutionEnd,
+  markExecutionStart,
+} from "../../../packages/agent-kit";
 import { createRunLogger, generateRunId, type RunLogger } from "./logging";
 import {
   getToolResultDetails,

@@ -6,12 +6,12 @@
  * extracted context as the initial message.
  */
 
-import { executeSubagent, resolveModel } from "@aliou/pi-agent-kit";
 import type {
   ExtensionContext,
   ToolDefinition,
 } from "@mariozechner/pi-coding-agent";
 import { Type } from "@sinclair/typebox";
+import { executeSubagent, resolveModel } from "../../../packages/agent-kit";
 import { readCurrentSessionContent } from "./session-content-reader";
 
 /**
