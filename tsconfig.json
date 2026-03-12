@@ -18,5 +18,5 @@
       "#agent-kit/*": ["./packages/agent-kit/*"]
     }
   },
-  "include": ["extensions/**/*.ts", "packages/**/*.ts"]
+  "include": ["extensions/**/*.ts", "packages/**/*.ts", "tests/**/*.ts"]
 }

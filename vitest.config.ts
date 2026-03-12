@@ -8,6 +8,7 @@ export default defineConfig({
       "integrations/**/*.test.ts",
       "packages/**/*.test.ts",
     ],
+    setupFiles: ["./tests/vitest.setup.ts"],
     mockReset: true,
   },
 });
