@@ -1,4 +1,5 @@
 import type { ProviderRateLimits } from "../types";
+import { withProviderCache } from "./provider-cache";
 
 const API_URL = "https://api.synthetic.new/v2/quotas";
 
@@ -90,31 +91,33 @@ export async function fetchSyntheticRateLimits(
     };
   }
 
-  try {
-    const response = await fetch(API_URL, {
-      headers: { Authorization: `Bearer ${apiKey}` },
-      signal,
-    });
+  return withProviderCache("synthetic", async () => {
+    try {
+      const response = await fetch(API_URL, {
+        headers: { Authorization: `Bearer ${apiKey}` },
+        signal,
+      });
 
-    if (!response.ok) {
+      if (!response.ok) {
+        return {
+          provider: "Synthetic",
+          providerId: "synthetic",
+          status: "degraded",
+          windows: [],
+          error: `HTTP ${response.status}`,
+        };
+      }
+
+      const data = (await response.json()) as SyntheticQuotasResponse;
+      return mapSyntheticToRateLimits(data);
+    } catch (error) {
       return {
         provider: "Synthetic",
         providerId: "synthetic",
-        status: "degraded",
+        status: "outage",
         windows: [],
-        error: `HTTP ${response.status}`,
+        error: error instanceof Error ? error.message : "Unknown error",
       };
     }
-
-    const data = (await response.json()) as SyntheticQuotasResponse;
-    return mapSyntheticToRateLimits(data);
-  } catch (error) {
-    return {
-      provider: "Synthetic",
-      providerId: "synthetic",
-      status: "outage",
-      windows: [],
-      error: error instanceof Error ? error.message : "Unknown error",
-    };
-  }
+  });
 }

@@ -2,6 +2,7 @@ import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
 import type { ProviderRateLimits, RateLimitWindow } from "../types";
+import { withProviderCache } from "./provider-cache";
 
 const API_URL = "https://api.z.ai/api/monitor/usage/quota/limit";
 
@@ -91,45 +92,47 @@ export async function fetchZaiRateLimits(
     };
   }
 
-  try {
-    const response = await fetch(API_URL, {
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        Accept: "application/json",
-      },
-      signal,
-    });
+  return withProviderCache("zai", async () => {
+    try {
+      const response = await fetch(API_URL, {
+        headers: {
+          Authorization: `Bearer ${apiKey}`,
+          Accept: "application/json",
+        },
+        signal,
+      });
 
-    if (!response.ok) {
+      if (!response.ok) {
+        return {
+          provider: "z.ai Plan",
+          providerId: "z-ai",
+          status: "degraded",
+          windows: [],
+          error: `HTTP ${response.status}`,
+        };
+      }
+
+      const data = (await response.json()) as ZaiQuotasResponse;
+
+      if (!data.success || data.code !== 200) {
+        return {
+          provider: "z.ai Plan",
+          providerId: "z-ai",
+          status: "degraded",
+          windows: [],
+          error: data.msg ?? "API error",
+        };
+      }
+
+      return mapZaiToRateLimits(data);
+    } catch (error) {
       return {
         provider: "z.ai Plan",
         providerId: "z-ai",
-        status: "degraded",
+        status: "outage",
         windows: [],
-        error: `HTTP ${response.status}`,
+        error: error instanceof Error ? error.message : "Unknown error",
       };
     }
-
-    const data = (await response.json()) as ZaiQuotasResponse;
-
-    if (!data.success || data.code !== 200) {
-      return {
-        provider: "z.ai Plan",
-        providerId: "z-ai",
-        status: "degraded",
-        windows: [],
-        error: data.msg ?? "API error",
-      };
-    }
-
-    return mapZaiToRateLimits(data);
-  } catch (error) {
-    return {
-      provider: "z.ai Plan",
-      providerId: "z-ai",
-      status: "outage",
-      windows: [],
-      error: error instanceof Error ? error.message : "Unknown error",
-    };
-  }
+  });
 }

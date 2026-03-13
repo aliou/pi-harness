@@ -388,7 +388,6 @@ function updateWidget(ctx: ExtensionContext): void {
         computeVisibility(cachedLimits, providerId, modelFamily);
       break;
   }
-
   if (!visible) {
     ctx.ui.setWidget(WIDGET_ID, undefined);
     return;
@@ -466,11 +465,13 @@ async function refreshRateLimits(
 export function setupUsageBarHooks(pi: ExtensionAPI): void {
   // Session start: reset local state only. Defer network fetch until model change
   // or first agent turn completion.
-  pi.on("session_start", async (_event, _ctx) => {
+  pi.on("session_start", async (_event, ctx) => {
     cachedLimits = null;
     cachedProviderId = null;
     lastFetchTime = null;
     forceVisible = false;
+    // Fetch immediately so widget appears right away
+    refreshRateLimits(ctx, true).catch(() => {});
   });
 
   // Model change: always fetch (force), reset cache

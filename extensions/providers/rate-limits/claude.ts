@@ -4,6 +4,7 @@ import type {
   RateLimitWindow,
   StatusIndicator,
 } from "../types";
+import { withProviderCache } from "./provider-cache";
 
 const USAGE_URL = "https://api.anthropic.com/api/oauth/usage";
 const STATUS_URL = "https://status.claude.com/api/v2/status.json";
@@ -116,95 +117,98 @@ export async function fetchClaudeRateLimits(
     };
   }
 
-  const timeoutSignal = createTimeoutSignal(5000, signal);
-  const headers = {
-    Authorization: `Bearer ${token}`,
-    "anthropic-beta": "oauth-2025-04-20",
-    Accept: "application/json",
-    "Content-Type": "application/json",
-    "User-Agent": "CodexBar", // Matches known working client behavior
-  };
+  return withProviderCache("claude", async () => {
+    const timeoutSignal = createTimeoutSignal(5000, signal);
+    const headers = {
+      Authorization: `Bearer ${token}`,
+      "anthropic-beta": "oauth-2025-04-20",
+      "User-Agent": "claude-code/2.1.0",
+    };
 
-  let status: StatusIndicator = "unknown";
-  let statusMessage: string | undefined;
-  let windows: RateLimitWindow[] = [];
-  let error: string | undefined;
+    let status: StatusIndicator = "unknown";
+    let statusMessage: string | undefined;
+    let windows: RateLimitWindow[] = [];
+    let error: string | undefined;
 
-  try {
-    const [usageResponse, statusResponse] = await Promise.all([
-      fetch(USAGE_URL, { headers, signal: timeoutSignal }),
-      fetch(STATUS_URL, { signal: timeoutSignal }),
-    ]);
+    try {
+      const [usageResponse, statusResponse] = await Promise.all([
+        fetch(USAGE_URL, { headers, signal: timeoutSignal }),
+        fetch(STATUS_URL, { signal: timeoutSignal }),
+      ]);
 
-    if (!statusResponse.ok) {
-      status = "unknown";
-    } else {
-      try {
-        const statusJson = (await statusResponse.json()) as {
-          status?: { indicator?: string; description?: string };
-        };
-        status = mapClaudeStatus(statusJson.status?.indicator);
-        statusMessage = statusJson.status?.description;
-      } catch {
+      if (!statusResponse.ok) {
         status = "unknown";
+      } else {
+        try {
+          const statusJson = (await statusResponse.json()) as {
+            status?: { indicator?: string; description?: string };
+          };
+          status = mapClaudeStatus(statusJson.status?.indicator);
+          statusMessage = statusJson.status?.description;
+        } catch {
+          status = "unknown";
+        }
       }
-    }
 
-    if (!usageResponse.ok) {
-      error = await getClaudeUsageError(usageResponse);
-    } else {
-      try {
-        const usageJson = (await usageResponse.json()) as {
-          five_hour?: { utilization?: number; resets_at?: string } | null;
-          seven_day?: { utilization?: number; resets_at?: string } | null;
-          seven_day_sonnet?: {
-            utilization?: number;
-            resets_at?: string;
-          } | null;
-          seven_day_opus?: { utilization?: number; resets_at?: string } | null;
-        };
+      if (!usageResponse.ok) {
+        error = await getClaudeUsageError(usageResponse);
+      } else {
+        try {
+          const usageJson = (await usageResponse.json()) as {
+            five_hour?: { utilization?: number; resets_at?: string } | null;
+            seven_day?: { utilization?: number; resets_at?: string } | null;
+            seven_day_sonnet?: {
+              utilization?: number;
+              resets_at?: string;
+            } | null;
+            seven_day_opus?: {
+              utilization?: number;
+              resets_at?: string;
+            } | null;
+          };
 
-        const buildWindow = (
-          label: string,
-          entry?: { utilization?: number; resets_at?: string } | null,
-        ): RateLimitWindow | null => {
-          if (!entry) return null;
-          const usedPercent = Math.max(
-            0,
-            Math.min(100, entry.utilization ?? 0),
+          const buildWindow = (
+            label: string,
+            entry?: { utilization?: number; resets_at?: string } | null,
+          ): RateLimitWindow | null => {
+            if (!entry) return null;
+            const usedPercent = Math.max(
+              0,
+              Math.min(100, entry.utilization ?? 0),
+            );
+            const resetsAt = entry.resets_at ? new Date(entry.resets_at) : null;
+            const windowSeconds = getWindowSeconds(label);
+            return { label, usedPercent, resetsAt, windowSeconds };
+          };
+
+          const windowsList: Array<RateLimitWindow | null> = [
+            buildWindow("5-hour window", usageJson.five_hour),
+            buildWindow("7-day window (all models)", usageJson.seven_day),
+            buildWindow("7-day window (Sonnet)", usageJson.seven_day_sonnet),
+            buildWindow("7-day window (Opus)", usageJson.seven_day_opus),
+          ];
+          windows = windowsList.filter(
+            (window): window is RateLimitWindow => window !== null,
           );
-          const resetsAt = entry.resets_at ? new Date(entry.resets_at) : null;
-          const windowSeconds = getWindowSeconds(label);
-          return { label, usedPercent, resetsAt, windowSeconds };
-        };
-
-        const windowsList: Array<RateLimitWindow | null> = [
-          buildWindow("5-hour window", usageJson.five_hour),
-          buildWindow("7-day window (all models)", usageJson.seven_day),
-          buildWindow("7-day window (Sonnet)", usageJson.seven_day_sonnet),
-          buildWindow("7-day window (Opus)", usageJson.seven_day_opus),
-        ];
-        windows = windowsList.filter(
-          (window): window is RateLimitWindow => window !== null,
-        );
-      } catch {
-        error = "Invalid response";
+        } catch {
+          error = "Invalid response";
+        }
+      }
+    } catch (_err) {
+      if (timeoutSignal.aborted || signal?.aborted) {
+        error = "Fetch failed";
+      } else {
+        error = "Network error";
       }
     }
-  } catch (_err) {
-    if (timeoutSignal.aborted || signal?.aborted) {
-      error = "Fetch failed";
-    } else {
-      error = "Network error";
-    }
-  }
 
-  return {
-    provider: "Claude Plan",
-    providerId: "anthropic",
-    status,
-    statusMessage,
-    windows,
-    error,
-  };
+    return {
+      provider: "Claude Plan",
+      providerId: "anthropic",
+      status,
+      statusMessage,
+      windows,
+      error,
+    };
+  });
 }
