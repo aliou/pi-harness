@@ -16,7 +16,6 @@ All packages in this repository use the `@aliou` scope where applicable, not `@a
 
 - `breadcrumbs` - Session history tools. Search past sessions, extract information, and hand off context to new sessions.
 - `defaults` - Personal sensible defaults and quality-of-life improvements.
-- `introspection` - Inspect Pi agent internals: system prompt, tools, skills, and context usage.
 - `modes` - Hardcoded execution modes with tool gating, model defaults, and branch-aware restore.
 - `planning` - Turn conversations into implementation plans and manage saved plans.
 - `providers` - Register custom providers and show unified rate-limit and usage dashboards.
