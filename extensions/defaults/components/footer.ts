@@ -87,7 +87,12 @@ export function createCustomFooter(pi: ExtensionAPI) {
         usage,
         contextUsage,
       );
-      const modelIdLine = buildModelIdLine(theme, ctx.model?.id);
+      const modelIdLine = buildModelIdLine(
+        theme,
+        ctx.model?.id,
+        ctx,
+        ctx.model?.provider,
+      );
 
       const leftWidth2 = minimalStatsParts.reduce(
         (sum, part) => sum + visibleWidth(part),
@@ -121,6 +126,7 @@ export function createCustomFooter(pi: ExtensionAPI) {
       const thinkingLevel = pi.getThinkingLevel();
       const modelLine = buildModelLine(
         theme,
+        ctx,
         ctx.model?.provider,
         ctx.model?.id,
         !!ctx.model?.reasoning,

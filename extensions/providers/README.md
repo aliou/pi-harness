@@ -7,11 +7,11 @@ Rate limiting alerts, usage widgets, and dashboards for AI providers.
 - **Rate Limit Warnings**: Smart, time-aware alerts when approaching limits
 - **Usage Bar**: Compact widget showing current provider usage
 - **Usage Dashboard**: Interactive `/providers:usage` command with session and historical stats
+- **Codex Fast Mode**: Session-local toggle for OpenAI Codex priority service tier, available from the palette
 
 ## Commands
 
 - `/providers:usage` - Open usage dashboard (interactive)
-- `/providers:toggle-widget` - Toggle usage bar visibility
 - `/providers:settings` - Configure provider-specific settings
 
 ## Rate Limit Warnings
