@@ -36,12 +36,13 @@ export default async function (pi: ExtensionAPI): Promise<void> {
   registerRenderers(pi);
   registerContextFilter(pi);
 
-  pi.registerCommand("palette", {
-    description: "Open command palette",
-    handler: async (_args, ctx) => {
-      await openPalette(pi, ctx, registry, config);
-    },
-  });
+  // Keep Ctrl+P as the only entry point for opening the palette.
+  // pi.registerCommand("palette", {
+  //   description: "Open command palette",
+  //   handler: async (_args, ctx) => {
+  //     await openPalette(pi, ctx, registry, config);
+  //   },
+  // });
 
   pi.registerShortcut(Key.ctrl("p"), {
     description: "Open command palette",
