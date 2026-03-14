@@ -16,6 +16,9 @@ Overrides the built-in `read` tool. File output is tagged with `LINE#HASH` marke
 
 Returns the current date and time with structured fields: formatted string, date, time, timezone, timezone name, day of week, and unix timestamp. Supports format parameter: `iso8601` (default), `unix`, `date`, `time`.
 
+### `read_url` tool
+
+Fetches pages as Markdown through a handler pipeline. It uses domain-specific handlers when available (for example, `x.com`/`twitter.com` status URLs via the `api.fxtwitter.com` rendering flow) and falls back to `https://markdown.new/<url>` for everything else.
 ### Subdirectory AGENTS.md discovery
 
 Pi's built-in discovery only loads AGENTS.md files from the cwd and its ancestors. This hook fills the gap: when the agent reads a file, it checks for AGENTS.md files in the directories between cwd and the file being read, and sends a custom message for each discovered file.

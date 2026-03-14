@@ -4,7 +4,7 @@ Personal sensible defaults and quality-of-life improvements for Pi.
 
 ## Layout
 
-- `tools/` - Tool overrides and custom tools (`read`, `edit`, `get_current_time`)
+- `tools/` - Tool overrides and custom tools (`read`, `edit`, `find`, `bash`, `get_current_time`, `read_url`)
 - `hooks/` - Event hooks (AGENTS.md discovery, notifications, terminal title, session naming)
 - `commands/` - Slash commands (`/theme`, `/project:init`, `/ad:settings`, `/defaults:update`)
 - `components/` - UI components (theme selector, text viewer)

@@ -29,6 +29,9 @@
       "style": {
         "noNonNullAssertion": "error",
         "useTemplate": "error"
+      },
+      "suspicious": {
+        "noExplicitAny": "error"
       }
     }
   },
