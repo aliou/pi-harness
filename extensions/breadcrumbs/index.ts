@@ -1,6 +1,7 @@
 import type { ExtensionAPI } from "@mariozechner/pi-coding-agent";
 import { setupSessionCommands } from "./commands";
 import { configLoader } from "./config";
+import { setupPaletteRegistration } from "./hooks/palette";
 import { setupProtectSessionsDirHook } from "./hooks/protect-sessions-dir";
 import {
   setupSessionLinkMarkerRenderer,
@@ -22,6 +23,7 @@ export default async function (pi: ExtensionAPI) {
   setupSessionLinkSourceRenderer(pi);
   setupSessionTools(pi, { handoffTool: config.handoffTool });
   setupSessionCommands(pi);
+  setupPaletteRegistration(pi);
 
   const guidances = [FIND_SESSIONS_GUIDANCE, READ_SESSION_GUIDANCE];
   if (config.handoffTool) {
