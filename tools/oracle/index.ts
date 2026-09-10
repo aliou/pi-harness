@@ -12,6 +12,7 @@ import {
   renderOracleHeader,
 } from "./render";
 import { OracleParams } from "./types";
+import { disablesOracleTools } from "./utils";
 
 const tools: SubagentToolSpec[] = [
   { name: "read", type: "native", render: oracleToolRenderers.read },
@@ -36,6 +37,19 @@ const tools: SubagentToolSpec[] = [
 ];
 
 const extensionPaths = ["./tools", "npm:@aliou/pi-synthetic"];
+
+const TOOL_NAMES = ["oracle", "resume_oracle"];
+
+function enableTools(pi: ExtensionAPI): void {
+  const active = pi.getActiveTools();
+  const missing = TOOL_NAMES.filter((name) => !active.includes(name));
+  if (missing.length > 0) pi.setActiveTools([...active, ...missing]);
+}
+
+function disableTools(pi: ExtensionAPI): void {
+  const active = pi.getActiveTools();
+  pi.setActiveTools(active.filter((name) => !TOOL_NAMES.includes(name)));
+}
 
 export default async function oracle(pi: ExtensionAPI): Promise<void> {
   const subagent = createSubagent(pi, {
@@ -73,4 +87,17 @@ export default async function oracle(pi: ExtensionAPI): Promise<void> {
   );
   register();
   notifyOnSessionStart();
+
+  if (!subagent.configured) return;
+
+  // Same pattern as the look_at tool: keep the oracle tools active unless
+  // the session model belongs to a family that should not use them.
+  pi.on("agent_start", (_event, ctx) => {
+    const model = ctx.model;
+    if (!model) return;
+    disablesOracleTools(model) ? disableTools(pi) : enableTools(pi);
+  });
+  pi.on("model_select", (event) => {
+    disablesOracleTools(event.model) ? disableTools(pi) : enableTools(pi);
+  });
 }

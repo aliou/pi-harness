@@ -12,6 +12,7 @@ import {
   renderAdvisorHeader,
 } from "./render";
 import { AdvisorParams } from "./types";
+import { disablesAdvisorTools } from "./utils";
 
 const tools: SubagentToolSpec[] = [
   { name: "read", type: "native", render: advisorToolRenderers.read },
@@ -40,6 +41,19 @@ const extensionPaths = [
   "npm:@aliou/pi-synthetic",
   "./hooks/provider-tweaks",
 ];
+
+const TOOL_NAMES = ["advisor", "resume_advisor"];
+
+function enableTools(pi: ExtensionAPI): void {
+  const active = pi.getActiveTools();
+  const missing = TOOL_NAMES.filter((name) => !active.includes(name));
+  if (missing.length > 0) pi.setActiveTools([...active, ...missing]);
+}
+
+function disableTools(pi: ExtensionAPI): void {
+  const active = pi.getActiveTools();
+  pi.setActiveTools(active.filter((name) => !TOOL_NAMES.includes(name)));
+}
 
 export default async function advisor(pi: ExtensionAPI): Promise<void> {
   const subagent = createSubagent(pi, {
@@ -79,4 +93,17 @@ export default async function advisor(pi: ExtensionAPI): Promise<void> {
   );
   register();
   notifyOnSessionStart();
+
+  if (!subagent.configured) return;
+
+  // Same pattern as the look_at tool: keep the advisor tools active unless
+  // the session model belongs to a family that should not use them.
+  pi.on("agent_start", (_event, ctx) => {
+    const model = ctx.model;
+    if (!model) return;
+    disablesAdvisorTools(model) ? disableTools(pi) : enableTools(pi);
+  });
+  pi.on("model_select", (event) => {
+    disablesAdvisorTools(event.model) ? disableTools(pi) : enableTools(pi);
+  });
 }
