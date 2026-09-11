@@ -51,45 +51,6 @@
           "file": "workspace-utils.js"
         }
       ]
-    },
-    {
-      "path": "hooks/herdr",
-      "packageName": "@aliou/pi-harness-herdr",
-      "description": "Herdr integration for Pi",
-      "public": false,
-      "gistId": "3e38821285e31903ee87eadd442867ec",
-      "runtimeExecutables": [],
-      "workspaceBundles": [
-        {
-          "package": "@harness/events",
-          "imports": ["@harness/events"],
-          "entry": "packages/events/index.ts",
-          "file": "workspace-events.js"
-        }
-      ]
-    },
-    {
-      "path": "hooks/notifications",
-      "entrypoint": "gist-index.ts",
-      "packageName": "@aliou/pi-harness-notifications",
-      "description": "Notification events, terminal alerts, and sounds for Pi",
-      "public": false,
-      "gistId": "4f51308e6b67927462dc2b91dd61eb79",
-      "runtimeExecutables": ["afplay"],
-      "workspaceBundles": [
-        {
-          "package": "@harness/audio-player",
-          "imports": ["@harness/audio-player"],
-          "entry": "packages/audio-player/index.ts",
-          "file": "workspace-audio-player.js"
-        },
-        {
-          "package": "@harness/events",
-          "imports": ["@harness/events"],
-          "entry": "packages/events/index.ts",
-          "file": "workspace-events.js"
-        }
-      ]
     }
   ]
 }
