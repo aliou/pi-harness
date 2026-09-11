@@ -24,9 +24,15 @@
         },
         {
           "package": "@harness/utils",
-          "imports": ["@harness/utils/path"],
+          "imports": ["@harness/utils", "@harness/utils/path"],
           "entry": "packages/utils/index.ts",
           "file": "workspace-utils.js"
+        },
+        {
+          "package": "@harness/ui",
+          "imports": ["@harness/ui"],
+          "entry": "packages/ui/index.ts",
+          "file": "workspace-ui.js"
         }
       ]
     },
