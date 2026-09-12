@@ -4,7 +4,7 @@ packages:
   - "!.pi/npm/*"
 
 overrides:
-  "@earendil-works/pi-coding-agent": "0.84.0"
+  "@earendil-works/pi-coding-agent": "0.85.1"
   "@earendil-works/pi-agent-core": "$@earendil-works/pi-coding-agent"
   "@earendil-works/pi-ai": "$@earendil-works/pi-coding-agent"
   "@earendil-works/pi-tui": "$@earendil-works/pi-coding-agent"

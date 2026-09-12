@@ -71,13 +71,15 @@ export default function (pi: ExtensionAPI): void {
     async execute(toolCallId, params, signal, onUpdate, ctx) {
       const cwdArg = params.cwd ? expandHomePath(params.cwd) : undefined;
       const effectiveCwd = cwdArg ? resolve(ctx.cwd, cwdArg) : ctx.cwd;
-      const bashForCwd = createBashToolDefinition(effectiveCwd);
-      return bashForCwd.execute(
+      // Pi resolves the spawn directory from ctx.cwd and only falls back to
+      // the cwd captured at definition time, so the per-call directory has to
+      // travel on the context.
+      return nativeBash.execute(
         toolCallId,
         { command: params.command, timeout: params.timeout },
         signal,
         onUpdate,
-        ctx,
+        { ...ctx, cwd: effectiveCwd },
       );
     },
   });

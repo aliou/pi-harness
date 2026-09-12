@@ -35,6 +35,33 @@ describe("bash override", () => {
     },
   );
 
+  tmpdirTest("runs in the session cwd by default", async ({ tmpdir }) => {
+    const dir = await realpath(tmpdir);
+    const pi = await createPiTestHarness(bashExtension, { cwd: dir });
+
+    const result = await pi.tool("bash").execute({ command: "pwd -P" });
+
+    expect(result.content).toEqual([{ type: "text", text: `${dir}\n` }]);
+  });
+
+  tmpdirTest(
+    "resolves a relative cwd against the session cwd",
+    async ({ tmpdir }) => {
+      const dir = await realpath(tmpdir);
+      const pi = await createPiTestHarness(bashExtension, { cwd: dir });
+      await mkdir(join(dir, "nested"));
+
+      const result = await pi.tool("bash").execute({
+        command: "pwd -P",
+        cwd: "nested",
+      });
+
+      expect(result.content).toEqual([
+        { type: "text", text: `${join(dir, "nested")}\n` },
+      ]);
+    },
+  );
+
   tmpdirTest("resolves cwd with spaces", async ({ tmpdir }) => {
     const pi = await createPiTestHarness(bashExtension);
     const dir = join(await realpath(tmpdir), "dir with spaces");
