@@ -12,9 +12,21 @@ import {
   getCallComponent,
   summarizeDiff,
 } from "../shared/render";
+import {
+  type ApplyPatchPreview,
+  computePatchPreview,
+  previewFileReader,
+} from "./preview";
 import type { ApplyPatchDetails, ApplyPatchFileDiff } from "./tool";
 
-export type ApplyPatchRenderState = EditRenderState;
+export interface ApplyPatchRenderState extends EditRenderState {
+  /** Cached diff preview computed once args are complete. */
+  preview?: ApplyPatchPreview;
+  /** Args key the preview was computed for; a change invalidates it. */
+  previewArgsKey?: string;
+  /** True while a preview computation is in flight. */
+  previewPending?: boolean;
+}
 
 export function extractFileOps(patch: string): string[] {
   return extractFileOpDetails(patch).map((op) => `${op.status} ${op.path}`);
@@ -43,13 +55,47 @@ export function renderApplyPatchCall(
   args: { input?: string },
   theme: Theme,
   context: EditRenderContext<{ input?: string }>,
-) {
-  const ops = extractFileOpDetails(args.input ?? "");
+): Component {
+  const state = context.state as ApplyPatchRenderState;
+  const input = args.input ?? "";
+  const argsKey = input;
+
+  // Reset preview state when the streamed patch changes underneath us.
+  if (state.previewArgsKey !== argsKey) {
+    state.preview = undefined;
+    state.previewArgsKey = argsKey;
+    state.previewPending = false;
+  }
+
+  // Arguments finished: compute the preview once. Pi's native edit renderer
+  // uses the same `argsComplete` gate so the preview appears after streaming
+  // ends but before execution.
+  if (
+    context.argsComplete &&
+    input &&
+    !state.preview &&
+    !state.previewPending
+  ) {
+    state.previewPending = true;
+    const requestKey = argsKey;
+    void computePatchPreview(
+      input,
+      context.cwd ?? process.cwd(),
+      previewFileReader.read,
+    ).then((preview) => {
+      if (state.previewArgsKey === requestKey) {
+        state.preview = preview;
+        context.invalidate?.();
+      }
+    });
+  }
+
+  const ops = extractFileOpDetails(input);
   const detail = formatCallSummary(ops, theme);
-  const component = getCallComponent(context.state, context.lastComponent);
-  component.setText(
-    `${theme.fg("toolTitle", theme.bold("apply_patch"))} ${detail}`,
-  );
+  const header = `${theme.fg("toolTitle", theme.bold("apply_patch"))} ${detail}`;
+  const previewText = formatPreviewText(state.preview, theme);
+  const component = getCallComponent(state, context.lastComponent);
+  component.setText(previewText ? `${header}\n${previewText}` : header);
   return component;
 }
 
@@ -80,6 +126,21 @@ export function renderApplyPatchResult(
   component.addChild(new Spacer(1));
   component.addChild(new Text(output, 0, 0));
   return component;
+}
+
+/** Collapsed per-file preview lines shown under the call header pre-execution. */
+function formatPreviewText(
+  preview: ApplyPatchPreview | undefined,
+  theme: Theme,
+): string | undefined {
+  if (!preview || "error" in preview) return undefined;
+  if (preview.fileDiffs.length === 0) return undefined;
+  return preview.fileDiffs
+    .map((fileDiff) => {
+      const stat = renderFileStat(summarizeDiff(fileDiff.diff), theme);
+      return `  ${formatStatus(fileDiff.status, theme)}  ${theme.fg("toolOutput", fileDiff.path)}${stat}`;
+    })
+    .join("\n");
 }
 
 function formatApplyPatchSummary(
