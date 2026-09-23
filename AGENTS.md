@@ -134,7 +134,6 @@ Subagents default to the parent session cwd. If a subagent accepts an invocation
 | `label/` | `/label <text>` | Label the current session entry |
 | `proceed/` | `/proceed`, `/proceed status`, `/proceed help` | Resume the current session without sending prompt text to the LLM |
 | `qq/` | `/qq [question]`, `/qq:dismiss` | Quick question / resumable side chat without interrupting the main session; dismiss hides the qq widget |
-| `review/` | `/review`, `/review:split` | Local review workflow; split mode supports tmux, Herdr, and Ghostty |
 | `spawn/` | `/spawn [note]` | Create a linked child session |
 
 ## Hooks
