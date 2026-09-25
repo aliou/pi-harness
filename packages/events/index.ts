@@ -39,8 +39,6 @@ export interface AdNotifyDoneEvent {
   toolCalls?: number;
 }
 
-export const AD_TERMINAL_TITLE_ATTENTION_EVENT = "ad:terminal-title:attention";
-
 export const AD_EDITOR_STASH_CHANGED_EVENT = "ad:editor-stash:changed";
 
 export type AdEditorStashChangedEvent = {

@@ -81,7 +81,6 @@ Subagent model rosters are not defined in this repository. They live in the glob
 
 `@harness/subagent-models` owns the path, the async cached loader, and validation. Each subagent passes `modelPreferences: () => getSubagentModelPreferences("<name>")` to `createSubagent` and awaits `subagent.ready`. There are no built-in defaults: when the file is missing/invalid or has no roster for a name, the subagent stays disabled — registration is a no-op (via `configuredSubagent`) and the user gets a single session-start warning. Execution-time roster replacement for evals (`SubagentRunOptions.modelPreferences`) is unchanged.
 
-The `compact:fast` command is not a subagent but reuses the same file and ranking. It reads the `compact_fast` roster via `getSubagentModelPreferences` and picks the compaction model with `pickModel`, so the weight semantics and provider cooldown above apply. It is single-shot — no failover walk or startup timeout — and aborts with a UI error when the roster is missing or no entry resolves to an authed model.
 
 #### Weight semantics
 
@@ -126,14 +125,10 @@ Subagents default to the parent session cwd. If a subagent accepts an invocation
 |---|---|---|
 | Directory | Commands | Notes |
 |---|---|---|
-| `compact-fast/` | `/compact:fast` | Compact with a fast model, then restore the previous model |
 | `continue/` | `/continue` | Continue from a linked parent session |
 | `copy-session-id/` | `/copy:session-id` | Copy session ID to clipboard |
 | `copy-session-path/` | `/copy:session-path` | Copy session file path to clipboard |
-| `feedback/` (hook) | `/feedback` | Rate recent subagent runs (registered from the hook dir) |
-| `label/` | `/label <text>` | Label the current session entry |
 | `proceed/` | `/proceed`, `/proceed status`, `/proceed help` | Resume the current session without sending prompt text to the LLM |
-| `qq/` | `/qq [question]`, `/qq:dismiss` | Quick question / resumable side chat without interrupting the main session; dismiss hides the qq widget |
 | `spawn/` | `/spawn [note]` | Create a linked child session |
 
 ## Hooks
@@ -142,9 +137,11 @@ Subagents default to the parent session cwd. If a subagent accepts an invocation
 |---|---|---|
 | `resource-loader/` | Append `.agents/AGENTS.local.md` (cwd only) to the system prompt; complements Pi's built-in `AGENTS.md`/`CLAUDE.md` discovery which does not consult `.agents/` | `index.ts`, `load.ts` |
 | `provider-tweaks/` | Provider-specific tweaks; injects `x-session-id` on Anthropic requests, requests detailed reasoning summaries from GPT-5.6 Codex models, and adds session-affinity headers | `index.ts`, `anthropic.ts`, `openai-codex.ts` |
+| `at-path-autocomplete/` | `@`-path autocomplete wrapper | Rewrites `@`-file completions to `./`-relative paths on insertion |
 | `chrome/` | Header, footer, terminal title, notifications, auto-naming; footer shows cost and context | `hooks/`, `components/`, `lib/`, `native/` |
+| `editor-stash/` | `ctrl+shift+s` stash/unstash of editor content | `index.ts`, `lib/` |
 | `event-compat/` | Backwards-compatible event aliases | `index.ts` |
-| `models-overrides/` | Override model props in models.json | `index.ts` |
+| `notifications/` | Canonical `ad:notify:*` producer plus terminal (OSC) and sound consumers | `index.ts`, `producer.ts`, `terminal.ts`, `sound.ts` |
 | `protect-sessions-dir/` | Gate agent access to sessions directory | `gate.ts`, `session-gate-dialog.ts`, `bash-parser.ts` |
 | `session-autocomplete/` | `@@` autocomplete for session references | `index.ts`, `provider.ts` |
 | `session-name/` | Auto-name sessions | `index.ts` |
