@@ -168,7 +168,7 @@ Subagents default to the parent session cwd. If a subagent accepts an invocation
 | `read-session/` | `read_session` | Zero-shot past-session extractor |
 | `read-url/` | `read_url` | URL fetch with handler chain and preview |
 | `reviewer/` | `reviewer`, `resume_reviewer` | Zero-shot formal code-review subagent; accepts optional `cwd` so review commands and file reads run in the target repo |
-| `scout/` | `scout`, `resume_scout` | Zero-shot local codebase researcher |
+| `scout/` | `scout`, `resume_scout` | Zero-shot local codebase researcher; grep/find run with capped output readers |
 
 ## Development
 
