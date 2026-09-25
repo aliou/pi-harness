@@ -226,10 +226,6 @@ To run multiple harness instances on the same machine, override these env vars p
 |---|---|---|
 | `HARNESS_DATA_HOME` | `$SESAME_DATA_DIR` or `~/.local/share/sesame` | Sesame session-search SQLite index (`packages/session-store/db.ts`) |
 
-## Patches
-
-Local patches on top of Pi and its dependencies moved to the standalone `pi-patches` repo (`~/code/src/pi.dev/pi-patches`, `git@github.com:aliou/pi-patches.git`). This repository no longer holds a `patches/` directory, patch scripts, or the `Patches` GitHub Actions workflow.
-
 ## Custom header
 
 The startup header (`hooks/chrome/components/header.ts`) shows the logo in collapsed mode and a curated list of harness commands, shortcuts, and completion providers when expanded. Extensions register these entries by listening to `AD_HEADER_COLLECT_EVENT` and emitting the matching `AD_HEADER_REGISTER_*` event from `@harness/events`. When adding a new `registerShortcut`, `registerCommand`, or autocomplete provider, ask whether it should be added to the header.
