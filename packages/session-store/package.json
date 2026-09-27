@@ -8,7 +8,7 @@
     "./types": "./types.ts"
   },
   "dependencies": {
-    "@aliou/sesame": "^0.11.0",
+    "@aliou/sesame": "^0.13.0",
     "@earendil-works/pi-coding-agent": "*",
     "@harness/utils": "workspace:*"
   }

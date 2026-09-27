@@ -44,16 +44,15 @@ export default async function (pi: ExtensionAPI) {
 
   // If the last message references `@@<uuid>` sessions, append guidance so the
   // model knows to call read_session. Re-applied before every LLM call.
-  pi.on("context", (event) => {
+  pi.on("context", async (event) => {
     const last = event.messages.at(-1);
     if (last?.role !== "user") return;
 
     const ids = extractSessionIds(messageText(last.content));
     if (ids.length === 0) return;
 
-    const refs = ids
-      .map((id) => resolveSessionRef(id))
-      .filter((ref): ref is SessionRef => ref != null);
+    const resolved = await Promise.all(ids.map((id) => resolveSessionRef(id)));
+    const refs = resolved.filter((ref): ref is SessionRef => ref != null);
     if (refs.length === 0) return;
 
     appendGuidance(last, buildSessionRefsContent(refs));

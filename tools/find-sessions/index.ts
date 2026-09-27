@@ -208,7 +208,7 @@ Uses Sesame indexed search.`,
   async execute(
     _toolCallId,
     params,
-    _signal,
+    signal,
     _onUpdate,
     ctx,
   ): Promise<ExecuteResult> {
@@ -230,7 +230,7 @@ Uses Sesame indexed search.`,
     // Execute search
     let results: SessionResult[] = [];
     try {
-      results = searchSessions(searchOpts);
+      results = await searchSessions(searchOpts, signal);
       // Filter out current session - users searching for sessions want to find other sessions, not the one they're in
       results = results.filter((r) => r.id !== currentSessionId);
     } catch (err) {

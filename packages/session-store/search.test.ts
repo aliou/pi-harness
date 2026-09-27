@@ -1,42 +1,41 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { getDb, sesameSearch } = vi.hoisted(() => ({
-  getDb: vi.fn(),
+const { getSearchClient, sesameSearch } = vi.hoisted(() => ({
+  getSearchClient: vi.fn(),
   sesameSearch: vi.fn(),
 }));
 
 vi.mock("@aliou/sesame", () => ({
   parseRelativeDate: () => "2026-07-06T00:00:00.000Z",
-  search: sesameSearch,
 }));
 
-vi.mock("./db", () => ({ getDb }));
+vi.mock("./db", () => ({ getSearchClient }));
 
 import { searchSessions } from "./search";
-
-const db = {
-  prepare: vi.fn(() => ({ all: vi.fn(() => []) })),
-};
 
 describe("searchSessions", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    getDb.mockReturnValue(db);
+    getSearchClient.mockReturnValue({ search: sesameSearch });
     sesameSearch.mockReturnValue([]);
   });
 
-  it("uses Sesame browse mode when the query is omitted", () => {
-    searchSessions({});
+  it("uses Sesame browse mode when the query is omitted", async () => {
+    await searchSessions({});
 
-    expect(sesameSearch).toHaveBeenCalledWith(db, undefined, {
-      after: undefined,
-      before: undefined,
-      cwd: undefined,
-      limit: undefined,
-    });
+    expect(sesameSearch).toHaveBeenCalledWith(
+      undefined,
+      {
+        after: undefined,
+        before: undefined,
+        cwd: undefined,
+        limit: undefined,
+      },
+      undefined,
+    );
   });
 
-  it("preserves Sesame match provenance", () => {
+  it("preserves Sesame match provenance", async () => {
     sesameSearch.mockReturnValue([
       {
         sessionId: "session-id",
@@ -52,10 +51,12 @@ describe("searchSessions", () => {
         matchedType: "label",
         matchedEntryId: "entry-id",
         matchedAt: "2026-07-01T12:00:00.000Z",
+        messageCount: 3,
       },
     ]);
 
-    expect(searchSessions({ query: "deploy checkpoint" })).toEqual([
+    const results = await searchSessions({ query: "deploy checkpoint" });
+    expect(results).toEqual([
       expect.objectContaining({
         matchMode: "all",
         matchedType: "label",

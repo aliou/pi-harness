@@ -144,7 +144,7 @@ RESULTS: Returns sessions sorted by modification date (newest first), including 
   async execute(
     _toolCallId,
     params,
-    _signal,
+    signal,
     _onUpdate,
     _ctx,
   ): Promise<ExecuteResult> {
@@ -152,7 +152,7 @@ RESULTS: Returns sessions sorted by modification date (newest first), including 
 
     let results: SessionResult[] = [];
     try {
-      results = listSessions({ cwd, limit, depth });
+      results = await listSessions({ cwd, limit, depth }, signal);
     } catch (err) {
       console.error("[list-sessions] Error:", err);
       return {

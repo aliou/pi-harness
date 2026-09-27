@@ -1,47 +1,27 @@
-/**
- * Sesame database lifecycle management.
- *
- * Lazily-opened long-lived SQLite connection via sesame's openDatabase.
- * Consumers call getDb() to obtain the singleton; the connection is closed
- * on pi shutdown via dispose().
- */
+/** Shared worker-backed Sesame search client lifecycle. */
 
-import { join } from "node:path";
-import { getXDGPaths, openDatabase } from "@aliou/sesame";
+import { AsyncSessionSearch, getXDGPaths } from "@aliou/sesame";
 
-// Database is not re-exported from @aliou/sesame; derive it from openDatabase.
-type Database = NonNullable<ReturnType<typeof openDatabase>>;
+let client: AsyncSessionSearch | null = null;
 
-let db: Database | null = null;
-
-/** Get the singleton DB connection, opening it on first call. */
-export function getDb(): Database {
-  if (!db) {
+/** Lazily start Sesame's worker. SQLite stays inside the library. */
+export function getSearchClient(): AsyncSessionSearch {
+  if (!client) {
     const dataHome =
       process.env.HARNESS_DATA_HOME ||
       process.env.SESAME_DATA_DIR ||
       getXDGPaths().data;
-    const dbPath = join(dataHome, "index.sqlite");
-    db = openDatabase(dbPath);
+    client = new AsyncSessionSearch(dataHome);
   }
-  return db;
+  return client;
 }
 
-/** Close the connection and null the reference. Called on pi shutdown. */
-export function dispose(): void {
-  if (db) {
-    db.close();
-    db = null;
-  }
+export async function dispose(): Promise<void> {
+  const previous = client;
+  client = null;
+  await previous?.close();
 }
 
-/**
- * Close and null the reference. Next getDb() call reopens.
- * For use when we need to force-refresh after external writes.
- */
-export function resetConnection(): void {
-  if (db) {
-    db.close();
-    db = null;
-  }
+export async function resetConnection(): Promise<void> {
+  await dispose();
 }

@@ -87,9 +87,9 @@ export function createSessionAutocompleteProvider(
         // Use session-name LIKE for recent sessions and short tokens
         // (FTS is ~10s for single chars).
         const useFts = token.length >= FTS_MIN_TOKEN_LEN;
-        const results = useFts
-          ? searchSessions({ query, cwd: searchCwd })
-          : searchSessionsByName(token, searchCwd);
+        const results = await (useFts
+          ? searchSessions({ query, cwd: searchCwd }, options.signal)
+          : searchSessionsByName(token, searchCwd));
 
         if (options.signal.aborted) {
           return null;
