@@ -1,19 +1,17 @@
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { fs, vol } from "memfs";
 import { expect, test } from "vitest";
 import { listSkills, type SkillsRoot } from "./skills";
+
+const { mkdirSync, writeFileSync } = fs;
 
 const SKILL_HEADER = (name: string, description: string) =>
   `---\nname: ${name}\ndescription: ${description}\n---\n\n${name} body`;
 
 function withSkills(fn: (rootPath: string) => void): void {
-  const root = mkdtempSync(join(tmpdir(), "skill-list-"));
-  try {
-    fn(root);
-  } finally {
-    rmSync(root, { recursive: true, force: true });
-  }
+  const root = "/skills";
+  vol.mkdirSync(root);
+  fn(root);
 }
 
 function singleRoot(rootPath: string): SkillsRoot[] {
@@ -109,28 +107,25 @@ test("skips hidden and node_modules directories", () => {
 });
 
 test("first root wins on name collision across roots", () => {
-  const rootA = mkdtempSync(join(tmpdir(), "skill-list-"));
-  const rootB = mkdtempSync(join(tmpdir(), "skill-list-"));
-  try {
-    mkdirSync(join(rootA, "shared"));
-    mkdirSync(join(rootB, "shared"));
-    writeFileSync(
-      join(rootA, "shared", "SKILL.md"),
-      SKILL_HEADER("shared", "from A"),
-    );
-    writeFileSync(
-      join(rootB, "shared", "SKILL.md"),
-      SKILL_HEADER("shared", "from B"),
-    );
+  const rootA = "/skills-a";
+  const rootB = "/skills-b";
+  vol.mkdirSync(rootA);
+  vol.mkdirSync(rootB);
+  mkdirSync(join(rootA, "shared"));
+  mkdirSync(join(rootB, "shared"));
+  writeFileSync(
+    join(rootA, "shared", "SKILL.md"),
+    SKILL_HEADER("shared", "from A"),
+  );
+  writeFileSync(
+    join(rootB, "shared", "SKILL.md"),
+    SKILL_HEADER("shared", "from B"),
+  );
 
-    const skills = listSkills([
-      { path: rootA, label: "A" },
-      { path: rootB, label: "B" },
-    ]);
-    expect(skills).toHaveLength(1);
-    expect(skills[0]?.sourceLabel).toBe("A");
-  } finally {
-    rmSync(rootA, { recursive: true, force: true });
-    rmSync(rootB, { recursive: true, force: true });
-  }
+  const skills = listSkills([
+    { path: rootA, label: "A" },
+    { path: rootB, label: "B" },
+  ]);
+  expect(skills).toHaveLength(1);
+  expect(skills[0]?.sourceLabel).toBe("A");
 });

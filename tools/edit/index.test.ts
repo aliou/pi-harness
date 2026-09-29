@@ -6,16 +6,6 @@ import { assert, beforeEach, describe, expect, it, vi } from "vitest";
 import editExtension, { prepareEditArguments } from "./index";
 import { pickEditTool, resolveActiveTools } from "./router";
 
-vi.mock("node:fs", async () => {
-  const memfs = await vi.importActual<typeof import("memfs")>("memfs");
-  return memfs.fs;
-});
-
-vi.mock("node:fs/promises", async () => {
-  const memfs = await vi.importActual<typeof import("memfs")>("memfs");
-  return memfs.fs.promises;
-});
-
 vi.mock("node:os", () => ({
   tmpdir: () => "/tmp",
 }));
@@ -69,7 +59,6 @@ vi.mock("@earendil-works/pi-coding-agent", async (importOriginal) => {
 });
 
 beforeEach(() => {
-  vol.reset();
   vol.fromJSON({ "/tmp/.keep": "" });
 });
 

@@ -21,6 +21,8 @@ When adding new content or changing existing behavior, update the closest releva
 - `scripts/` - Maintenance, native build, and extension Gist release scripts.
 - `tests/` - Test setup and docs. Shared test utilities live in `packages/test-utils`.
 
+Unit tests use `memfs` for filesystem fixtures via `tests/vitest.setup.ts`. `createPiTestHarness` creates its default cwd in the virtual volume. Subprocesses cannot read memfs; `tools/bash/index.test.ts` and `tools/scout/tools/grep.test.ts` use real temporary host directories for their integration tests. Test conventions live in `tests/README.md`.
+
 ## New feature placement
 
 New functionality should be added as one of:

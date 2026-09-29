@@ -3,11 +3,6 @@ import { vol } from "memfs";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { detectSupportedImageMimeType, referencesImageFiles } from "./utils";
 
-vi.mock("node:fs", async () => {
-  const memfs = await vi.importActual<typeof import("memfs")>("memfs");
-  return memfs.fs;
-});
-
 vi.mock("node:os", () => ({
   homedir: () => "/home/user",
 }));
@@ -20,7 +15,6 @@ const PNG_SIG = [
 const JPG_SIG = [0xff, 0xd8, 0xff, 0xe0];
 
 beforeEach(() => {
-  vol.reset();
   vol.fromJSON({ "/tmp/.keep": "" });
 });
 

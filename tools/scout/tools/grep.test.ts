@@ -1,8 +1,11 @@
 import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { createScoutGrepTool } from "./grep";
+
+vi.unmock("node:fs");
+vi.unmock("node:fs/promises");
 
 let dir = "";
 

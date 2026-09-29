@@ -5,11 +5,6 @@ import { vol } from "memfs";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { getTargetSessionPath } from "./utils";
 
-vi.mock("node:fs", async () => {
-  const memfs = await vi.importActual<typeof import("memfs")>("memfs");
-  return memfs.fs;
-});
-
 vi.mock("@earendil-works/pi-coding-agent", async (importOriginal) => {
   const actual = await importOriginal<object>();
   return {
@@ -42,8 +37,6 @@ function makeCtx(targetSessionId: string): ExtensionContext {
 
 beforeEach(() => {
   mockSessionsRoot = "/tmp/read-session-test";
-  vol.reset();
-
   const dirA = join(mockSessionsRoot, "sessions", "--project-a--");
   const dirB = join(mockSessionsRoot, "sessions", "--project-b--");
 

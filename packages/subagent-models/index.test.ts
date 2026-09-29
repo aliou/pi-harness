@@ -1,7 +1,6 @@
-import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
-import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { vol } from "memfs";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({ agentDir: "" }));
 
@@ -18,13 +17,10 @@ const {
 } = await import("./index");
 
 describe("subagent-models config", () => {
-  beforeEach(async () => {
-    mocks.agentDir = await mkdtemp(join(tmpdir(), "harness-subagent-models-"));
+  beforeEach(() => {
+    mocks.agentDir = "/agent";
+    vol.mkdirSync(mocks.agentDir);
     resetSubagentModelsCache();
-  });
-
-  afterEach(async () => {
-    await rm(mocks.agentDir, { recursive: true, force: true });
   });
 
   it("uses the global settings path", () => {
@@ -117,7 +113,7 @@ describe("subagent-models config", () => {
     expect(before).toBeDefined();
 
     // Remove the file; the cached value is still returned.
-    await rm(configPath());
+    vol.unlinkSync(configPath());
     const cached = await getSubagentModelPreferences("advisor");
     expect(cached).toBeDefined();
 
@@ -158,7 +154,7 @@ describe("subagent-models config", () => {
 
   async function writeRawConfig(contents: string): Promise<void> {
     const path = configPath();
-    await mkdir(dirname(path), { recursive: true });
-    await writeFile(path, contents, "utf-8");
+    vol.mkdirSync(dirname(path), { recursive: true });
+    vol.writeFileSync(path, contents);
   }
 });

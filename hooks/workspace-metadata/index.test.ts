@@ -12,13 +12,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import workspaceMetadata from "./index";
 import { WORKSPACE_METADATA_CUSTOM_TYPE } from "./types";
 
-vi.mock("node:fs/promises", async () => {
-  const memfs = await vi.importActual<typeof import("memfs")>("memfs");
-  return memfs.fs.promises;
-});
-
 beforeEach(() => {
-  vol.reset();
   vol.fromJSON({ "/workspace/.keep": "" });
 });
 

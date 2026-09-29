@@ -7,8 +7,14 @@ import {
   AD_NOTIFY_DANGEROUS_EVENT,
   AD_NOTIFY_DONE_EVENT,
 } from "@harness/events";
+import { vol } from "memfs";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { playSound, selectSoundPath, setupSoundConsumer } from "./sound";
+import {
+  PLAY_ALERT_SOUND_BINARY,
+  playSound,
+  selectSoundPath,
+  setupSoundConsumer,
+} from "./sound";
 
 describe("selectSoundPath", () => {
   it("maps attention to Glass", () => {
@@ -60,6 +66,7 @@ describe("setupSoundConsumer", () => {
 
   beforeEach(() => {
     vi.resetAllMocks();
+    vol.fromJSON({ [PLAY_ALERT_SOUND_BINARY]: "" });
   });
 
   afterEach(() => {

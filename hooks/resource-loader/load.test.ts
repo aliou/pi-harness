@@ -1,46 +1,30 @@
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { vol } from "memfs";
 import { describe, expect, it } from "vitest";
 import { appendLocalAgents, loadLocalAgentsFile } from "./load";
 
 describe("resource-loader/load", () => {
   it("returns null when .agents/AGENTS.local.md is absent", () => {
-    const dir = mkdtempSync(join(tmpdir(), "rl-"));
-    try {
-      expect(loadLocalAgentsFile(dir)).toBeNull();
-    } finally {
-      rmSync(dir, { recursive: true, force: true });
-    }
+    expect(loadLocalAgentsFile("/project")).toBeNull();
   });
 
   it("loads the file when present at cwd only", () => {
-    const dir = mkdtempSync(join(tmpdir(), "rl-"));
-    try {
-      const agentsDir = join(dir, ".agents");
-      mkdirSync(agentsDir, { recursive: true });
-      writeFileSync(join(agentsDir, "AGENTS.local.md"), "# local\nbody here");
-      const result = loadLocalAgentsFile(dir);
-      expect(result).not.toBeNull();
-      expect(result?.path).toBe(join(agentsDir, "AGENTS.local.md"));
-      expect(result?.content).toContain("body here");
-    } finally {
-      rmSync(dir, { recursive: true, force: true });
-    }
+    const agentsDir = "/project/.agents";
+    vol.fromJSON({
+      [join(agentsDir, "AGENTS.local.md")]: "# local\nbody here",
+    });
+    const result = loadLocalAgentsFile("/project");
+    expect(result).not.toBeNull();
+    expect(result?.path).toBe(join(agentsDir, "AGENTS.local.md"));
+    expect(result?.content).toContain("body here");
   });
 
   it("does not look in parent directories", () => {
-    const parent = mkdtempSync(join(tmpdir(), "rl-"));
-    const child = join(parent, "child");
-    try {
-      const agentsDir = join(parent, ".agents");
-      mkdirSync(agentsDir, { recursive: true });
-      writeFileSync(join(agentsDir, "AGENTS.local.md"), "parent body");
-      // child dir exists but has no .agents
-      expect(loadLocalAgentsFile(child)).toBeNull();
-    } finally {
-      rmSync(parent, { recursive: true, force: true });
-    }
+    vol.fromJSON({
+      "/project/.agents/AGENTS.local.md": "parent body",
+      "/project/child/.keep": "",
+    });
+    expect(loadLocalAgentsFile("/project/child")).toBeNull();
   });
 
   it("appends content wrapped in Pi's <project_context> format", () => {

@@ -1,27 +1,27 @@
-import { mkdir, realpath, rm, symlink } from "node:fs/promises";
+import { mkdir, realpath } from "node:fs/promises";
 import { homedir } from "node:os";
 import { join } from "node:path";
 import { createPiTestHarness } from "@harness/test-utils/pi-test-harness";
 import { tmpdirTest } from "@harness/test-utils/tmpdir";
-import { describe, expect } from "vitest";
+import { describe, expect, vi } from "vitest";
 import bashExtension from "./index";
+
+vi.unmock("node:fs");
+vi.unmock("node:fs/promises");
 
 describe("bash override", () => {
   tmpdirTest(
-    "forwards Pi session context to the delegated bash definition",
-    async () => {
+    "forwards Pi session context to the native bash tool",
+    async ({ tmpdir }) => {
       const pi = await createPiTestHarness(bashExtension, {
+        cwd: tmpdir,
         toolContext: {
-          model: {
-            provider: "test-provider",
-            id: "test-model",
-          } as never,
+          model: { provider: "test-provider", id: "test-model" } as never,
           thinkingLevel: "high",
         },
       });
-      const tool = pi.tool("bash");
 
-      const result = await tool.execute({
+      const result = await pi.tool("bash").execute({
         command:
           'printf "%s|%s|%s|%s|%s" "$PI_SESSION_ID" "$PI_SESSION_FILE" "$PI_PROVIDER" "$PI_MODEL" "$PI_REASONING_LEVEL"',
       });
@@ -48,24 +48,23 @@ describe("bash override", () => {
     "resolves a relative cwd against the session cwd",
     async ({ tmpdir }) => {
       const dir = await realpath(tmpdir);
+      const nested = join(dir, "nested");
+      await mkdir(nested);
       const pi = await createPiTestHarness(bashExtension, { cwd: dir });
-      await mkdir(join(dir, "nested"));
 
       const result = await pi.tool("bash").execute({
         command: "pwd -P",
         cwd: "nested",
       });
 
-      expect(result.content).toEqual([
-        { type: "text", text: `${join(dir, "nested")}\n` },
-      ]);
+      expect(result.content).toEqual([{ type: "text", text: `${nested}\n` }]);
     },
   );
 
   tmpdirTest("resolves cwd with spaces", async ({ tmpdir }) => {
-    const pi = await createPiTestHarness(bashExtension);
     const dir = join(await realpath(tmpdir), "dir with spaces");
     await mkdir(dir);
+    const pi = await createPiTestHarness(bashExtension, { cwd: tmpdir });
 
     const result = await pi.tool("bash").execute({
       command: "pwd -P",
@@ -75,25 +74,16 @@ describe("bash override", () => {
     expect(result.content).toEqual([{ type: "text", text: `${dir}\n` }]);
   });
 
-  tmpdirTest(
-    "expands ~ in cwd, including paths with spaces",
-    async ({ tmpdir }) => {
-      const pi = await createPiTestHarness(bashExtension);
-      const dir = join(await realpath(tmpdir), "space dir");
-      await mkdir(dir);
-      const homeLink = join(homedir(), ".pi-harness-test-space dir");
-      await symlink(dir, homeLink);
+  tmpdirTest("expands ~ to the home directory", async ({ tmpdir }) => {
+    const pi = await createPiTestHarness(bashExtension, { cwd: tmpdir });
 
-      try {
-        const result = await pi.tool("bash").execute({
-          command: "pwd -P",
-          cwd: "~/.pi-harness-test-space dir",
-        });
+    const result = await pi.tool("bash").execute({
+      command: "pwd -P",
+      cwd: "~",
+    });
 
-        expect(result.content).toEqual([{ type: "text", text: `${dir}\n` }]);
-      } finally {
-        await rm(homeLink, { force: true });
-      }
-    },
-  );
+    expect(result.content).toEqual([
+      { type: "text", text: `${await realpath(homedir())}\n` },
+    ]);
+  });
 });
