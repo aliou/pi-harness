@@ -4,7 +4,7 @@ import { vol } from "memfs";
 import { expect, test, vi } from "vitest";
 import { expandSkillReferences } from "./expand";
 import { createSkillAutocompleteProvider, extractSkillToken } from "./provider";
-import { listSkills, type SkillsRoot } from "./skills";
+import { listSkills, loadPinnedSkills, type SkillsRoot } from "./skills";
 
 function addSkills(skills: Record<string, string>): SkillsRoot[] {
   const root = "/skills";
@@ -82,6 +82,27 @@ test("shows all skills for ??", async () => {
     items: [
       { label: "alpha", description: "[test] Alpha skill description" },
       { label: "beta", description: "[test] Beta skill description" },
+    ],
+  });
+});
+
+test("shows pinned skills in autocomplete", async () => {
+  const skillDir = "/pinned/agent-browser";
+  vol.mkdirSync(skillDir, { recursive: true });
+  vol.writeFileSync(
+    join(skillDir, "SKILL.md"),
+    "---\nname: agent-browser\ndescription: Browser automation\n---\n\nUse browser tools.",
+  );
+  const pinned = loadPinnedSkills([skillDir], "pin");
+  const provider = createSkillAutocompleteProvider(current, [], pinned);
+  const suggestions = await provider.getSuggestions(["??"], 0, 2, {
+    signal: new AbortController().signal,
+  });
+
+  expect(suggestions).toMatchObject({
+    prefix: "??",
+    items: [
+      { label: "agent-browser", description: "[pin] Browser automation" },
     ],
   });
 });

@@ -147,7 +147,7 @@ Subagents default to the parent session cwd. If a subagent accepts an invocation
 | `protect-sessions-dir/` | Gate agent access to sessions directory | `gate.ts`, `session-gate-dialog.ts`, `bash-parser.ts` |
 | `session-autocomplete/` | `@@` autocomplete for session references | `index.ts`, `provider.ts` |
 | `session-name/` | Auto-name sessions | `index.ts` |
-| `skill-autocomplete/` | `?` skill autocomplete; sends each inline skill as a rendered context message and retains skill names in user prose | `index.ts`, `expand.ts`, `render.ts` |
+| `skill-autocomplete/` | `?` skill autocomplete; supports `skillsRoots` plus pinned skill directories in `completion.json`, which load as real Pi skills and take priority over root duplicates; sends each inline skill as a rendered context message and retains skill names in user prose | `index.ts`, `config.ts`, `expand.ts`, `render.ts` |
 | `tps/` | Per-turn tokens-per-second telemetry emitted as `ad:tps:telemetry` for footer display and other consumers | `index.ts`, `utils.ts`, `types.ts` |
 | `workspace-metadata/` | Record model-hidden hostname, canonical cwd, and Git remote metadata for new/forked sessions, and backfill existing sessions that lack it | `index.ts`, `helpers.ts`, `types.ts` |
 | `zoxide-autocomplete/` | `@z:` project path autocomplete | `index.ts` |

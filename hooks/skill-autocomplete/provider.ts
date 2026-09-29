@@ -18,7 +18,7 @@ import type {
   AutocompleteSuggestions,
 } from "@earendil-works/pi-tui";
 import { replaceAutocompletePrefix } from "@harness/completion";
-import { listSkills, type SkillsRoot } from "./skills";
+import { listSkills, type SkillInfo, type SkillsRoot } from "./skills";
 import { SKILL_TOKEN_RE, SKILL_TRIGGER_CONSUMED_RE } from "./types";
 
 interface SkillToken {
@@ -47,6 +47,7 @@ function prefixDescription(
 export function createSkillAutocompleteProvider(
   current: AutocompleteProvider,
   skillsRoots: SkillsRoot[],
+  pinned: SkillInfo[] = [],
 ): AutocompleteProvider {
   return {
     triggerCharacters: ["?"],
@@ -80,7 +81,7 @@ export function createSkillAutocompleteProvider(
 
       try {
         const tokenLower = skillToken.token.toLowerCase();
-        const allSkills = listSkills(skillsRoots);
+        const allSkills = listSkills(skillsRoots, pinned);
         const byName = allSkills.filter((s) =>
           s.name.toLowerCase().includes(tokenLower),
         );

@@ -1,7 +1,7 @@
 import { join } from "node:path";
 import { fs, vol } from "memfs";
 import { expect, test } from "vitest";
-import { listSkills, type SkillsRoot } from "./skills";
+import { listSkills, loadPinnedSkills, type SkillsRoot } from "./skills";
 
 const { mkdirSync, writeFileSync } = fs;
 
@@ -128,4 +128,39 @@ test("first root wins on name collision across roots", () => {
   ]);
   expect(skills).toHaveLength(1);
   expect(skills[0]?.sourceLabel).toBe("A");
+});
+
+test("loadPinnedSkills loads skill directories and skips the rest", () => {
+  const dir = "/pinned-test";
+  const skillDir = join(dir, "pinned");
+  vol.mkdirSync(skillDir, { recursive: true });
+  writeFileSync(join(skillDir, "SKILL.md"), SKILL_HEADER("pinned", "P"));
+  const skillFile = join(dir, "not-a-dir");
+  writeFileSync(skillFile, "stray");
+
+  const skills = loadPinnedSkills(
+    [skillDir, skillFile, join(dir, "gone")],
+    "pin",
+  );
+  expect(skills).toHaveLength(1);
+  expect(skills[0]?.name).toBe("pinned");
+  expect(skills[0]?.sourceLabel).toBe("pin");
+});
+
+test("pinned skills win name collisions against roots", () => {
+  const root = "/skills-list";
+  const dir = "/skills-pinned";
+  vol.mkdirSync(join(root, "shared"), { recursive: true });
+  vol.mkdirSync(join(dir, "shared"), { recursive: true });
+  writeFileSync(
+    join(root, "shared", "SKILL.md"),
+    SKILL_HEADER("shared", "from root"),
+  );
+  const skillDir = join(dir, "shared");
+  writeFileSync(join(skillDir, "SKILL.md"), SKILL_HEADER("shared", "pinned"));
+
+  const pinned = loadPinnedSkills([skillDir], "pin");
+  const skills = listSkills(singleRoot(root), pinned);
+  expect(skills).toHaveLength(1);
+  expect(skills[0]?.sourceLabel).toBe("pin");
 });

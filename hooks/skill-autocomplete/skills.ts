@@ -82,7 +82,26 @@ function addSkill(
 }
 
 /**
- * List skills under the given roots.
+ * Load skills for explicitly pinned skill directories.
+ *
+ * Each path must be a skill directory (containing `SKILL.md`); other paths
+ * are silently skipped. Pinned skills are loaded regardless of the configured
+ * roots and claim their name before any root is scanned.
+ */
+export function loadPinnedSkills(
+  paths: string[],
+  sourceLabel: string,
+): SkillInfo[] {
+  const skills: SkillInfo[] = [];
+  for (const path of paths) {
+    const skill = loadSkillFromDir(path, sourceLabel);
+    if (skill) skills.push(skill);
+  }
+  return skills;
+}
+
+/**
+ * List skills under the given roots, with pinned skills loaded first.
  *
  * For each root, scan immediate subdirectories:
  * - an immediate subdir that directly contains `SKILL.md` is registered as a
@@ -92,12 +111,19 @@ function addSkill(
  *   nested wrapper packages (e.g. `obsidian/json-canvas`) without recursion.
  *
  * No descent beyond one level. Hidden directories and `node_modules` are
- * skipped. The first root to claim a given skill name wins; later duplicates
- * are skipped.
+ * skipped. Pinned skills win name collisions against roots; the first root
+ * to claim a given skill name wins over later duplicates.
  */
-export function listSkills(skillsRoots: SkillsRoot[]): SkillInfo[] {
+export function listSkills(
+  skillsRoots: SkillsRoot[],
+  pinned: SkillInfo[] = [],
+): SkillInfo[] {
   const skills: SkillInfo[] = [];
   const seenNames = new Set<string>();
+
+  for (const skill of pinned) {
+    addSkill(skills, seenNames, skill);
+  }
 
   for (const root of skillsRoots) {
     let names: string[];

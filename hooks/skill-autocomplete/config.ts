@@ -15,6 +15,8 @@ export interface SkillsRootConfig {
 export interface CompletionConfig {
   /** Root directories containing skill folders, each with a required label. */
   skillsRoots?: SkillsRootConfig[];
+  /** Absolute or tilde paths to skill directories loaded regardless of roots. */
+  pinned?: unknown;
 }
 
 /** Path to the shared completion config file. */
@@ -36,6 +38,13 @@ export function readCompletionConfig(): CompletionConfig {
 export interface ResolvedSkillsRoots {
   /** Existing roots, each resolved to an absolute path with a display label. */
   valid: SkillsRoot[];
+  /** Configured paths that don't exist on disk (tilde-shortened for display). */
+  missing: string[];
+}
+
+export interface ResolvedPinnedSkills {
+  /** Existing pinned skill directories, absolute. */
+  valid: string[];
   /** Configured paths that don't exist on disk (tilde-shortened for display). */
   missing: string[];
 }
@@ -90,6 +99,51 @@ export function resolveSkillsRoots(): ResolvedSkillsRoots {
       valid.push({ path: absolute, label: entry.label });
     } else {
       missing.push(`${entry.label}:${collapseHomePath(absolute)}`);
+    }
+  }
+
+  return { valid, missing };
+}
+
+/**
+ * Parse and validate `pinned`. Every entry must be a non-empty string path.
+ * Throws on any other shape (non-arrays, non-strings, empty strings).
+ */
+export function parsePinnedSkills(value: unknown): string[] {
+  if (!Array.isArray(value)) {
+    throw new Error("pinned must be an array of skill directory paths");
+  }
+
+  return value.map((entry, index) => {
+    if (typeof entry !== "string" || entry.trim() === "") {
+      throw new Error(`pinned[${index}] must be a non-empty string path`);
+    }
+    return entry.trim();
+  });
+}
+
+/**
+ * Resolve the configured `pinned` skill directories.
+ * Returns valid absolute paths and missing (non-existing) paths separately.
+ * Throws if pinned is present but malformed (see parsePinnedSkills).
+ */
+export function resolvePinnedSkills(): ResolvedPinnedSkills {
+  const config = readCompletionConfig();
+  if (config.pinned === undefined) {
+    return { valid: [], missing: [] };
+  }
+
+  const pinned = parsePinnedSkills(config.pinned);
+
+  const valid: string[] = [];
+  const missing: string[] = [];
+
+  for (const entry of pinned) {
+    const absolute = expandHomePath(entry);
+    if (existsSync(absolute)) {
+      valid.push(absolute);
+    } else {
+      missing.push(collapseHomePath(absolute));
     }
   }
 

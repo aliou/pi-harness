@@ -21,6 +21,12 @@
  * shown as a `[label]` prefix on each skill's description, mirroring pi's
  * source tagging. Any other shape (bare strings, missing fields) fails loudly.
  *
+ * `pinned` is an optional array of skill directory paths loaded regardless of
+ * the roots. Pinned skills are contributed to pi's resource manager via the
+ * `resources_discover` event so pi loads them as real skills, win name
+ * collisions against roots in the `?` completion, and their missing paths are
+ * reported on session start.
+ *
  * If the config file doesn't exist or any configured path doesn't exist,
  * a notification is shown on session start. The provider is still registered
  * with whatever valid roots exist.
@@ -34,16 +40,42 @@ import {
 } from "@harness/events";
 import {
   getCompletionConfigPath,
+  type ResolvedPinnedSkills,
   type ResolvedSkillsRoots,
+  resolvePinnedSkills,
   resolveSkillsRoots,
 } from "./config";
 import { expandSkillReferences } from "./expand";
 import { createSkillAutocompleteProvider } from "./provider";
 import { renderSkillInvocation, SKILL_INVOCATION_MESSAGE_TYPE } from "./render";
-import { listSkills, type SkillsRoot } from "./skills";
+import {
+  listSkills,
+  loadPinnedSkills,
+  type SkillInfo,
+  type SkillsRoot,
+} from "./skills";
+
+/** Source label shown for pinned skills in the `?` completion. */
+const PINNED_LABEL = "pin";
 
 export default async function (pi: ExtensionAPI) {
   let skillsRoots: SkillsRoot[] = [];
+  let pinnedSkills: SkillInfo[] = [];
+  let resolvedPinned: ResolvedPinnedSkills = { valid: [], missing: [] };
+  let pinnedConfigError: string | undefined;
+
+  try {
+    resolvedPinned = resolvePinnedSkills();
+    pinnedSkills = loadPinnedSkills(resolvedPinned.valid, PINNED_LABEL);
+  } catch (error) {
+    pinnedConfigError = error instanceof Error ? error.message : String(error);
+  }
+
+  // Pinned skills from the completion config are contributed as real skills
+  // so pi's resource manager loads them on startup and `/reload`.
+  pi.on("resources_discover", () => ({
+    skillPaths: pinnedSkills.map((skill) => skill.fullPath),
+  }));
 
   pi.registerMessageRenderer(
     SKILL_INVOCATION_MESSAGE_TYPE,
@@ -58,10 +90,15 @@ export default async function (pi: ExtensionAPI) {
   });
 
   pi.on("input", (event, ctx) => {
-    if (skillsRoots.length === 0) return { action: "continue" };
+    if (skillsRoots.length === 0 && pinnedSkills.length === 0) {
+      return { action: "continue" };
+    }
 
     try {
-      const result = expandSkillReferences(event.text, listSkills(skillsRoots));
+      const result = expandSkillReferences(
+        event.text,
+        listSkills(skillsRoots, pinnedSkills),
+      );
       if (result.skills.length === 0) return { action: "continue" };
 
       const deliveryOptions = event.streamingBehavior
@@ -94,23 +131,32 @@ export default async function (pi: ExtensionAPI) {
   });
 
   pi.on("session_start", async (_event, ctx) => {
-    let resolved: ResolvedSkillsRoots;
+    let resolvedRoots: ResolvedSkillsRoots = { valid: [], missing: [] };
     try {
-      resolved = resolveSkillsRoots();
+      resolvedRoots = resolveSkillsRoots();
     } catch (error) {
-      skillsRoots = [];
       const message = error instanceof Error ? error.message : String(error);
       ctx.ui.notify(
         `Skill autocomplete disabled — invalid config in ${getCompletionConfigPath()}: ${message}`,
         "error",
       );
-      return;
     }
 
-    const { valid, missing } = resolved;
-    skillsRoots = valid;
+    if (pinnedConfigError) {
+      ctx.ui.notify(
+        `Pinned skills disabled — invalid config in ${getCompletionConfigPath()}: ${pinnedConfigError}`,
+        "error",
+      );
+    }
 
-    if (valid.length === 0 && missing.length === 0) {
+    skillsRoots = resolvedRoots.valid;
+
+    if (
+      skillsRoots.length === 0 &&
+      resolvedRoots.missing.length === 0 &&
+      pinnedSkills.length === 0 &&
+      resolvedPinned.missing.length === 0
+    ) {
       ctx.ui.notify(
         `Skill autocomplete not configured. Set skillsRoots in ${getCompletionConfigPath()}`,
         "warning",
@@ -118,6 +164,7 @@ export default async function (pi: ExtensionAPI) {
       return;
     }
 
+    const missing = [...resolvedRoots.missing, ...resolvedPinned.missing];
     if (missing.length > 0) {
       ctx.ui.notify(
         `Skill autocomplete: missing directories: ${missing.join(", ")}`,
@@ -125,10 +172,10 @@ export default async function (pi: ExtensionAPI) {
       );
     }
 
-    if (valid.length === 0) return;
+    if (skillsRoots.length === 0 && pinnedSkills.length === 0) return;
 
     ctx.ui.addAutocompleteProvider((current) =>
-      createSkillAutocompleteProvider(current, valid),
+      createSkillAutocompleteProvider(current, skillsRoots, pinnedSkills),
     );
   });
 }
