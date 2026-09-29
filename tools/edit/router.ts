@@ -11,16 +11,14 @@ type ModelLike = { provider?: string; id?: string } | undefined;
 /**
  * Codex / GPT-style models were post-trained on the V4A `apply_patch` format.
  *
- * Detection is by provider only: the `openai-codex` provider serves models
- * post-trained on V4A. A broader id-based regex (e.g. `/^gpt-5/`) was
- * considered and rejected -- it would misroute any non-Codex provider that
- * happens to expose a `gpt-5*` id (proxies, fine-tunes, gateways) into
- * `apply_patch`, silently stripping `edit` and `write` from a model that was
- * not trained on V4A. Adding a Codex-trained model under a new provider means
- * routing it through `openai-codex` (or extending this predicate explicitly).
+ * Pi's `openai` provider uses this interface for GPT-5/6 models. The
+ * compatibility `openai-codex` provider is Codex-only. Other OpenAI models
+ * and GPT ids on proxies keep edit/write.
  */
 export function isCodexModel(model: ModelLike): boolean {
-  return model?.provider === "openai-codex";
+  if (model?.provider === "openai-codex") return true;
+  if (model?.provider !== "openai") return false;
+  return /^gpt-(?:5|6)(?:[.-]|$)/i.test(model.id ?? "");
 }
 
 /** Anthropic Claude models benefit from strict tool-use schema validation. */

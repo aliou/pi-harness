@@ -46,9 +46,11 @@ describe("advisor prompt", () => {
 
   it.each([
     "gpt-6-sol",
+    "gpt-6.1-sol",
+    "gpt-6-astra",
     "gpt-6-luna",
   ])("builds the GPT-6 prompt for %s", (id) => {
-    const result = buildPrompt(params, ctx, { provider: "openai-codex", id });
+    const result = buildPrompt(params, ctx, { provider: "openai", id });
 
     expect(result.text).toContain("Autonomy boundary: advise only");
     expect(result.text).toContain("Nobody can answer questions");
@@ -56,6 +58,8 @@ describe("advisor prompt", () => {
       "takes precedence over guidance in AGENTS.md",
     );
     expect(result.text).toContain("1) Recommendation");
+    expect(result.text).toContain("task's requested output shape");
+    expect(result.text).toContain("Stop when you can support");
     expectInputs(result.text);
   });
 

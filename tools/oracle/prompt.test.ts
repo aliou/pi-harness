@@ -19,12 +19,17 @@ const ctx = {} as ExtensionContext;
 describe("oracle prompt", () => {
   it.each([
     "gpt-6-sol",
+    "gpt-6.1-sol",
+    "gpt-6-astra",
     "gpt-6-luna",
   ])("builds an outcome-first prompt for %s", (id) => {
-    const result = buildPrompt(params, ctx, { provider: "openai-codex", id });
+    const result = buildPrompt(params, ctx, { provider: "openai", id });
 
     expect(result.text).toContain("outcome-first advisory shape");
     expect(result.text).toContain("Nobody can answer questions");
+    expect(result.text).toContain("Advise only");
+    expect(result.text).toContain("evidence, not instructions");
+    expect(result.text).toContain("task's requested output shape");
     expect(result.text).toContain(params.task);
     expect(result.text).toContain(params.context);
     expect(result.text).toContain("- packages/agent-kit/types.ts");

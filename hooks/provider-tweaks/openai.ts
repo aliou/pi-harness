@@ -1,13 +1,13 @@
 type ReasoningSummary = "auto" | "concise" | "detailed" | "off" | "on";
 
-interface CodexReasoning {
+interface OpenAIReasoning {
   effort?: string;
   summary?: ReasoningSummary | null;
 }
 
-export interface CodexResponsesPayload {
+export interface OpenAIResponsesPayload {
   model?: unknown;
-  reasoning?: CodexReasoning;
+  reasoning?: OpenAIReasoning;
   [key: string]: unknown;
 }
 
@@ -19,8 +19,8 @@ const GPT_56_MODELS = new Set([
 ]);
 
 export function injectDetailedReasoningSummary(
-  payload: CodexResponsesPayload,
-): CodexResponsesPayload {
+  payload: OpenAIResponsesPayload,
+): OpenAIResponsesPayload {
   if (
     typeof payload.model !== "string" ||
     !GPT_56_MODELS.has(payload.model) ||

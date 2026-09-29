@@ -14,12 +14,17 @@ describe("reviewer prompt", () => {
   it.each([
     "gpt-6-luna",
     "gpt-6-sol",
+    "gpt-6.1-sol",
+    "gpt-6-astra",
   ])("builds a highest-impact review prompt for %s", (id) => {
-    const result = buildPrompt(params, ctx, { provider: "openai-codex", id });
+    const result = buildPrompt(params, ctx, { provider: "openai", id });
 
     expect(result.text).toContain("highest-impact findings");
     expect(result.text).toContain("Nobody can answer questions");
     expect(result.text).toContain("critical, high, medium, low");
+    expect(result.text).toContain("static review");
+    expect(result.text).toContain("Cite the file and line range");
+    expect(result.text).toContain("Stop once every hunk has been reviewed");
     expect(result.text).toContain(params.diff_description);
     expect(result.text).toContain(params.instructions);
   });

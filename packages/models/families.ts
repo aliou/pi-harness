@@ -21,7 +21,7 @@ export function knownModelFamily(
 ): KnownModelFamily | undefined {
   const id = normalizedId(model);
 
-  if (isFamilyId(id, "gpt-6")) return "gpt-6";
+  if (/^gpt-6(?:\.\d+)?(?:-|$)/.test(id)) return "gpt-6";
   if (id === "claude-opus-5-5" || id === "claude-opus-5.5") {
     return "claude-opus-5.5";
   }

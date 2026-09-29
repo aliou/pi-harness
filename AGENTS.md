@@ -119,6 +119,8 @@ Model-specific research behind these caller-facing rules lives in `docs/promptin
 
 `buildPrompt` receives the resolved subagent model. Keep model selection in `modelPreferences`, model identity helpers in `@harness/models`, and model-specific prompt compilation inside the tool's `prompt.ts`.
 
+`knownModelFamily` recognizes GPT-6 minor releases such as `gpt-6.1-sol` independently of provider. GPT-6 advisory, review, local research, and session extraction prompts define read-only autonomy, evidence requirements, and stopping conditions. The official family guide covering Sol 6.1 lives in `docs/prompting-gpt-6.1-sol.md`; the harness summary lives in `docs/prompting-gpt-6.md`. Sol 6.1 requires at least `low` reasoning and Responses for tools; use Luna when a role needs thinking `off`.
+
 Subagents default to the parent session cwd. If a subagent accepts an invocation-level `cwd` parameter, set `resolveCwd` in its `createSubagent` config so the subagent session and exposed tools use the same effective root.
 
 ## Commands
@@ -138,7 +140,7 @@ Subagents default to the parent session cwd. If a subagent accepts an invocation
 | Directory | Purpose | Key files |
 |---|---|---|
 | `resource-loader/` | Append `.agents/AGENTS.local.md` (cwd only) to the system prompt; complements Pi's built-in `AGENTS.md`/`CLAUDE.md` discovery which does not consult `.agents/` | `index.ts`, `load.ts` |
-| `provider-tweaks/` | Provider-specific tweaks; injects `x-session-id` on Anthropic requests, requests detailed reasoning summaries from GPT-5.6 Codex models, and adds session-affinity headers | `index.ts`, `anthropic.ts`, `openai-codex.ts` |
+| `provider-tweaks/` | Provider-specific tweaks; injects `x-session-id` on Anthropic requests, requests detailed reasoning summaries from GPT-5.6 models on `openai` (also accepts `openai-codex`), and adds session-affinity headers | `index.ts`, `anthropic.ts`, `openai.ts` |
 | `at-path-autocomplete/` | `@`-path autocomplete wrapper | Rewrites `@`-file completions to `./`-relative paths on insertion |
 | `chrome/` | Header, footer, terminal title, notifications, auto-naming; footer shows cost and context | `hooks/`, `components/`, `lib/`, `native/` |
 | `editor-stash/` | `ctrl+shift+s` stash/unstash of editor content | `index.ts`, `lib/` |
@@ -159,7 +161,7 @@ Subagents default to the parent session cwd. If a subagent accepts an invocation
 | `advisor/` | `advisor`, `resume_advisor` | Zero-shot strategic advisor for hard decisions, stuck work, risk review, and pre-completion second opinions; hidden from the active tools when the session model matches the gpt-5.6/gpt-6 families (`utils.ts`), same enable/disable pattern as `look_at` |
 | `ask-user/` | `ask_user` | Sequential structured input dialogs |
 | `bash/` | `bash` | Adds `cwd` while preserving Pi's session environment, spawn hooks, and sanitization |
-| `edit/` | `edit`, `apply_patch` | Model-aware edit tool. Routes Codex/GPT models to a queued `apply_patch` (V4A freeform patch, replacing `edit`+`write`), Kimi K2.7 Code to a queued `edit` with `old_string`/`new_string`, and everyone else to the native JSON `edit` with capability-aware constrained sampling |
+| `edit/` | `edit`, `apply_patch` | Model-aware edit tool. Routes GPT-5/6 models on `openai` and all models on compatibility provider `openai-codex` to a queued `apply_patch` (V4A freeform patch, replacing `edit`+`write`), Kimi K2.7 Code to a queued `edit` with `old_string`/`new_string`, and everyone else to the native JSON `edit` with capability-aware constrained sampling |
 | `find/` | `find` | Adds `glob`, blocked paths |
 | `find-sessions/` | `find_sessions` | Session search or recent-session browsing via `@harness/session-store`; reports match provenance |
 | `get-current-time/` | `get_current_time` | Passthrough |

@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { disablesOracleTools } from "./utils";
 
 function model(id: string) {
-  return { provider: "openai-codex", id };
+  return { provider: "openai", id };
 }
 
 describe("disablesOracleTools", () => {
@@ -14,6 +14,8 @@ describe("disablesOracleTools", () => {
     "gpt-6",
     "gpt-6-astra",
     "gpt-6.1",
+    "gpt-6.1-sol",
+    "openai/gpt-6.1-sol",
     "gpt-6-other-name",
     "GPT-6-ASTRA",
   ])("disables for gpt-5.6/gpt-6 family models: %s", (id) => {
@@ -22,6 +24,9 @@ describe("disablesOracleTools", () => {
 
   it.each([
     "gpt-5.5",
+    "gpt-60",
+    "gpt-5.60",
+    "gpt-6.1sol",
     "gpt-5.4-mini",
     "claude-opus-4-8",
     "glm-5.2",

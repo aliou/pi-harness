@@ -385,9 +385,13 @@ describe("routing", () => {
     expect(pickEditTool({ provider: "openai-codex", id: "gpt-5.5" })).toBe(
       "apply_patch",
     );
-    // A gpt-5* id under a non-Codex provider is NOT enough to route to
-    // apply_patch -- only the `openai-codex` provider is. This guards against
-    // silently stripping edit/write from a model that was not V4A-trained.
+    expect(pickEditTool({ provider: "openai", id: "gpt-6.1-sol" })).toBe(
+      "apply_patch",
+    );
+    expect(pickEditTool({ provider: "openai", id: "gpt-5.5" })).toBe(
+      "apply_patch",
+    );
+    // A GPT id on a proxy alone must not strip edit/write.
     expect(pickEditTool({ provider: "synthetic", id: "gpt-5.4" })).toBe("edit");
     expect(pickEditTool({ provider: "anthropic", id: "claude-opus-4-8" })).toBe(
       "edit",
@@ -405,6 +409,16 @@ describe("routing", () => {
       pickEditTool({ provider: "synthetic", id: "hf:zai-org/GLM-5.2" }),
     ).toBe("edit");
     expect(pickEditTool(undefined)).toBe("edit");
+  });
+
+  it.each([
+    "gpt-4o",
+    "gpt-4o-mini",
+    "o3",
+    "claude-x",
+    "gpt-60",
+  ])("keeps edit/write for openai/%s", (id) => {
+    expect(pickEditTool({ provider: "openai", id })).toBe("edit");
   });
 
   it("entering codex drops edit+write and adds apply_patch", () => {

@@ -7,12 +7,14 @@ function model(provider: string, id: string): ModelIdentity {
 
 describe("model family helpers", () => {
   it("formats model keys", () => {
-    expect(modelKey(model("openai-codex", "gpt-6-sol"))).toBe(
-      "openai-codex/gpt-6-sol",
-    );
+    expect(modelKey(model("openai", "gpt-6.1-sol"))).toBe("openai/gpt-6.1-sol");
   });
 
   it.each([
+    model("openai", "gpt-6.1-sol"),
+    model("openrouter", "openai/gpt-6.1-sol"),
+    model("openai", "gpt-6.1"),
+    model("openai", "gpt-6-astra"),
     model("openai-codex", "gpt-6-sol"),
     model("openai-codex", "gpt-6-luna"),
     model("openai-codex", "gpt-6-astra"),
@@ -47,7 +49,9 @@ describe("model family helpers", () => {
     model("anthropic", "claude-opus-5"),
     model("anthropic", "claude-sonnet-5-5"),
     model("openai-codex", "gpt-5.6-sol"),
-    model("openai-codex", "gpt-60"),
+    model("openai", "gpt-60"),
+    model("openai", "gpt-6.1sol"),
+    model("openai", "gpt-6.x-sol"),
     model("neuralwatt", "glm-5.2"),
     model("neuralwatt", "deepseek-v4.1-flash"),
   ])("returns undefined for other models: $provider/$id", (candidate) => {
