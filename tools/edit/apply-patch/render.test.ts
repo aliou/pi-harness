@@ -91,36 +91,88 @@ describe("apply_patch result rendering", () => {
 });
 
 describe("apply_patch call rendering", () => {
-  it("shows status counts instead of file list in header", () => {
-    const component = renderApplyPatchCall(
-      {
-        input:
-          "*** Begin Patch\n" +
-          "*** Update File: one.ts\n" +
-          "*** Update File: two.ts\n" +
-          "*** Add File: three.ts\n" +
-          "*** Update File: four.ts\n" +
-          "*** Add File: five.ts\n" +
-          "*** End Patch",
-      },
-      plainTheme,
-      {
-        args: {},
-        cwd: "/tmp",
-        state: {},
-        isError: false,
-        isPartial: false,
-      },
-    );
+  const patch =
+    "*** Begin Patch\n" +
+    "*** Update File: one.ts\n" +
+    "@@\n" +
+    " context line\n" +
+    "-old line\n" +
+    "+new line\n" +
+    "*** End Patch";
+
+  const context = {
+    args: {},
+    cwd: "/tmp",
+    state: {},
+    isError: false,
+    isPartial: true,
+  };
+
+  it("shows status counts in the header", () => {
+    const component = renderApplyPatchCall({ input: patch }, plainTheme, {
+      ...context,
+      state: {},
+    });
+    const output = component.render(120)[0] ?? "";
+
+    expect(output).toContain("apply_patch");
+    expect(output).toContain("+1 updated");
+    // Header holds the counts only; file names live in the streamed body.
+    expect(output).not.toContain("one.ts");
+  });
+
+  it("streams the partial patch text under the header", () => {
+    const partial = patch.slice(0, patch.indexOf("+new line"));
+    const component = renderApplyPatchCall({ input: partial }, plainTheme, {
+      ...context,
+      state: {},
+    });
     const output = component.render(120).join("\n");
 
-    // Counts replace the file list.
-    expect(output).toContain("+3 updated");
-    expect(output).toContain("+2 created");
-    expect(output).not.toContain("one.ts");
-    expect(output).not.toContain("two.ts");
-    expect(output).not.toContain("three.ts");
-    expect(output).not.toContain("four.ts");
-    expect(output).not.toContain("five.ts");
+    expect(output).toContain("*** Begin Patch");
+    expect(output).toContain("*** Update File: one.ts");
+    expect(output).toContain("-old line");
+    expect(output).not.toContain("+new line");
+  });
+
+  it("shows no body while the input is still empty", () => {
+    const component = renderApplyPatchCall({ input: "" }, plainTheme, {
+      ...context,
+      state: {},
+    });
+    expect(component.render(120)).toHaveLength(1);
+  });
+
+  it("caps the streamed body and hints at expansion when collapsed", () => {
+    const longPatch =
+      "*** Begin Patch\n" +
+      Array.from({ length: 30 }, (_, i) => `+line ${i + 1}`).join("\n") +
+      "\n*** End Patch";
+    const component = renderApplyPatchCall({ input: longPatch }, plainTheme, {
+      ...context,
+      state: {},
+    });
+    const output = component.render(120).join("\n");
+
+    expect(output).toContain("+line 9");
+    expect(output).not.toContain("+line 10");
+    expect(output).toContain("more lines");
+    expect(output).toContain("32 total");
+  });
+
+  it("shows the full patch when expanded", () => {
+    const longPatch =
+      "*** Begin Patch\n" +
+      Array.from({ length: 30 }, (_, i) => `+line ${i + 1}`).join("\n") +
+      "\n*** End Patch";
+    const component = renderApplyPatchCall({ input: longPatch }, plainTheme, {
+      ...context,
+      state: {},
+      expanded: true,
+    });
+    const output = component.render(120).join("\n");
+
+    expect(output).toContain("+line 30");
+    expect(output).not.toContain("more lines");
   });
 });

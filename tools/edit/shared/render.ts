@@ -36,10 +36,8 @@ export interface EditRenderContext<TArgs> {
   state: EditRenderState;
   isError: boolean;
   isPartial: boolean;
-  /** True once argument streaming finished (message ended). */
-  argsComplete?: boolean;
-  /** Request a redraw once an async computation finishes. */
-  invalidate?: () => void;
+  /** Whether the tool row is expanded (ctrl+o). */
+  expanded?: boolean;
 }
 
 export function getCallComponent(
