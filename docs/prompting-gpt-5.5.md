@@ -30,7 +30,9 @@ Avoid default process scripts such as "inspect, plan, edit, test" in every task.
 
 ## Reasoning and output controls
 
-Start with `medium` for normal complex work. Use `low` for narrow changes with cheap verification. Use `xhigh` for difficult debugging, broad refactors, high-blast-radius changes, or cases where failure is expensive. Evaluate `high` and `xhigh` against representative tasks instead of assuming a monotonic quality increase.
+Start with `medium` for normal complex work. Use `low` for narrow changes with cheap verification. Use `xhigh` for difficult debugging, broad refactors, high-blast-radius changes, or cases where failure is expensive. Evaluate `high` and `xhigh` against representative tasks instead of assuming a monotonic quality increase. In Amp's 102-task internal SWE eval, `high` cost more than `medium` and passed fewer tasks (50 vs 54). `xhigh` led on quality (55) at almost twice the cost of `medium`. Amp also runs GPT-5.5 with no reasoning for its Librarian code-search subagent: at the same quality it was about 3x faster and 43% cheaper than Sonnet 4.6, and it fired about 8 tool calls in parallel per turn.
+
+Amp's GPT-5.5 system prompt treats guidance files and skills as "constraints and shortcuts, not invitations to expand the task". At higher reasoning, GPT-5.5 reads every relevant guidance file and tries to satisfy every rule it finds.
 
 Set reasoning at runtime; do not ask the model to "think harder" or reveal hidden reasoning. Request conclusions, evidence, assumptions, and uncertainty. Use `text.verbosity` or a concrete response shape when the API supports it instead of repeating generic brevity rules. Generic "be concise" instructions can cut required caveats; prioritize conclusion first, required evidence, then optional context.
 
@@ -73,4 +75,5 @@ For extraction, provide an exact schema, distinguish required and optional field
 - OpenAI, [GPT-5.5 system card](https://openai.com/index/gpt-5-5-system-card/)
 - OpenAI, [Using GPT-5.5](https://developers.openai.com/api/docs/guides/latest-model)
 - Amp, [GPT-5.5 model card](https://ampcode.com/models/gpt-5.5)
+- Amp, [A faster Librarian](https://ampcode.com/news/a-faster-librarian)
 - Simon Willison, [GPT-5.5 prompting guide](https://simonwillison.net/2026/apr/25/gpt-5-5-prompting-guide/)

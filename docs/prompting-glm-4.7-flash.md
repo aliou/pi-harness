@@ -2,11 +2,13 @@
 
 GLM-4.7-Flash is Z.ai's lightweight, fast member of the GLM-4.7 series. It has a 200K context window, 128K maximum output, tool calling, structured output, and configurable thinking. Use it for bounded work that benefits from speed and explicit structure, not as a substitute for a large-model open-ended investigation.
 
+Synthetic's `syn:small:text` alias currently routes to GLM-4.7-Flash. Sessions from September 2026 report `zai-org/GLM-4.7-Flash` as the response model. The alias can move to another model, so check the reported response model before tuning prompts for it.
+
 ## Model profile
 
 - Best fit: narrow extraction, classification, concise transformation, focused repository or session lookup, and low-cost tool steps.
 - Context: 200K tokens is ample for a selected transcript or document, but not a reason to ask the model to understand an entire unscoped project.
-- Reasoning: thinking is enabled by default for the GLM-4.7 series and can be disabled per turn. GLM-4.7 uses forced thinking when enabled, unlike the dynamic behavior of GLM-5.2.
+- Reasoning: thinking is enabled by default for the GLM-4.7 series and can be disabled per turn. GLM-4.7 uses forced thinking when enabled.
 - Tools: interleaved thinking supports reasoning between tool calls. Preserve unmodified `reasoning_content` with assistant turns and tool results in a multi-step loop.
 
 ## Give one bounded job

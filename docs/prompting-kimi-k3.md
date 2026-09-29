@@ -7,6 +7,7 @@ Kimi K3 is Moonshot AI's flagship multimodal model for long-horizon coding, end-
 - Best fit: sustained software engineering, large-codebase work, multi-tool research, complex knowledge work, and tasks that combine code with visual feedback.
 - Context: 1M tokens. Use the window to retain relevant evidence and task state, not as a substitute for retrieval, scope, or a stopping condition.
 - Reasoning: thinking and preserved thinking are always on. Set the top-level `reasoning_effort` to `low`, `high`, or `max`; `max` is the official API default.
+- Provider variants: Neuralwatt's catalog lists `kimi-k3-fast` with reasoning disabled. The thinking and effort guidance here does not apply to that variant.
 - Sampling: `temperature=1.0`, `top_p=0.95`, `n=1`, and both penalties at `0` are fixed. Omit these parameters instead of setting them explicitly.
 - Tools: `tool_choice` supports `auto`, `none`, and `required`. K3 also supports dynamically loaded tools. Forcing one named function is incompatible with thinking, which cannot be disabled on K3.
 - Media: K3 accepts images and video. The official API supports base64 images or uploaded image and video files referenced with `ms://`; public image URLs are unsupported.
