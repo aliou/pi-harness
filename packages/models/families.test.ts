@@ -7,57 +7,50 @@ function model(provider: string, id: string): ModelIdentity {
 
 describe("model family helpers", () => {
   it("formats model keys", () => {
-    expect(modelKey(model("openai-codex", "gpt-5.5"))).toBe(
-      "openai-codex/gpt-5.5",
+    expect(modelKey(model("openai-codex", "gpt-6-sol"))).toBe(
+      "openai-codex/gpt-6-sol",
     );
   });
 
   it.each([
-    model("openai-codex", "gpt-5.5"),
-    model("openrouter", "openai/gpt-5.5"),
-  ])("recognizes GPT-5.5 variants: $provider/$id", (candidate) => {
-    expect(knownModelFamily(candidate)).toBe("gpt-5.5");
+    model("openai-codex", "gpt-6-sol"),
+    model("openai-codex", "gpt-6-luna"),
+    model("openai-codex", "gpt-6-astra"),
+    model("openrouter", "openai/gpt-6-sol"),
+  ])("recognizes GPT-6 variants: $provider/$id", (candidate) => {
+    expect(knownModelFamily(candidate)).toBe("gpt-6");
   });
 
   it.each([
-    [model("openai-codex", "gpt-5.6"), "gpt-5.6"],
-    [model("openai-codex", "gpt-5.6-sol"), "gpt-5.6-sol"],
-    [model("openrouter", "openai/gpt-5.6-terra"), "gpt-5.6-terra"],
-    [model("openai-codex", "gpt-5.6-luna"), "gpt-5.6-luna"],
-  ] as const)("recognizes GPT-5.6 variants: $0", (candidate, family) => {
-    expect(knownModelFamily(candidate)).toBe(family);
+    model("anthropic", "claude-opus-5-5"),
+    model("openrouter", "anthropic/claude-opus-5.5"),
+  ])("recognizes Claude Opus 5.5: $provider/$id", (candidate) => {
+    expect(knownModelFamily(candidate)).toBe("claude-opus-5.5");
+  });
+
+  it("recognizes Claude Sonnet 5", () => {
+    expect(knownModelFamily(model("anthropic", "claude-sonnet-5"))).toBe(
+      "claude-sonnet-5",
+    );
   });
 
   it.each([
-    model("synthetic", "hf:zai-org/GLM-4.7-Flash"),
-    model("zai", "glm-4.7-flash-fast"),
-  ])("recognizes GLM-4.7-Flash variants: $provider/$id", (candidate) => {
-    expect(knownModelFamily(candidate)).toBe("glm-4.7-flash");
+    model("neuralwatt", "glm-5.3"),
+    model("neuralwatt", "glm-5.3-flash"),
+    model("neuralwatt", "glm-5.3-flash-flex"),
+    model("synthetic", "hf:zai-org/GLM-5.3-Flash"),
+  ])("recognizes GLM-5.3 variants: $provider/$id", (candidate) => {
+    expect(knownModelFamily(candidate)).toBe("glm-5.3");
   });
 
   it.each([
+    model("anthropic", "claude-opus-5"),
+    model("anthropic", "claude-sonnet-5-5"),
+    model("openai-codex", "gpt-5.6-sol"),
+    model("openai-codex", "gpt-60"),
     model("neuralwatt", "glm-5.2"),
-    model("neuralwatt", "glm-5.2-fast"),
-    model("neuralwatt", "glm-5.2-short-fast"),
-    model("synthetic", "hf:zai-org/GLM-5.2"),
-  ])("recognizes GLM-5.2 variants: $provider/$id", (candidate) => {
-    expect(knownModelFamily(candidate)).toBe("glm-5.2");
-  });
-
-  it.each([
-    model("neuralwatt", "kimi-k2.7-code"),
-    model("synthetic", "hf:moonshotai/Kimi-K2.7-Code"),
-  ])("recognizes Kimi K2.7 Code variants: $provider/$id", (candidate) => {
-    expect(knownModelFamily(candidate)).toBe("kimi-k2.7-code");
-  });
-
-  it("returns undefined for unknown model families", () => {
-    expect(knownModelFamily(model("anthropic", "claude-opus-4-8"))).toBe(
-      undefined,
-    );
-    expect(knownModelFamily(model("zai", "glm-4.7"))).toBe(undefined);
-    expect(knownModelFamily(model("openai-codex", "gpt-5.4-mini"))).toBe(
-      undefined,
-    );
+    model("neuralwatt", "deepseek-v4.1-flash"),
+  ])("returns undefined for other models: $provider/$id", (candidate) => {
+    expect(knownModelFamily(candidate)).toBe(undefined);
   });
 });

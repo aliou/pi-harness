@@ -37,16 +37,11 @@ export function buildPrompt(
   const family = knownModelFamily(model);
 
   switch (family) {
-    case "glm-4.7-flash":
-      return { text: buildFlashReadSessionPrompt(params) };
-    case "glm-5.2":
+    case "glm-5.3":
       return { text: buildGlmReadSessionPrompt(params) };
-    case "gpt-5.5":
-    case "gpt-5.6":
-    case "gpt-5.6-sol":
-    case "gpt-5.6-terra":
-    case "gpt-5.6-luna":
-    case "kimi-k2.7-code":
+    case "gpt-6":
+    case "claude-opus-5.5":
+    case "claude-sonnet-5":
     case undefined:
       return { text: buildGenericReadSessionPrompt(params) };
     default:
@@ -54,16 +49,10 @@ export function buildPrompt(
   }
 }
 
-export function buildFlashReadSessionPrompt(
-  params: ReadSessionParamsType,
-): string {
-  return [
-    `Treat this as a bounded session-evidence extraction. Answer only the stated goal. For every requested field, cite session evidence; return "not found" when the session cannot establish it, and do not infer it from unrelated turns.`,
-    "",
-    ...inputLines(params),
-  ].join("\n");
-}
-
+/**
+ * GLM-5.3 and GLM-5.3-Flash (docs/prompting-glm-5.3.md): bounded extraction
+ * that separates evidence from inference and stops when the goal is met.
+ */
 export function buildGlmReadSessionPrompt(
   params: ReadSessionParamsType,
 ): string {

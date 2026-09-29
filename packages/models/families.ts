@@ -2,15 +2,15 @@ import type { Api, Model } from "@earendil-works/pi-ai";
 
 export type ModelIdentity = Pick<Model<Api>, "provider" | "id">;
 
+/**
+ * Model families that have a prompting guide in `docs/prompting-*.md` and at
+ * least one subagent prompt builder that branches on them.
+ */
 export type KnownModelFamily =
-  | "gpt-5.5"
-  | "gpt-5.6"
-  | "gpt-5.6-sol"
-  | "gpt-5.6-terra"
-  | "gpt-5.6-luna"
-  | "glm-4.7-flash"
-  | "glm-5.2"
-  | "kimi-k2.7-code";
+  | "gpt-6"
+  | "claude-opus-5.5"
+  | "claude-sonnet-5"
+  | "glm-5.3";
 
 export function modelKey(model: ModelIdentity): string {
   return `${model.provider}/${model.id}`;
@@ -21,18 +21,19 @@ export function knownModelFamily(
 ): KnownModelFamily | undefined {
   const id = normalizedId(model);
 
-  if (id === "gpt-5.5") return "gpt-5.5";
-  if (id === "gpt-5.6") return "gpt-5.6";
-  if (id === "gpt-5.6-sol") return "gpt-5.6-sol";
-  if (id === "gpt-5.6-terra") return "gpt-5.6-terra";
-  if (id === "gpt-5.6-luna") return "gpt-5.6-luna";
-  if (id === "glm-4.7-flash" || id.startsWith("glm-4.7-flash-")) {
-    return "glm-4.7-flash";
+  if (isFamilyId(id, "gpt-6")) return "gpt-6";
+  if (id === "claude-opus-5-5" || id === "claude-opus-5.5") {
+    return "claude-opus-5.5";
   }
-  if (id === "glm-5.2" || id.startsWith("glm-5.2-")) return "glm-5.2";
-  if (id === "kimi-k2.7-code") return "kimi-k2.7-code";
+  if (id === "claude-sonnet-5") return "claude-sonnet-5";
+  if (isFamilyId(id, "glm-5.3")) return "glm-5.3";
 
   return undefined;
+}
+
+/** Matches the family id itself or a dash-suffixed variant (`glm-5.3-flash`). */
+function isFamilyId(id: string, family: string): boolean {
+  return id === family || id.startsWith(`${family}-`);
 }
 
 function normalizedId(model: ModelIdentity): string {

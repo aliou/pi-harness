@@ -12,25 +12,26 @@ const params: ScoutParamsType = {
 const ctx = {} as ExtensionContext;
 
 describe("scout prompt", () => {
-  it("builds a bounded local-research prompt for GLM-5.2", () => {
-    const result = buildPrompt(params, ctx, {
-      provider: "synthetic",
-      id: "hf:zai-org/GLM-5.2",
-    });
+  it.each([
+    { provider: "synthetic", id: "hf:zai-org/GLM-5.3-Flash" },
+    { provider: "neuralwatt", id: "glm-5.3" },
+  ])("uses the generic prompt for $provider/$id", (model) => {
+    const result = buildPrompt(params, ctx, model);
 
-    expect(result.text).toContain("bounded local codebase research task");
-    expect(result.text).toContain("explicit gaps");
+    expect(result.text).not.toContain("bounded local codebase research task");
     expect(result.text).toContain(params.query);
     expect(result.text).toContain(params.cwd);
+    expect(result.text).toContain(params.context);
   });
 
-  it("uses the generic prompt for unknown models", () => {
+  it("uses the generic prompt for DeepSeek V4.1 Flash", () => {
     const result = buildPrompt(params, ctx, {
-      provider: "anthropic",
-      id: "claude-opus-4-8",
+      provider: "neuralwatt",
+      id: "deepseek-v4.1-flash",
     });
 
     expect(result.text).not.toContain("bounded local codebase research task");
     expect(result.text).toContain(params.query);
+    expect(result.text).toContain(params.context);
   });
 });

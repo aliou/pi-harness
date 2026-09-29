@@ -63,28 +63,15 @@ export function buildPrompt(
   const family = knownModelFamily(model);
 
   switch (family) {
-    case "glm-5.2":
-      return { text: buildGlmScoutPrompt(params) };
-    case "glm-4.7-flash":
-    case "gpt-5.5":
-    case "gpt-5.6":
-    case "gpt-5.6-sol":
-    case "gpt-5.6-terra":
-    case "gpt-5.6-luna":
-    case "kimi-k2.7-code":
+    case "glm-5.3":
+    case "gpt-6":
+    case "claude-opus-5.5":
+    case "claude-sonnet-5":
     case undefined:
       return { text: buildGenericScoutPrompt(params) };
     default:
       return assertNever(family);
   }
-}
-
-export function buildGlmScoutPrompt(params: ScoutParamsType): string {
-  return [
-    `Treat this as a bounded local codebase research task. Use the stated root, behavior, and evidence standard; do not broaden it into a general repository survey. Return only verified findings and explicit gaps.`,
-    "",
-    ...inputLines(params),
-  ].join("\n");
 }
 
 export function buildGenericScoutPrompt(params: ScoutParamsType): string {

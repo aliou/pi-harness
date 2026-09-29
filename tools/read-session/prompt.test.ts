@@ -11,36 +11,25 @@ const params: ReadSessionParamsType = {
 const ctx = {} as ExtensionContext;
 
 describe("read-session prompt", () => {
-  it("builds a bounded evidence-extraction prompt for GLM-4.7-Flash", () => {
-    const result = buildPrompt(params, ctx, {
-      provider: "synthetic",
-      id: "hf:zai-org/GLM-4.7-Flash",
-    });
+  it.each([
+    { provider: "synthetic", id: "hf:zai-org/GLM-5.3-Flash" },
+    { provider: "neuralwatt", id: "glm-5.3-flash" },
+  ])("builds a bounded research prompt for $provider/$id", (model) => {
+    const result = buildPrompt(params, ctx, model);
 
-    expect(result.text).toContain("bounded session-evidence extraction");
-    expect(result.text).toContain('return "not found"');
+    expect(result.text).toContain("bounded session research task");
+    expect(result.text).toContain("direct evidence from inference");
     expect(result.text).toContain(params.targetSessionId);
     expect(result.text).toContain(params.goal);
   });
 
-  it("builds a bounded research prompt for the GLM-5.2 fallback", () => {
+  it("uses the generic prompt for DeepSeek V4.1 Flash", () => {
     const result = buildPrompt(params, ctx, {
       provider: "neuralwatt",
-      id: "glm-5.2-short-fast",
+      id: "deepseek-v4.1-flash",
     });
 
-    expect(result.text).toContain("bounded session research task");
-    expect(result.text).toContain("direct evidence from inference");
-    expect(result.text).toContain(params.goal);
-  });
-
-  it("uses the generic prompt for unknown models", () => {
-    const result = buildPrompt(params, ctx, {
-      provider: "anthropic",
-      id: "claude-opus-4-8",
-    });
-
-    expect(result.text).not.toContain("bounded session-evidence extraction");
+    expect(result.text).not.toContain("bounded session research task");
     expect(result.text).toContain(params.targetSessionId);
     expect(result.text).toContain(params.goal);
   });

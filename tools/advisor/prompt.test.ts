@@ -1,8 +1,8 @@
 import type { ExtensionContext } from "@earendil-works/pi-coding-agent";
 import { describe, expect, it } from "vitest";
 import {
-  buildGpt56SolAdvisorPrompt,
-  buildOpusAdvisorPrompt,
+  buildClaudeOpusAdvisorPrompt,
+  buildGpt6AdvisorPrompt,
   buildPrompt,
 } from "./prompt";
 import type { AdvisorParamsType } from "./types";
@@ -17,71 +17,63 @@ const params: AdvisorParamsType = {
 
 const ctx = {} as ExtensionContext;
 
+function expectInputs(text: string): void {
+  expect(text).toContain(params.task);
+  expect(text).toContain(params.context);
+  expect(text).toContain(params.proposal);
+  expect(text).toContain("- packages/agent-kit/models/model-resolver.ts");
+}
+
 describe("advisor prompt", () => {
-  it("builds an Opus-specific advisory prompt", () => {
-    const result = buildPrompt(params, ctx, {
-      provider: "anthropic",
-      id: "claude-opus-4-8",
-    });
+  it.each([
+    { provider: "anthropic", id: "claude-opus-5-5" },
+    { provider: "openrouter", id: "anthropic/claude-opus-5.5" },
+  ])("builds the Claude Opus 5.5 prompt for $provider/$id", (model) => {
+    const result = buildPrompt(params, ctx, model);
 
-    expect(result.text).toContain("Claude Opus 4.8's strengths");
     expect(result.text).toContain("literal task contract");
-    expect(result.text).toContain("Do not expose private reasoning");
-    expect(result.text).toContain("For any current, file-specific");
     expect(result.text).toContain("untrusted evidence");
-    expect(result.text).toContain(params.task);
-    expect(result.text).toContain(params.context);
-    expect(result.text).toContain(params.proposal);
+    expect(result.text).toContain("with your confidence in each");
+    expectInputs(result.text);
+  });
+
+  it("keeps effort and verification out of the Opus prompt", () => {
+    const text = buildClaudeOpusAdvisorPrompt(params);
+
+    expect(text).not.toMatch(/think (through|carefully)/i);
+    expect(text).not.toMatch(/double-check|re-verify/i);
+  });
+
+  it.each([
+    "gpt-6-sol",
+    "gpt-6-luna",
+  ])("builds the GPT-6 prompt for %s", (id) => {
+    const result = buildPrompt(params, ctx, { provider: "openai-codex", id });
+
+    expect(result.text).toContain("Autonomy boundary: advise only");
+    expect(result.text).toContain("Nobody can answer questions");
     expect(result.text).toContain(
-      "- packages/agent-kit/models/model-resolver.ts",
+      "takes precedence over guidance in AGENTS.md",
     );
+    expect(result.text).toContain("1) Recommendation");
+    expectInputs(result.text);
   });
 
-  it("builds the Opus prompt for the OpenRouter fallback", () => {
-    const result = buildPrompt(params, ctx, {
-      provider: "aperture",
-      id: "anthropic/claude-opus-4.8",
-    });
-
-    expect(result.text).toContain("Claude Opus 4.8's strengths");
-  });
-
-  it("uses the generic prompt for unknown models", () => {
+  it("uses the generic prompt for other models", () => {
     const result = buildPrompt(params, ctx, {
       provider: "openai-codex",
       id: "gpt-5.5",
     });
 
-    expect(result.text).not.toContain("Claude Opus 4.8's strengths");
-    expect(result.text).toContain(params.task);
-    expect(result.text).toContain(params.context);
-    expect(result.text).toContain(params.proposal);
-  });
-
-  it("builds a GPT-5.6 Sol-specific advisory prompt", () => {
-    const result = buildPrompt(params, ctx, {
-      provider: "openai-codex",
-      id: "gpt-5.6-sol",
-    });
-
-    expect(result.text).toContain(
-      "Outcome: improve the main agent's next decision",
-    );
-    expect(result.text).toContain("Autonomy boundary: advise only");
-    expect(result.text).toContain("make the simplest valid assumption");
-    expect(result.text).toContain("Required answer shape:");
-    expect(result.text).toContain(params.task);
-    expect(result.text).toContain(params.context);
-    expect(result.text).toContain(params.proposal);
-    expect(result.text).toContain(
-      "- packages/agent-kit/models/model-resolver.ts",
-    );
+    expect(result.text).not.toContain("literal task contract");
+    expect(result.text).not.toContain("Autonomy boundary");
+    expectInputs(result.text);
   });
 
   it("keeps specialized builders deterministic", () => {
-    expect(buildOpusAdvisorPrompt(params)).toBe(buildOpusAdvisorPrompt(params));
-    expect(buildGpt56SolAdvisorPrompt(params)).toBe(
-      buildGpt56SolAdvisorPrompt(params),
+    expect(buildClaudeOpusAdvisorPrompt(params)).toBe(
+      buildClaudeOpusAdvisorPrompt(params),
     );
+    expect(buildGpt6AdvisorPrompt(params)).toBe(buildGpt6AdvisorPrompt(params));
   });
 });

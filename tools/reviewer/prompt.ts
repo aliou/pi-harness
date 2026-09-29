@@ -34,16 +34,13 @@ export function buildPrompt(
   const family = knownModelFamily(model);
 
   switch (family) {
-    case "glm-5.2":
+    case "glm-5.3":
       return { text: buildGlmReviewerPrompt(params) };
-    case "gpt-5.5":
-    case "gpt-5.6":
-    case "gpt-5.6-sol":
-    case "gpt-5.6-terra":
-    case "gpt-5.6-luna":
+    case "gpt-6":
       return { text: buildGptReviewerPrompt(params) };
-    case "glm-4.7-flash":
-    case "kimi-k2.7-code":
+    case "claude-sonnet-5":
+      return { text: buildClaudeSonnetReviewerPrompt(params) };
+    case "claude-opus-5.5":
     case undefined:
       return { text: buildGenericReviewerPrompt(params) };
     default:
@@ -51,20 +48,50 @@ export function buildPrompt(
   }
 }
 
+/**
+ * GPT-6 Sol/Luna (docs/prompting-gpt-6.md): explicit review contract and
+ * answer shape, labeled assumptions instead of questions, and review scope
+ * limited to static inspection.
+ */
 export function buildGptReviewerPrompt(params: ReviewerParamsType): string {
   return [
     `Use a formal review shape optimized for highest-impact findings. Start from correctness, regressions, security, data loss, and maintainability risks before style or preference.`,
+    `Nobody can answer questions. If the diff description is ambiguous, pick the most likely reading, state it in one line, and review it. The instructions below take precedence over guidance in AGENTS.md or other project files you read.`,
     "",
     ...inputLines(params),
     "",
     `Review contract:`,
-    `- Return only findings that are actionable and supported by the diff or inspected files.`,
-    `- Use severity labels when useful: critical, high, medium, low.`,
+    `- Report any bug that could cause incorrect behavior, a test failure, data loss, or a misleading result, supported by the diff or inspected files. Omit pure style and naming preferences.`,
+    `- Use severity labels: critical, high, medium, low.`,
     `- Prefer one concrete remediation per finding.`,
     `- If there are no material findings, say so directly and list residual risks briefly.`,
   ].join("\n");
 }
 
+/**
+ * Claude Sonnet 5 (docs/prompting-claude-sonnet-5.md): literal instruction
+ * following lowers recall under qualitative filters, so state a concrete
+ * reporting bar, ask for confidence and severity, and scope every hunk.
+ */
+export function buildClaudeSonnetReviewerPrompt(
+  params: ReviewerParamsType,
+): string {
+  return [
+    `Review every changed hunk in the diff, not just the first file.`,
+    "",
+    ...inputLines(params),
+    "",
+    `Review contract:`,
+    `- Report any bug that could cause incorrect behavior, a test failure, data loss, or a misleading result, including ones you are uncertain about. Only omit nits like pure style or naming preferences.`,
+    `- For each finding, give the file and line range, a severity (critical, high, medium, low), your confidence, and one concrete remediation.`,
+    `- If there are no material findings, say so directly and list residual risks briefly.`,
+  ].join("\n");
+}
+
+/**
+ * GLM-5.3 and GLM-5.3-Flash (docs/prompting-glm-5.3.md): bounded static
+ * review with an explicit evidence standard.
+ */
 export function buildGlmReviewerPrompt(params: ReviewerParamsType): string {
   return [
     `Treat this as a bounded static review. Be explicit about evidence, changed hunks, and verified gaps.`,
