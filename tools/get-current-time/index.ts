@@ -2,7 +2,7 @@ import { ToolCallHeader } from "@aliou/pi-utils-ui";
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { defineTool } from "@earendil-works/pi-coding-agent";
 import { Text } from "@earendil-works/pi-tui";
-import { Type } from "typebox";
+import { type Static, Type } from "typebox";
 
 const GetCurrentTimeParams = Type.Object({
   format: Type.Optional(
@@ -13,15 +13,17 @@ const GetCurrentTimeParams = Type.Object({
   ),
 });
 
-interface TimeDetails {
-  formatted: string;
-  date: string;
-  time: string;
-  timezone: string;
-  timezone_name: string;
-  day_of_week: string;
-  unix: number;
-}
+const TimeDetailsSchema = Type.Object({
+  formatted: Type.String({ description: "Time in the requested format" }),
+  date: Type.String({ description: "Local date, YYYY-MM-DD" }),
+  time: Type.String({ description: "Local 24-hour time, HH:MM:SS" }),
+  timezone: Type.String({ description: "UTC offset, for example UTC+02:00" }),
+  timezone_name: Type.String({ description: "IANA time zone name" }),
+  day_of_week: Type.String(),
+  unix: Type.Number({ description: "Seconds since the Unix epoch" }),
+});
+
+type TimeDetails = Static<typeof TimeDetailsSchema>;
 
 function formatDate(date: Date, format: string): string {
   switch (format.toLowerCase()) {
@@ -46,6 +48,12 @@ const getCurrentTimeTool = defineTool({
     "Get the current date and time. Returns formatted time along with date, time, timezone, and day of week as separate fields.",
   promptSnippet: "Get the current date and time",
   parameters: GetCurrentTimeParams,
+  outputSchema: TimeDetailsSchema,
+  annotations: {
+    readOnlyHint: true,
+    idempotentHint: false,
+    openWorldHint: false,
+  },
   promptGuidelines: [
     "get_current_time: Use when you need the current date or time instead of assuming or guessing.",
     "get_current_time: Returns date, time, timezone, and day of week as separate fields.",
@@ -84,6 +92,7 @@ const getCurrentTimeTool = defineTool({
     return {
       content: [{ type: "text", text }],
       details,
+      structuredContent: details,
     };
   },
 
