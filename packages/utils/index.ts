@@ -7,6 +7,7 @@ export {
   formatTimeRemaining,
 } from "./formatters";
 export { isNil, isNotNil } from "./nil";
+export { type WithoutUndefined, withoutUndefined } from "./object";
 export {
   collapseHomePath,
   encodePathSegments,

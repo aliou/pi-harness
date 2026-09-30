@@ -7,6 +7,7 @@
     "./assert-never": "./assert-never.ts",
     "./formatters": "./formatters.ts",
     "./nil": "./nil.ts",
+    "./object": "./object.ts",
     "./path": "./path.ts",
     "./skill": "./skill.ts",
     "./string": "./string.ts",
