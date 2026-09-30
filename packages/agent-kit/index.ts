@@ -194,6 +194,7 @@ export function createSubagent<Params extends TSchema>(
       parameters: config.parameters,
       outputSchema: SubagentOutputSchema,
       annotations: config.annotations ?? SUBAGENT_ANNOTATIONS,
+      exposure: "model-only",
       renderCall: (args, theme, ctx) =>
         renderSubagentCall(
           resolved,
@@ -226,6 +227,7 @@ export function createSubagent<Params extends TSchema>(
       parameters: createResumeSubagentParamsSchema(config.parameters),
       outputSchema: SubagentOutputSchema,
       annotations: config.annotations ?? SUBAGENT_ANNOTATIONS,
+      exposure: "model-only",
       renderCall: (args, theme, ctx) =>
         renderSubagentCall(resolved, args, theme, ctx),
       renderResult: (result, options, theme, ctx) =>

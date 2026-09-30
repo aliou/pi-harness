@@ -9,7 +9,7 @@ import { SubagentOutputSchema } from "./runtime";
 
 const Params = Type.Object({ task: Type.String() });
 
-function registerSubagent(annotations?: ToolDefinition["annotations"]) {
+function registerSubagent(overrides: Pick<ToolDefinition, "annotations"> = {}) {
   const tools: ToolDefinition[] = [];
   const pi = {
     on: vi.fn(),
@@ -24,7 +24,7 @@ function registerSubagent(annotations?: ToolDefinition["annotations"]) {
     modelPreferences: [],
     resumable: true,
     parameters: Params,
-    annotations,
+    ...overrides,
     buildPrompt: () => ({ text: "task" }),
   }).register();
   return tools;
@@ -44,10 +44,19 @@ describe("subagent tool registration", () => {
     }
   });
 
+  it("keeps subagent tools out of codemode scripts", () => {
+    const tools = registerSubagent();
+
+    expect(tools.map((tool) => tool.exposure)).toEqual([
+      "model-only",
+      "model-only",
+    ]);
+  });
+
   it("lets a subagent override the annotations", () => {
     const annotations = { readOnlyHint: false, destructiveHint: true };
 
-    const tools = registerSubagent(annotations);
+    const tools = registerSubagent({ annotations });
 
     expect(tools.every((tool) => tool.annotations === annotations)).toBe(true);
   });

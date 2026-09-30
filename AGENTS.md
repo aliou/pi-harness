@@ -68,7 +68,7 @@ Every tool the main agent can call follows Pi's tool result contract, so `codemo
 - Set `annotations` (`readOnlyHint`, `destructiveHint`, `idempotentHint`, `openWorldHint`). Missing hints mean "may be destructive, open world".
 - Test with `expectStructuredOutput` from `@harness/test-utils/structured-output`.
 
-Subagent tools get this from `@harness/agent-kit`: `SubagentOutputSchema` (`response`, `sessionId`, `resumable`, `model`, `status`, `usage`) and read-only, open-world annotations, which a subagent can override with `annotations` in its config. Only the tools the main agent can call follow the contract; tools registered inside subagent sessions do not.
+Subagent tools get this from `@harness/agent-kit`: `SubagentOutputSchema` (`response`, `sessionId`, `resumable`, `model`, `status`, `usage`) and read-only, open-world annotations, which a subagent can override with `annotations` in its config. Subagent and `resume_*` tools use `exposure: "model-only"`: the model calls them, codemode scripts cannot. A nested call shows as one line in the codemode result, its trace is not saved in the session, and a script loop can start many paid runs. Only the tools the main agent can call follow the contract; tools registered inside subagent sessions do not.
 
 ### Subagent-based tools
 
