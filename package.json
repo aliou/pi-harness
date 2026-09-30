@@ -13,6 +13,7 @@
     "extensions": [
       "./commands",
       "./hooks",
+      "./providers",
       "./tools"
     ],
     "skills": [

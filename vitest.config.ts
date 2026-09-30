@@ -19,6 +19,7 @@ export default defineConfig({
       "commands/**/*.test.ts",
       "hooks/**/*.test.ts",
       "packages/**/*.test.ts",
+      "providers/**/*.test.ts",
       "tools/**/*.test.ts",
     ],
     setupFiles: ["./tests/vitest.setup.ts"],

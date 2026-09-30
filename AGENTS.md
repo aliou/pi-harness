@@ -14,6 +14,7 @@ When adding new content or changing existing behavior, update the closest releva
 
 - `commands/` - Slash commands and command-like UI flows.
 - `hooks/` - Event hooks, lifecycle behavior, autocomplete providers, chrome, and background behavior.
+- `providers/` - Provider-level registrations: virtual models and provider-facing routing.
 - `tools/` - Agent tools exposed to Pi sessions.
 - `skills/` - Skills shipped with the harness and loaded via the `pi.skills` manifest entry in `package.json`.
 - `evals/` - Live model evals that run separately from unit tests; shared eval infrastructure lives in `evals/lib/`.
@@ -29,6 +30,7 @@ New functionality should be added as one of:
 
 - `commands/<name>/` for slash commands.
 - `hooks/<name>/` for event-driven behavior, UI chrome, autocomplete, lifecycle hooks, or background observers.
+- `providers/<name>/` for virtual models and provider-level registrations.
 - `tools/<name>/` for agent-callable tools.
 - `packages/<name>/` for shared internal code.
 - `skills/<name>/` for skills shipped with the harness (declared in `package.json` under `pi.skills`).
@@ -173,6 +175,12 @@ Subagents default to the parent session cwd. If a subagent accepts an invocation
 | `read-url/` | `read_url` | URL fetch with handler chain and preview |
 | `reviewer/` | `reviewer`, `resume_reviewer` | Zero-shot formal code-review subagent; accepts optional `cwd` so review commands and file reads run in the target repo |
 | `scout/` | `scout`, `resume_scout` | Zero-shot local codebase researcher; grep/find run with capped output readers |
+
+## Providers
+
+| Directory | Purpose | Key files |
+|---|---|---|
+| `aliases/` | Cross-provider virtual models under the `alias` provider (e.g. `alias/kimi-k3`); the first available target wins and stays sticky for the session via Pi's virtual-model router state | `table.ts`, `route.ts` |
 
 ## Development
 
