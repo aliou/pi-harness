@@ -41,6 +41,18 @@ const { registered } = pi.tool("read");
 const rendered = registered.renderCall({ path: "file.txt" }, NOOP_THEME);
 ```
 
+### Structured output
+
+`expectStructuredOutput(definition, result)` from `@harness/test-utils/structured-output` asserts that the tool declares an `outputSchema` and that `result.structuredContent` matches it:
+
+```ts
+import { expectStructuredOutput } from "@harness/test-utils/structured-output";
+
+const tool = pi.tool("find");
+const result = await tool.execute({ pattern: "*.ts" });
+expectStructuredOutput(tool.registered, result);
+```
+
 ## Testing commands
 
 `pi.command(name)` returns a handle with `execute(args, overrides)`.
@@ -113,6 +125,7 @@ Loaded automatically via `tests/vitest.setup.ts`. Available on any `PiTestHarnes
 | `packages/test-utils/pi-test-harness.ts` | Main entry point. Creates the harness, loads the extension, exposes command/tool executors and the `newSession` spy. |
 | `packages/test-utils/pi-context.ts` | Builds spy-based `ExtensionCommandContext` and tool context objects. All methods are `vi.fn()` with safe defaults. |
 | `packages/test-utils/matchers.ts` | Custom vitest matchers (`toHaveRegisteredTool`, `toHaveRegisteredCommand`). |
+| `packages/test-utils/structured-output.ts` | `expectStructuredOutput` for checking `structuredContent` against a tool's `outputSchema`. |
 | `packages/test-utils/theme.ts` | `NOOP_THEME` constant for testing render functions without a real terminal theme. |
 | `packages/test-utils/load-extension.ts` | Thin wrapper around pi-coding-agent's internal `loadExtensionFromFactory`. Single consumer of the `#pi-internal/extensions-loader` alias defined in `vitest.config.ts`. |
 | `packages/test-utils/pi-internal.d.ts` | Type declarations for the aliased internal module. |

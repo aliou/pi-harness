@@ -8,11 +8,13 @@
     "./pi-context": "./pi-context.ts",
     "./pi-test-harness": "./pi-test-harness.ts",
     "./theme": "./theme.ts",
-    "./tmpdir": "./tmpdir.ts"
+    "./tmpdir": "./tmpdir.ts",
+    "./structured-output": "./structured-output.ts"
   },
   "dependencies": {
     "@earendil-works/pi-coding-agent": "*",
-    "vitest": "^4.1.10"
+    "vitest": "^4.1.10",
+    "typebox": "*"
   },
   "devDependencies": {
     "@vitest/expect": "^4.1.10"
