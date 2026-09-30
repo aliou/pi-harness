@@ -17,6 +17,11 @@
 
 import type { EditToolInput } from "@earendil-works/pi-coding-agent";
 import { createEditToolDefinition } from "@earendil-works/pi-coding-agent";
+import {
+  buildEditOutput,
+  EDIT_ANNOTATIONS,
+  EditOutputSchema,
+} from "../shared/output";
 
 export function sanitizeArguments(args: unknown): EditToolInput {
   if (!args || typeof args !== "object" || Array.isArray(args)) {
@@ -68,8 +73,28 @@ export function createDefaultEditToolDefinition(
     // provider-side constrained sampling. Disable the native default so the
     // registered schema stays non-strict for other providers (pi #5501).
     constrainedSampling: false,
+    outputSchema: EditOutputSchema,
+    annotations: EDIT_ANNOTATIONS,
     prepareArguments(args: unknown) {
       return prepareEditArguments(args, nativeEdit.prepareArguments);
+    },
+    async execute(toolCallId, params, signal, onUpdate, ctx) {
+      const result = await nativeEdit.execute(
+        toolCallId,
+        params,
+        signal,
+        onUpdate,
+        ctx,
+      );
+      // Each edits[] entry must match exactly one region of the file.
+      return {
+        ...result,
+        structuredContent: buildEditOutput(
+          params.path,
+          params.edits.length,
+          result.details?.firstChangedLine,
+        ),
+      };
     },
   };
 }

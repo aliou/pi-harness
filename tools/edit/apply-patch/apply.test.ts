@@ -1,5 +1,6 @@
 import { join } from "node:path";
 import { executeToolDefinition } from "@harness/test-utils/pi-context";
+import { expectStructuredOutput } from "@harness/test-utils/structured-output";
 import { vol } from "memfs";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -448,6 +449,13 @@ describe("apply_patch tool", () => {
     expect(result.details?.summary).toContain("M app.ts");
     expect(result.details?.diff).toContain("-1 export const X = 1;");
     expect(result.details?.diff).toContain("+1 export const X = 2;");
+    expectStructuredOutput(tool, result);
+    expect(result.structuredContent).toEqual({
+      added: [],
+      modified: ["app.ts"],
+      deleted: [],
+      overwritten: [],
+    });
   });
 
   it.each([

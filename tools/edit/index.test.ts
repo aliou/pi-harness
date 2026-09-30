@@ -1,6 +1,7 @@
 import { join } from "node:path";
 import { createCommandContext } from "@harness/test-utils/pi-context";
 import { createPiTestHarness } from "@harness/test-utils/pi-test-harness";
+import { expectStructuredOutput } from "@harness/test-utils/structured-output";
 import { vol } from "memfs";
 import { assert, beforeEach, describe, expect, it, vi } from "vitest";
 import editExtension, { prepareEditArguments } from "./index";
@@ -187,6 +188,12 @@ describe("defaults edit tool", () => {
     expect(result.details).toMatchObject({
       diff: expect.stringContaining("+2 pi"),
     });
+    expectStructuredOutput(registered, result);
+    expect(result.structuredContent).toEqual({
+      path: absolutePath,
+      replacementCount: 1,
+      firstChangedLine: 2,
+    });
   });
 });
 
@@ -195,6 +202,19 @@ describe("tool registration", () => {
     const pi = await createPiTestHarness(editExtension);
     expect(pi).toHaveRegisteredTool("edit");
     expect(pi).toHaveRegisteredTool("apply_patch");
+  });
+
+  it("marks edit and apply_patch as destructive, closed-world tools", async () => {
+    const pi = await createPiTestHarness(editExtension);
+    const expected = {
+      readOnlyHint: false,
+      destructiveHint: true,
+      idempotentHint: false,
+      openWorldHint: false,
+    };
+
+    expect(pi.tool("edit").registered.annotations).toEqual(expected);
+    expect(pi.tool("apply_patch").registered.annotations).toEqual(expected);
   });
 });
 
@@ -255,6 +275,15 @@ describe("kimi edit tool", () => {
     });
     expect(result.details).toMatchObject({
       diff: expect.stringContaining("+2 kimi"),
+    });
+    expectStructuredOutput(tool.registered, result);
+    expect(result.structuredContent).toEqual({
+      path: "sample.txt",
+      replacementCount: 1,
+      firstChangedLine: 2,
+    });
+    expect(tool.registered.annotations).toMatchObject({
+      destructiveHint: true,
     });
   });
 

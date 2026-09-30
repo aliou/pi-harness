@@ -15,6 +15,11 @@ import {
   type ToolDefinition,
 } from "@earendil-works/pi-coding-agent";
 
+import {
+  type ApplyPatchOutput,
+  ApplyPatchOutputSchema,
+  EDIT_ANNOTATIONS,
+} from "../shared/output";
 import { applyHunks } from "./apply";
 import { ApplyPatchParseError, parsePatch } from "./parser";
 import {
@@ -120,6 +125,8 @@ export function createApplyPatchToolDefinition(
       "Apply a V4A text patch to create, update, delete, or rename files",
     promptGuidelines: APPLY_PATCH_GUIDELINES,
     parameters: APPLY_PATCH_SCHEMA,
+    outputSchema: ApplyPatchOutputSchema,
+    annotations: EDIT_ANNOTATIONS,
     renderShell: "default",
     async execute(_toolCallId, params, signal, onUpdate, ctx) {
       const workdir = ctx?.cwd ?? cwd;
@@ -148,6 +155,7 @@ export function createApplyPatchToolDefinition(
           },
         ],
         details,
+        structuredContent: { ...result.affected } satisfies ApplyPatchOutput,
       };
     },
     renderCall: renderApplyPatchCall,

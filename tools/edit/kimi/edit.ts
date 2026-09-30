@@ -16,6 +16,11 @@ import {
 } from "@earendil-works/pi-coding-agent";
 import { Type } from "typebox";
 import {
+  buildEditOutput,
+  EDIT_ANNOTATIONS,
+  EditOutputSchema,
+} from "../shared/output";
+import {
   type KimiEditRenderState,
   renderKimiEditCall,
   renderKimiEditResult,
@@ -241,6 +246,8 @@ export function createKimiEditToolDefinition(
       "Perform exact replacements in existing files with old_string/new_string",
     promptGuidelines: KIMI_EDIT_GUIDELINES,
     parameters: KIMI_EDIT_SCHEMA,
+    outputSchema: EditOutputSchema,
+    annotations: EDIT_ANNOTATIONS,
     renderShell: "default",
     async execute(_toolCallId, params, signal, _onUpdate, ctx) {
       const workdir = ctx?.cwd ?? cwd;
@@ -249,10 +256,10 @@ export function createKimiEditToolDefinition(
         workdir,
         signal,
       );
-      const diff = generateDiffString(
+      const { diff, firstChangedLine } = generateDiffString(
         result.oldContent,
         result.newContent,
-      ).diff;
+      );
       return {
         content: [
           {
@@ -261,6 +268,11 @@ export function createKimiEditToolDefinition(
           },
         ],
         details: { replacementCount: result.replacementCount, diff },
+        structuredContent: buildEditOutput(
+          (params as KimiEditInput).path,
+          result.replacementCount,
+          firstChangedLine,
+        ),
       };
     },
     renderCall: renderKimiEditCall,
