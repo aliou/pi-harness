@@ -46,7 +46,7 @@
       "workspaceBundles": [
         {
           "package": "@harness/utils",
-          "imports": ["@harness/utils/path"],
+          "imports": ["@harness/utils", "@harness/utils/path"],
           "entry": "packages/utils/index.ts",
           "file": "workspace-utils.js"
         }

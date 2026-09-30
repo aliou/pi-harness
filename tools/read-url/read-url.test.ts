@@ -1,7 +1,12 @@
+import { createPiTestHarness } from "@harness/test-utils/pi-test-harness";
+import { expectStructuredOutput } from "@harness/test-utils/structured-output";
 import { vol } from "memfs";
 import { assert, beforeEach, describe, expect, it, vi } from "vitest";
 import { executeReadUrlRequest, guessImageExtension } from "./fetch";
 import type { ReadUrlHandler } from "./handlers";
+import readUrlExtension from "./index";
+import { type ReadUrlOutput, ReadUrlOutputSchema } from "./types";
+import { STRUCTURED_TEXT_MAX_BYTES } from "./utils/cap-text";
 import { DEFAULT_PREVIEW_MAX_BYTES } from "./utils/temp-file-preview";
 
 vi.mock("node:os", () => ({
@@ -239,5 +244,93 @@ describe("read_url", () => {
       guessImageExtension(null, "https://img.example.com/file.jpeg?format=raw"),
     ).toBe(".jpeg");
     expect(guessImageExtension(null, "not-a-url")).toBe(".img");
+  });
+});
+
+describe("read_url result contract", () => {
+  const nativeRead = { execute: vi.fn() };
+
+  function textHandler(markdown: string): ReadUrlHandler {
+    return {
+      name: "markdown.new",
+      matches: () => true,
+      fetchData: async (url) => ({
+        sourceUrl: url.toString(),
+        markdown,
+        title: "Docs",
+        statusCode: 200,
+      }),
+    };
+  }
+
+  it("returns the full text when content only has the preview", async () => {
+    const markdown = Array.from(
+      { length: (2 * DEFAULT_PREVIEW_MAX_BYTES) / 100 },
+      (_, i) => `${"y".repeat(90)} line ${i}`,
+    ).join("\n");
+
+    const result = await executeReadUrlRequest(
+      "https://example.com/docs",
+      undefined,
+      [textHandler(markdown)],
+      nativeRead,
+    );
+
+    const preview = result.content[0];
+    expect(preview && "text" in preview ? preview.text : "").toContain(
+      "truncated",
+    );
+    expectStructuredOutput(
+      { name: "read_url", outputSchema: ReadUrlOutputSchema },
+      result,
+    );
+    expect(result.structuredContent).toEqual({
+      url: "https://example.com/docs",
+      sourceUrl: "https://example.com/docs",
+      title: "Docs",
+      handler: "markdown.new",
+      statusCode: 200,
+      markdown,
+      truncated: false,
+      totalLines: markdown.split("\n").length,
+      imageCount: 0,
+      attachedImageCount: 0,
+      skippedImageCount: 0,
+    });
+  });
+
+  it("caps the structured text at 1 MiB and points at the full file", async () => {
+    const markdown = `${"a".repeat(STRUCTURED_TEXT_MAX_BYTES)}${"b".repeat(1000)}`;
+
+    const result = await executeReadUrlRequest(
+      "https://example.com/big",
+      undefined,
+      [textHandler(markdown)],
+      nativeRead,
+    );
+
+    expectStructuredOutput(
+      { name: "read_url", outputSchema: ReadUrlOutputSchema },
+      result,
+    );
+    const output = result.structuredContent as ReadUrlOutput;
+    expect(output.truncated).toBe(true);
+    expect(output.tempFilePath).toBe(result.details?.tempFilePath);
+    expect(output.markdown.startsWith("a".repeat(1000))).toBe(true);
+    expect(output.markdown.endsWith("b".repeat(1000))).toBe(true);
+    expect(output.markdown).toContain("[... 1000 bytes omitted ...]");
+    assert(output.tempFilePath, "tempFilePath should exist");
+    expect(vol.readFileSync(output.tempFilePath, "utf-8")).toBe(markdown);
+  });
+
+  it("declares read-only, open-world annotations", async () => {
+    const pi = await createPiTestHarness(readUrlExtension);
+    const tool = pi.tool("read_url").registered;
+
+    expect(tool.outputSchema).toBe(ReadUrlOutputSchema);
+    expect(tool.annotations).toEqual({
+      readOnlyHint: true,
+      openWorldHint: true,
+    });
   });
 });

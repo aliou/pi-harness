@@ -4,6 +4,7 @@
 
 import { writeFile } from "node:fs/promises";
 import { basename, extname, join } from "node:path";
+import { withoutUndefined } from "@harness/utils";
 import type { ReadUrlHandler } from "./handlers";
 import type { HandlerImage } from "./handlers/types";
 import type {
@@ -11,7 +12,9 @@ import type {
   FetchLike,
   NativeReadTool,
   ReadContentBlock,
+  ReadUrlOutput,
 } from "./types";
+import { capText } from "./utils/cap-text";
 import { writeTempFilePreview } from "./utils/temp-file-preview";
 
 export async function executeReadUrlRequest(
@@ -95,23 +98,53 @@ export async function executeReadUrlRequest(
     }
   }
 
+  const details = {
+    url: trimmedInput,
+    sourceUrl: data.sourceUrl,
+    title: data.title,
+    handler: handler.name,
+    statusCode: data.statusCode,
+    statusText: data.statusText,
+    failed: false,
+    imageCount: images.length,
+    attachedImageCount,
+    skippedImageCount,
+    tempFilePath,
+    totalLines,
+  };
+
   return {
     content,
-    details: {
-      url: trimmedInput,
-      sourceUrl: data.sourceUrl,
-      title: data.title,
-      handler: handler.name,
-      statusCode: data.statusCode,
-      statusText: data.statusText,
-      failed: false,
-      imageCount: images.length,
-      attachedImageCount,
-      skippedImageCount,
-      tempFilePath,
-      totalLines,
-    },
+    details,
+    structuredContent: buildReadUrlOutput(details, markdown),
   };
+}
+
+type ReadUrlOutputInput = Omit<ReadUrlOutput, "markdown" | "truncated"> & {
+  tempFilePath: string;
+};
+
+/** Structured result: metadata plus the fetched text up to the size cap. */
+export function buildReadUrlOutput(
+  details: ReadUrlOutputInput,
+  markdown: string,
+): ReadUrlOutput {
+  const capped = capText(markdown);
+  return withoutUndefined({
+    url: details.url,
+    sourceUrl: details.sourceUrl,
+    title: details.title,
+    handler: details.handler,
+    statusCode: details.statusCode,
+    statusText: details.statusText,
+    markdown: capped.text,
+    truncated: capped.truncated,
+    tempFilePath: capped.truncated ? details.tempFilePath : undefined,
+    totalLines: details.totalLines,
+    imageCount: details.imageCount,
+    attachedImageCount: details.attachedImageCount,
+    skippedImageCount: details.skippedImageCount,
+  });
 }
 
 async function fetchRemoteImageToTempFile(

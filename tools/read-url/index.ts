@@ -15,7 +15,7 @@ import {
   type ReadUrlHandler,
 } from "./handlers";
 import { renderCall, renderResult } from "./render";
-import type { ReadUrlDetails } from "./types";
+import { type ReadUrlDetails, ReadUrlOutputSchema } from "./types";
 
 const ReadUrlParams = Type.Object({
   url: Type.String({
@@ -41,6 +41,8 @@ function createReadUrlTool(_pi: ExtensionAPI) {
       "Fetch a URL as Markdown via handlers with markdown.new fallback.",
     promptSnippet: "Fetch a URL as Markdown (docs, articles, web content)",
     parameters: ReadUrlParams,
+    outputSchema: ReadUrlOutputSchema,
+    annotations: { readOnlyHint: true, openWorldHint: true },
     promptGuidelines: [
       "read_url: Use for finding documentation, articles, recent information, or any web content.",
       "read_url: Write specific queries with names, dates, versions, or locations for best results.",
