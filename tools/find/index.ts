@@ -5,8 +5,9 @@ import { defineTool } from "@earendil-works/pi-coding-agent";
 import { expandHomePath } from "@harness/utils";
 import { Type } from "typebox";
 import { BLOCKED_PATHS } from "./blocked-paths";
+import { buildFindOutput } from "./helpers";
 import { renderCall } from "./render";
-import type { HarnessFindDetails } from "./types";
+import { FindOutputSchema, type HarnessFindDetails } from "./types";
 
 const DEFAULT_LIMIT = 1000;
 
@@ -76,6 +77,8 @@ function createFindTool(pi: ExtensionAPI) {
     description: `Find files by name using the \`fd\` command-line tool. Supports glob patterns. Searches recursively from the specified path. Respects .gitignore unless noIgnore is set. Results are truncated to ${DEFAULT_LIMIT} entries.`,
     promptSnippet: "Find files by glob pattern (respects .gitignore)",
     parameters: WrappedSchema,
+    outputSchema: FindOutputSchema,
+    annotations: { readOnlyHint: true, openWorldHint: false },
     promptGuidelines: [
       "find: Use find instead of shell find or fd when locating files in the project.",
       "find: Prefer passing path explicitly instead of scanning broad roots.",
@@ -92,6 +95,10 @@ function createFindTool(pi: ExtensionAPI) {
 
       const resolvedPath = expandHomePath(searchPath || ".");
       const absoluteSearchPath = resolve(ctx.cwd, resolvedPath);
+      const relativeTo =
+        searchPath && searchPath !== "." && searchPath !== "./"
+          ? relative(ctx.cwd, absoluteSearchPath) || "."
+          : undefined;
 
       if (BLOCKED_PATHS.has(absoluteSearchPath)) {
         throw new Error(
@@ -123,6 +130,12 @@ function createFindTool(pi: ExtensionAPI) {
             },
           ],
           details: {},
+          structuredContent: buildFindOutput(
+            absoluteSearchPath,
+            [],
+            limit,
+            relativeTo,
+          ),
         };
       }
 
@@ -164,6 +177,12 @@ function createFindTool(pi: ExtensionAPI) {
             },
           ],
           details: {},
+          structuredContent: buildFindOutput(
+            absoluteSearchPath,
+            [],
+            limit,
+            relativeTo,
+          ),
         };
       }
 
@@ -180,10 +199,7 @@ function createFindTool(pi: ExtensionAPI) {
         resultLimitReached: wasTruncated ? results.length : undefined,
         totalResults: results.length,
         paths: results,
-        relativeTo:
-          searchPath && searchPath !== "." && searchPath !== "./"
-            ? relative(ctx.cwd, absoluteSearchPath) || "."
-            : undefined,
+        relativeTo,
       };
 
       const outputText = results.join("\n");
@@ -191,6 +207,12 @@ function createFindTool(pi: ExtensionAPI) {
       return {
         content: [{ type: "text", text: outputText }],
         details,
+        structuredContent: buildFindOutput(
+          absoluteSearchPath,
+          results,
+          limit,
+          relativeTo,
+        ),
       };
     },
 
