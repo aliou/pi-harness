@@ -5,9 +5,11 @@ import type {
   ExtensionContext,
 } from "@earendil-works/pi-coding-agent";
 import { Type } from "typebox";
+import { Value } from "typebox/value";
 import { describe, expect, it, vi } from "vitest";
 import type { ResolvedSubagentConfig } from "../types";
 import { isSubagentAttemptError } from "./attempt";
+import { SubagentOutputSchema } from "./output";
 import { SubagentRuntime } from "./runtime";
 
 const Params = Type.Object({ task: Type.String() });
@@ -122,6 +124,54 @@ describe("SubagentRuntime", () => {
 
     expect(result.usage).toEqual(message.usage);
     expect(result.details.usage).toEqual(message.usage);
+  });
+
+  it("returns the response, session, model, and usage as structured content", async () => {
+    let listener: ((event: AgentSessionEvent) => void) | undefined;
+    const message = successMessage();
+    const session = {
+      sessionId: "session-id",
+      sessionFile: "/tmp/session.jsonl",
+      model: { provider: "openai-codex", id: "gpt-5.5" },
+      thinkingLevel: "high",
+      subscribe: vi.fn((next) => {
+        listener = next;
+        return vi.fn();
+      }),
+      prompt: vi.fn(async () => {
+        listener?.({ type: "message_end", message });
+      }),
+      getLastAssistantText: vi.fn(() => "Finished"),
+      dispose: vi.fn(),
+    } as unknown as AgentSession;
+
+    const runtime = new SubagentRuntime(
+      makeConfig({ resumable: true }),
+      session,
+      undefined,
+    );
+    const result = await runtime.execute(
+      "call-id",
+      { task: "review" },
+      undefined,
+      {} as ExtensionContext,
+    );
+
+    // The model sees the resume footer; scripts get the bare response.
+    expect(result.content[0]).toMatchObject({
+      text: expect.stringContaining("call resume_reviewer"),
+    });
+    expect(
+      Value.Errors(SubagentOutputSchema, result.structuredContent),
+    ).toEqual([]);
+    expect(result.structuredContent).toEqual({
+      response: "Finished",
+      sessionId: "session-id",
+      resumable: true,
+      model: { provider: "openai-codex", model: "gpt-5.5", thinking: "high" },
+      status: "success",
+      usage: message.usage,
+    });
   });
 
   it("fails a blank context-overflow response", async () => {

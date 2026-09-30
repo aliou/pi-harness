@@ -8,6 +8,12 @@ export {
   isSubagentAttemptError,
   SubagentAttemptError,
 } from "./attempt";
+export {
+  buildSubagentOutput,
+  SUBAGENT_ANNOTATIONS,
+  type SubagentOutput,
+  SubagentOutputSchema,
+} from "./output";
 export type { ToolRenderContext } from "./render";
 export {
   formatSubagentCwd,

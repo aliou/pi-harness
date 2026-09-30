@@ -10,6 +10,8 @@ import type { SubagentModelPreference } from "./models";
 import {
   renderSubagentCall,
   renderSubagentResult,
+  SUBAGENT_ANNOTATIONS,
+  SubagentOutputSchema,
   SubagentRuntime,
 } from "./runtime";
 import {
@@ -190,6 +192,8 @@ export function createSubagent<Params extends TSchema>(
       promptSnippet: config.promptSnippet,
       promptGuidelines: config.promptGuidelines,
       parameters: config.parameters,
+      outputSchema: SubagentOutputSchema,
+      annotations: config.annotations ?? SUBAGENT_ANNOTATIONS,
       renderCall: (args, theme, ctx) =>
         renderSubagentCall(
           resolved,
@@ -220,6 +224,8 @@ export function createSubagent<Params extends TSchema>(
         `resume_${config.name}: Provide the new task or question plus any new context; do not assume the parent conversation is visible unless you include the relevant details.`,
       ],
       parameters: createResumeSubagentParamsSchema(config.parameters),
+      outputSchema: SubagentOutputSchema,
+      annotations: config.annotations ?? SUBAGENT_ANNOTATIONS,
       renderCall: (args, theme, ctx) =>
         renderSubagentCall(resolved, args, theme, ctx),
       renderResult: (result, options, theme, ctx) =>

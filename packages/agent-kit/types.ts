@@ -4,6 +4,7 @@ import type {
   ExtensionContext,
   Skill,
   Theme,
+  ToolAnnotations,
   ToolDefinition,
   ToolRenderResultOptions,
 } from "@earendil-works/pi-coding-agent";
@@ -113,6 +114,12 @@ export interface SubagentConfig<Params extends TSchema = TSchema> {
     | SubagentModelPreference[]
     | (() => Promise<SubagentModelPreference[] | undefined>);
   resumable?: boolean;
+  /**
+   * Hints for permission extensions. Default: read-only, open world (see
+   * `SUBAGENT_ANNOTATIONS`). Override when the subagent's tools can modify
+   * anything.
+   */
+  annotations?: ToolAnnotations;
   /** Maximum number of tool calls the subagent may execute before it is forcibly stopped. */
   maxToolCalls?: number;
 

@@ -16,6 +16,7 @@ import {
 } from "./attempt";
 import { buildBlankResponseError } from "./blank-response";
 import { appendSubagentSessionFooter, textContent } from "./content";
+import { buildSubagentOutput } from "./output";
 import { SubagentRuntimeState } from "./runtime-state";
 import { formatSubagentStatus } from "./status";
 import type { SubagentDetails } from "./types";
@@ -98,41 +99,10 @@ export class SubagentRuntime<Params extends TSchema = TSchema> {
           buildBlankResponseError(lastAssistant, this.config.name),
         );
       }
-      this.state.markSuccess(response);
-
-      const content = this.config.resumable
-        ? appendSubagentSessionFooter(
-            response ?? "",
-            this.config.name,
-            this.session.sessionId,
-          )
-        : (response ?? "");
-      const details = this.state.snapshot();
-
-      return {
-        content: [textContent(content)],
-        details,
-        usage: details.usage,
-      };
+      return this.complete(response);
     } catch (err: unknown) {
       if (this.limitAbort) {
-        const response = this.session.getLastAssistantText() ?? "";
-        this.state.markSuccess(response);
-
-        const content = this.config.resumable
-          ? appendSubagentSessionFooter(
-              response,
-              this.config.name,
-              this.session.sessionId,
-            )
-          : response;
-        const details = this.state.snapshot();
-
-        return {
-          content: [textContent(content)],
-          details,
-          usage: details.usage,
-        };
+        return this.complete(this.session.getLastAssistantText() ?? "");
       }
 
       if (this.signal?.aborted) {
@@ -155,6 +125,27 @@ export class SubagentRuntime<Params extends TSchema = TSchema> {
       this.unsubscribe?.();
       this.session.dispose();
     }
+  }
+
+  /** Mark the run successful and build the tool result for `response`. */
+  private complete(response: string): AgentToolResult<SubagentDetails> {
+    this.state.markSuccess(response);
+    const resumable = this.config.resumable ?? false;
+    const content = resumable
+      ? appendSubagentSessionFooter(
+          response,
+          this.config.name,
+          this.session.sessionId,
+        )
+      : response;
+    const details = this.state.snapshot();
+
+    return {
+      content: [textContent(content)],
+      details,
+      usage: details.usage,
+      structuredContent: buildSubagentOutput(details, resumable),
+    };
   }
 
   private handleEvent(
