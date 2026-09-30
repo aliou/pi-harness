@@ -2,8 +2,9 @@ import { mkdir, realpath } from "node:fs/promises";
 import { homedir } from "node:os";
 import { join } from "node:path";
 import { createPiTestHarness } from "@harness/test-utils/pi-test-harness";
+import { expectStructuredOutput } from "@harness/test-utils/structured-output";
 import { tmpdirTest } from "@harness/test-utils/tmpdir";
-import { describe, expect, vi } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import bashExtension from "./index";
 
 vi.unmock("node:fs");
@@ -85,5 +86,31 @@ describe("bash override", () => {
     expect(result.content).toEqual([
       { type: "text", text: `${await realpath(homedir())}\n` },
     ]);
+  });
+});
+
+describe("bash tool result contract", () => {
+  tmpdirTest("keeps pi's structured output", async ({ tmpdir }) => {
+    const pi = await createPiTestHarness(bashExtension, { cwd: tmpdir });
+    const tool = pi.tool("bash");
+
+    const result = await tool.execute({ command: "printf hi" });
+
+    expectStructuredOutput(tool.registered, result);
+    expect(result.structuredContent).toMatchObject({
+      output: "hi",
+      truncated: false,
+      exit_code: 0,
+    });
+  });
+
+  it("declares destructive, open-world annotations", async () => {
+    const pi = await createPiTestHarness(bashExtension);
+
+    expect(pi.tool("bash").registered.annotations).toEqual({
+      readOnlyHint: false,
+      destructiveHint: true,
+      openWorldHint: true,
+    });
   });
 });

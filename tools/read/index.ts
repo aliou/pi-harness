@@ -46,6 +46,7 @@ export default function (pi: ExtensionAPI): void {
 
   pi.registerTool({
     ...nativeDef,
+    annotations: { readOnlyHint: true, openWorldHint: false },
     description: nativeDef.description.replace(
       /\(jpg, png, gif, webp\)/,
       "(jpg, png, gif, webp, bmp)",

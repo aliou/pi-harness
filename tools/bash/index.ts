@@ -30,6 +30,11 @@ export default function (pi: ExtensionAPI): void {
   pi.registerTool({
     ...nativeBash,
     parameters: schema,
+    annotations: {
+      readOnlyHint: false,
+      destructiveHint: true,
+      openWorldHint: true,
+    },
     promptGuidelines: [
       "bash: When a command should run in another directory, set cwd and keep command free of leading 'cd', 'pushd', or similar directory-changing shell wrappers.",
       "bash: Do not use patterns like 'cd dir && command', 'cd dir; command', or 'pushd dir && command'.",
