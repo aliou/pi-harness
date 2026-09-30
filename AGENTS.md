@@ -58,6 +58,18 @@ Within a command, hook, or tool directory:
 
 No `pi.*` or `ctx.*` calls outside `index.ts`. Other files contain only pure functions, types, components, or utils.
 
+## Tool result contract
+
+Every tool the main agent can call follows Pi's tool result contract, so `codemode` scripts get data and permission extensions get honest hints:
+
+- Declare `outputSchema` (TypeBox) and always return a matching `structuredContent`. The model still receives `content`; scripts receive `structuredContent`. Type the builder's return value with `Static<typeof schema>`, since Pi does not validate it at runtime. `structuredContent` must be JSON: build it from type aliases or fresh literals and drop `undefined` fields with `withoutUndefined` from `@harness/utils`.
+- `structuredContent` carries the result data, not the model-facing view. When `content` is a truncated preview, return the full data up to 1 MiB and state the cap in the schema field description (see `read_url`). It is not saved in the session, so size costs nothing there.
+- Report a failure that still carries data with `isError: true` and `structuredContent`, not a normal result whose text is an error. Throw for failures without data.
+- Set `annotations` (`readOnlyHint`, `destructiveHint`, `idempotentHint`, `openWorldHint`). Missing hints mean "may be destructive, open world".
+- Test with `expectStructuredOutput` from `@harness/test-utils/structured-output`.
+
+Subagent tools get this from `@harness/agent-kit`: `SubagentOutputSchema` (`response`, `sessionId`, `resumable`, `model`, `status`, `usage`) and read-only, open-world annotations, which a subagent can override with `annotations` in its config. Only the tools the main agent can call follow the contract; tools registered inside subagent sessions do not.
+
 ### Subagent-based tools
 
 Tools that spawn a subagent follow a different layout:
@@ -217,13 +229,13 @@ Workspace packages:
 
 | Directory | Package | Description |
 |---|---|---|
-| `packages/agent-kit/` | `@harness/agent-kit` | Subagent framework used by harness tools and hooks; ranks the model roster and fails over to the next entry on pre-start provider failures, returns nested model usage for Pi session accounting, and fresh runs can replace the model preference roster for evals |
+| `packages/agent-kit/` | `@harness/agent-kit` | Subagent framework used by harness tools and hooks; ranks the model roster and fails over to the next entry on pre-start provider failures, returns nested model usage for Pi session accounting, fresh runs can replace the model preference roster for evals, and subagent tools share one output schema |
 | `packages/audio-player/` | `@harness/audio-player` | Shared alert sound paths and best-effort audio playback with binary fallback |
 | `packages/completion/` | `@harness/completion` | Completion logic |
 | `packages/events/` | `@harness/events` | Shared event names and event payload types |
 | `packages/image-formats/` | `@harness/image-formats` | Image MIME detection and format conversion |
 | `packages/models/` | `@harness/models` | Model identity helpers (`ModelIdentity`, `knownModelFamily`, `modelKey`) |
-| `packages/session-store/` | `@harness/session-store` | Session directory access, Sesame search, and listing |
+| `packages/session-store/` | `@harness/session-store` | Session directory access, Sesame search, listing, and the session summary schema shared by `find_sessions` and `list_sessions` |
 | `packages/session-tools/` | `@harness/session-tools` | Pi-agnostic session entry indexing, branch/tree traversal, and bounded read-session helpers |
 | `packages/subagent-models/` | `@harness/subagent-models` | Global subagent model roster config (`settings/subagent-models.json`), async loader, and disabled-subagent registration helper |
 | `packages/test-utils/` | `@harness/test-utils` | Shared Vitest/Pi extension test harness utilities |
