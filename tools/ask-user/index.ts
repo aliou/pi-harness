@@ -1,7 +1,8 @@
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { defineTool } from "@earendil-works/pi-coding-agent";
+import { answeredResult, cancelledResult, unavailableResult } from "./helpers";
 import { renderCall, renderResult } from "./render";
-import { AskUserQuestionParams } from "./types";
+import { AskUserOutputSchema, AskUserQuestionParams } from "./types";
 import { runAskUserUI } from "./ui";
 
 const DESCRIPTION = `Gather user input through structured multiple-choice questions.
@@ -40,55 +41,34 @@ export const askUserTool = defineTool({
     "Ask the user to choose between options (structured questions)",
   parameters: AskUserQuestionParams,
   promptGuidelines: PROMPT_GUIDELINES,
+  outputSchema: AskUserOutputSchema,
+  annotations: { readOnlyHint: true, openWorldHint: false },
   executionMode: "sequential",
 
   async execute(_toolCallId, params, _signal, _onUpdate, ctx) {
     if (!ctx.hasUI) {
-      return {
-        content: [
-          {
-            type: "text",
-            text: "Error: UI not available (running in non-interactive mode)",
-          },
-        ],
-        details: {
-          questions: params.questions,
-          answers: [],
-          error: "UI not available",
-        },
-      };
+      return unavailableResult(
+        params.questions,
+        "Error: UI not available (running in non-interactive mode)",
+        "UI not available",
+      );
     }
 
     const uiResult = await runAskUserUI(ctx, params);
 
     if (uiResult === undefined) {
-      return {
-        content: [
-          {
-            type: "text",
-            text: `Error: ask_user custom UI is not available in ${ctx.mode} mode`,
-          },
-        ],
-        details: {
-          questions: params.questions,
-          answers: [],
-          error: `custom UI not available in ${ctx.mode} mode`,
-        },
-      };
+      return unavailableResult(
+        params.questions,
+        `Error: ask_user custom UI is not available in ${ctx.mode} mode`,
+        `custom UI not available in ${ctx.mode} mode`,
+      );
     }
 
     if (uiResult === null) {
-      return {
-        content: [{ type: "text", text: "User cancelled" }],
-        details: {
-          questions: params.questions,
-          answers: [],
-          error: "cancelled",
-        },
-      };
+      return cancelledResult(params.questions);
     }
 
-    return uiResult;
+    return answeredResult(uiResult);
   },
 
   renderCall,

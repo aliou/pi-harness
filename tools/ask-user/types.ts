@@ -40,14 +40,36 @@ export type QuestionOption = Static<typeof QuestionOptionSchema>;
 export type Question = Static<typeof QuestionSchema>;
 export type Params = Static<typeof AskUserQuestionParams>;
 
-export interface Answer {
-  question: string;
-  header: string;
-  selections: string[];
-}
+export const AnswerSchema = Type.Object({
+  question: Type.String(),
+  header: Type.String(),
+  selections: Type.Array(Type.String(), {
+    description: "Selected option labels, or custom text entered as Other",
+  }),
+});
+
+export type Answer = Static<typeof AnswerSchema>;
 
 export interface AskUserQuestionDetails {
   questions: Question[];
   answers: Answer[];
   error?: string;
 }
+
+/** `structuredContent` of `ask_user`. */
+export const AskUserOutputSchema = Type.Object({
+  questions: Type.Array(QuestionSchema),
+  answers: Type.Array(AnswerSchema, {
+    description: "One answer per question; empty when cancelled or on error",
+  }),
+  cancelled: Type.Optional(
+    Type.Literal(true, { description: "Set when the user dismissed the UI" }),
+  ),
+  error: Type.Optional(
+    Type.String({
+      description: "Why no UI could be shown. Set only on error results.",
+    }),
+  ),
+});
+
+export type AskUserOutput = Static<typeof AskUserOutputSchema>;
