@@ -5,11 +5,13 @@
   "exports": {
     ".": "./index.ts",
     "./paths": "./paths.ts",
-    "./types": "./types.ts"
+    "./types": "./types.ts",
+    "./schema": "./schema.ts"
   },
   "dependencies": {
     "@aliou/sesame": "^0.13.0",
     "@earendil-works/pi-coding-agent": "*",
-    "@harness/utils": "workspace:*"
+    "@harness/utils": "workspace:*",
+    "typebox": "*"
   }
 }

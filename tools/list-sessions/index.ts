@@ -16,6 +16,8 @@ import { type Component, Loader, Text, type TUI } from "@earendil-works/pi-tui";
 import type { SessionResult } from "@harness/session-store";
 import { listSessions } from "@harness/session-store";
 import { Type } from "typebox";
+import { buildListSessionsOutput } from "./helpers";
+import { ListSessionsOutputSchema } from "./types";
 
 const ListSessionsParams = Type.Object({
   cwd: Type.String({
@@ -140,6 +142,8 @@ RESULTS: Returns sessions sorted by modification date (newest first), including 
   ],
 
   parameters: ListSessionsParams,
+  outputSchema: ListSessionsOutputSchema,
+  annotations: { readOnlyHint: true, openWorldHint: false },
 
   async execute(
     _toolCallId,
@@ -155,18 +159,15 @@ RESULTS: Returns sessions sorted by modification date (newest first), including 
       results = await listSessions({ cwd, limit, depth }, signal);
     } catch (err) {
       console.error("[list-sessions] Error:", err);
+      const output = buildListSessionsOutput(
+        cwd,
+        [],
+        `List failed: ${err instanceof Error ? err.message : String(err)}`,
+      );
       return {
-        content: [
-          {
-            type: "text",
-            text: JSON.stringify({
-              cwd,
-              resultCount: 0,
-              results: [],
-              error: `List failed: ${err instanceof Error ? err.message : String(err)}`,
-            }),
-          },
-        ],
+        content: [{ type: "text", text: JSON.stringify(output) }],
+        structuredContent: output,
+        isError: true,
         details: {
           cwd,
           limit,
@@ -177,26 +178,11 @@ RESULTS: Returns sessions sorted by modification date (newest first), including 
       };
     }
 
-    const resultJson = JSON.stringify({
-      cwd,
-      resultCount: results.length,
-      results: results.map((r) => ({
-        id: r.id,
-        path: r.path,
-        cwd: r.cwd,
-        name: r.name,
-        created: r.created,
-        modified: r.modified,
-        messageCount: r.messageCount,
-        matchMode: r.matchMode,
-        matchedType: r.matchedType,
-        matchedEntryId: r.matchedEntryId,
-        matchedAt: r.matchedAt,
-      })),
-    });
+    const output = buildListSessionsOutput(cwd, results);
 
     return {
-      content: [{ type: "text", text: resultJson }],
+      content: [{ type: "text", text: JSON.stringify(output) }],
+      structuredContent: output,
       details: {
         cwd,
         limit,

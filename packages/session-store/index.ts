@@ -6,6 +6,11 @@ export {
 } from "./format";
 export { decodeCwd, encodeCwd, getSessionsDir, isInSessionsDir } from "./paths";
 export {
+  type SessionSummary,
+  SessionSummarySchema,
+  toSessionSummary,
+} from "./schema";
+export {
   listSessions,
   resolveSessionRef,
   searchSessions,

@@ -16,6 +16,8 @@ import { type Component, Loader, Text, type TUI } from "@earendil-works/pi-tui";
 import type { SearchOptions, SessionResult } from "@harness/session-store";
 import { searchSessions } from "@harness/session-store";
 import { Type } from "typebox";
+import { buildFindSessionsOutput } from "./helpers";
+import { FindSessionsOutputSchema } from "./types";
 
 const FindSessionsParams = Type.Object({
   query: Type.Optional(
@@ -204,6 +206,8 @@ Uses Sesame indexed search.`,
   ],
 
   parameters: FindSessionsParams,
+  outputSchema: FindSessionsOutputSchema,
+  annotations: { readOnlyHint: true, openWorldHint: false },
 
   async execute(
     _toolCallId,
@@ -235,51 +239,29 @@ Uses Sesame indexed search.`,
       results = results.filter((r) => r.id !== currentSessionId);
     } catch (err) {
       console.error("[find-sessions] Search error:", err);
-      // Return empty results rather than failing
+      const output = buildFindSessionsOutput(
+        query,
+        [],
+        `Search failed: ${err instanceof Error ? err.message : String(err)}`,
+      );
       return {
-        content: [
-          {
-            type: "text",
-            text: JSON.stringify({
-              query,
-              resultCount: 0,
-              results: [],
-              error: `Search failed: ${err instanceof Error ? err.message : String(err)}`,
-            }),
-          },
-        ],
+        content: [{ type: "text", text: JSON.stringify(output) }],
         details: {
           query,
           filters: { cwd, after, before, limit },
           resultCount: 0,
           results: [],
         },
+        structuredContent: output,
+        isError: true,
       };
     }
 
-    // Format result for LLM
-    const resultJson = JSON.stringify({
-      query,
-      resultCount: results.length,
-      results: results.map((r) => ({
-        id: r.id,
-        path: r.path,
-        cwd: r.cwd,
-        name: r.name,
-        created: r.created,
-        modified: r.modified,
-        messageCount: r.messageCount,
-        matchedSnippet: r.matchedSnippet,
-        score: r.score,
-        matchMode: r.matchMode,
-        matchedType: r.matchedType,
-        matchedEntryId: r.matchedEntryId,
-        matchedAt: r.matchedAt,
-      })),
-    });
+    const output = buildFindSessionsOutput(query, results);
 
     return {
-      content: [{ type: "text", text: resultJson }],
+      content: [{ type: "text", text: JSON.stringify(output) }],
+      structuredContent: output,
       details: {
         query,
         filters: { cwd, after, before, limit: limit || 10 },
