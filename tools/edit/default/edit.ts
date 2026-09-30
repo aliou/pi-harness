@@ -63,6 +63,11 @@ export function createDefaultEditToolDefinition(
 
   return {
     ...nativeEdit,
+    // Strict edit validation is layered on the Anthropic wire payload via the
+    // `before_provider_request` hook (see `anthropic/strict.ts`), not via
+    // provider-side constrained sampling. Disable the native default so the
+    // registered schema stays non-strict for other providers (pi #5501).
+    constrainedSampling: false,
     prepareArguments(args: unknown) {
       return prepareEditArguments(args, nativeEdit.prepareArguments);
     },

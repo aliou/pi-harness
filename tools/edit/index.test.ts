@@ -77,7 +77,7 @@ describe("defaults edit tool", () => {
     // (see `anthropic/strict.ts`), not via `constrainedSampling`. The
     // registered schema stays non-strict so other providers keep tolerating
     // stray keys (upstream pi #5501).
-    expect(pi.tool("edit").registered.constrainedSampling).toBeUndefined();
+    expect(pi.tool("edit").registered.constrainedSampling).toBe(false);
   });
 
   it("strips empty-string edits in prepareArguments", async () => {

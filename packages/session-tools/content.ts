@@ -59,6 +59,10 @@ export const entrySearchText = (entry: SessionEntry): string => {
       return `${entry.provider}/${entry.modelId}`;
     case "thinking_level_change":
       return entry.thinkingLevel;
+    case "usage":
+      return `${entry.kind} ${entry.provider}/${entry.model}${entry.note ? ` ${entry.note}` : ""}`;
+    case "context_edit":
+      return `[context edit: ${entry.targetId}]`;
   }
 };
 

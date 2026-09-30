@@ -37,6 +37,7 @@ type ReadonlySessionManager = Pick<
   | "getEntries"
   | "getTree"
   | "getSessionName"
+  | "buildSessionProjection"
 >;
 
 // ---------------------------------------------------------------------------
@@ -269,5 +270,11 @@ function stubSessionManager({
     getEntries: vi.fn(() => entries),
     getTree: vi.fn(() => []),
     getSessionName: vi.fn(() => sessionName),
+    buildSessionProjection: vi.fn(() => ({
+      entries: [],
+      messages: [],
+      thinkingLevel: "off",
+      model: null,
+    })),
   } as unknown as ReadonlySessionManager;
 }
