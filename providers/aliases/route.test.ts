@@ -1,12 +1,12 @@
 import type { Api, Model } from "@earendil-works/pi-ai";
 import type { ModelRouteRequest } from "@earendil-works/pi-coding-agent";
-import { describe, expect, it } from "vitest";
-import { type AliasState, createAliasRoute, type RouteRegistry } from "./route";
-import { ALIASES, type AliasDefinition } from "./table";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { createModelRoute, type RouteRegistry, type RouteState } from "./route";
+import { LATEST_MODELS, PROFILES, type RoutedModelDefinition } from "./table";
 
-function alias(id: string): AliasDefinition {
-  const found = ALIASES.find((definition) => definition.id === id);
-  if (!found) throw new Error(`${id} alias missing from table`);
+function definition(id: string, pool = LATEST_MODELS): RoutedModelDefinition {
+  const found = pool.find((entry) => entry.id === id);
+  if (!found) throw new Error(`${id} missing from table`);
   return found;
 }
 
@@ -29,11 +29,11 @@ function fakeRegistry(options: {
 }
 
 function request(
-  definition: AliasDefinition,
-  overrides: Partial<ModelRouteRequest<AliasState>> = {},
-): ModelRouteRequest<AliasState> {
+  definition: RoutedModelDefinition,
+  overrides: Partial<ModelRouteRequest<RouteState>> = {},
+): ModelRouteRequest<RouteState> {
   return {
-    model: fakeModel("alias", definition.id),
+    model: fakeModel(definition.provider, definition.id),
     thinkingLevel: "high",
     reason: "user",
     messages: [],
@@ -41,9 +41,12 @@ function request(
   };
 }
 
-const KIMI = alias("kimi");
-const OPUS = alias("claude-opus");
-const SOL = alias("gpt-sol");
+const KIMI = definition("kimi");
+const OPUS = definition("claude-opus");
+const SOL = definition("gpt-sol");
+const LARGE = definition("large", PROFILES);
+const FLASH = definition("flash", PROFILES);
+const SMALL = definition("small", PROFILES);
 
 const KIMI_REGISTRY = fakeRegistry({
   authed: ["neuralwatt", "synthetic"],
@@ -55,19 +58,46 @@ const KIMI_REGISTRY = fakeRegistry({
   ],
 });
 
-describe("createAliasRoute: cross-provider aliases", () => {
-  it("picks the first preferred provider and ignores suffixed variants", () => {
-    const result = createAliasRoute(KIMI)(request(KIMI), KIMI_REGISTRY);
+afterEach(() => {
+  vi.restoreAllMocks();
+});
 
-    expect(result.model).toEqual(fakeModel("neuralwatt", "kimi-k3"));
+describe("createModelRoute: cross-provider picks", () => {
+  it("matches by model id on any authed provider", () => {
+    vi.spyOn(Math, "random").mockReturnValue(0);
+
+    const result = createModelRoute(KIMI)(request(KIMI), KIMI_REGISTRY);
+
+    expect(result.model).toEqual(
+      fakeModel("synthetic", "hf:moonshotai/Kimi-K3"),
+    );
     expect(result.thinkingLevel).toBe("high");
     expect(result.state).toEqual({
-      provider: "neuralwatt",
-      modelId: "kimi-k3",
+      provider: "synthetic",
+      modelId: "hf:moonshotai/Kimi-K3",
     });
   });
 
-  it("matches prefixed ids and skips providers without auth", () => {
+  it("picks randomly among providers serving the same id", () => {
+    vi.spyOn(Math, "random").mockReturnValue(0.99);
+
+    const result = createModelRoute(KIMI)(request(KIMI), KIMI_REGISTRY);
+
+    expect(result.model).toEqual(fakeModel("neuralwatt", "kimi-k3"));
+  });
+
+  it("ignores suffixed variants", () => {
+    const registry = fakeRegistry({
+      authed: ["neuralwatt"],
+      models: [["neuralwatt", "kimi-k3-fast"]],
+    });
+
+    expect(() => createModelRoute(KIMI)(request(KIMI), registry)).toThrow(
+      /latest\/kimi:/,
+    );
+  });
+
+  it("skips providers without auth", () => {
     const registry = fakeRegistry({
       authed: ["synthetic"],
       models: [
@@ -76,7 +106,7 @@ describe("createAliasRoute: cross-provider aliases", () => {
       ],
     });
 
-    const result = createAliasRoute(KIMI)(request(KIMI), registry);
+    const result = createModelRoute(KIMI)(request(KIMI), registry);
 
     expect(result.state).toEqual({
       provider: "synthetic",
@@ -87,7 +117,7 @@ describe("createAliasRoute: cross-provider aliases", () => {
   it("keeps the sticky pick", () => {
     const state = { provider: "synthetic", modelId: "hf:moonshotai/Kimi-K3" };
 
-    const result = createAliasRoute(KIMI)(
+    const result = createModelRoute(KIMI)(
       request(KIMI, { reason: "continuation", state }),
       KIMI_REGISTRY,
     );
@@ -103,7 +133,7 @@ describe("createAliasRoute: cross-provider aliases", () => {
     });
     const state = { provider: "neuralwatt", modelId: "kimi-k3" };
 
-    const result = createAliasRoute(KIMI)(
+    const result = createModelRoute(KIMI)(
       request(KIMI, { reason: "retry", state }),
       registry,
     );
@@ -115,7 +145,7 @@ describe("createAliasRoute: cross-provider aliases", () => {
   });
 
   it("adopts the previous response model when it is a target", () => {
-    const result = createAliasRoute(KIMI)(
+    const result = createModelRoute(KIMI)(
       request(KIMI, {
         previous: { model: fakeModel("synthetic", "hf:moonshotai/Kimi-K3") },
       }),
@@ -126,15 +156,15 @@ describe("createAliasRoute: cross-provider aliases", () => {
   });
 
   it("throws when nothing matches", () => {
-    const route = createAliasRoute(KIMI);
+    const route = createModelRoute(KIMI);
 
     expect(() => route(request(KIMI), fakeRegistry({}))).toThrow(
-      /alias\/kimi:/,
+      /latest\/kimi:/,
     );
   });
 });
 
-describe("createAliasRoute: latest-version aliases", () => {
+describe("createModelRoute: latest-version resolution", () => {
   it("picks the highest version present in the registry", () => {
     const registry = fakeRegistry({
       authed: ["anthropic"],
@@ -147,12 +177,12 @@ describe("createAliasRoute: latest-version aliases", () => {
       ],
     });
 
-    const result = createAliasRoute(OPUS)(request(OPUS), registry);
+    const result = createModelRoute(OPUS)(request(OPUS), registry);
 
     expect(result.model.id).toBe("claude-opus-5-5");
   });
 
-  it("prefers a newer version over provider order", () => {
+  it("prefers a newer version regardless of provider", () => {
     const registry = fakeRegistry({
       authed: ["neuralwatt", "synthetic"],
       models: [
@@ -161,13 +191,13 @@ describe("createAliasRoute: latest-version aliases", () => {
       ],
     });
 
-    const result = createAliasRoute(KIMI)(request(KIMI), registry);
+    const result = createModelRoute(KIMI)(request(KIMI), registry);
 
     expect(result.model.provider).toBe("synthetic");
   });
 
   it("keeps GLM and GLM Flash apart", () => {
-    const glm = alias("glm");
+    const glm = definition("glm");
     const registry = fakeRegistry({
       authed: ["neuralwatt", "synthetic"],
       models: [
@@ -178,13 +208,13 @@ describe("createAliasRoute: latest-version aliases", () => {
       ],
     });
 
-    const result = createAliasRoute(glm)(request(glm), registry);
+    const result = createModelRoute(glm)(request(glm), registry);
 
     expect(result.model.id).toBe("glm-5.3");
   });
 
   it("matches both Qwen id spellings", () => {
-    const qwen = alias("qwen-27b");
+    const qwen = definition("qwen-27b");
     const registry = fakeRegistry({
       authed: ["neuralwatt", "synthetic"],
       models: [
@@ -194,7 +224,7 @@ describe("createAliasRoute: latest-version aliases", () => {
       ],
     });
 
-    const result = createAliasRoute(qwen)(request(qwen), registry);
+    const result = createModelRoute(qwen)(request(qwen), registry);
 
     expect(result.model.id).toBe("hf:Qwen/Qwen3.9-27B");
   });
@@ -210,7 +240,7 @@ describe("createAliasRoute: latest-version aliases", () => {
       ],
     });
 
-    const result = createAliasRoute(SOL)(request(SOL), registry);
+    const result = createModelRoute(SOL)(request(SOL), registry);
 
     expect(result.model.id).toBe("gpt-6.1-sol");
   });
@@ -224,7 +254,7 @@ describe("createAliasRoute: latest-version aliases", () => {
       ],
     });
 
-    const result = createAliasRoute(SOL)(
+    const result = createModelRoute(SOL)(
       request(SOL, { previous: { model: fakeModel("openai", "gpt-6-sol") } }),
       registry,
     );
@@ -242,11 +272,80 @@ describe("createAliasRoute: latest-version aliases", () => {
     });
     const state = { provider: "openai", modelId: "gpt-6-sol" };
 
-    const result = createAliasRoute(SOL)(
+    const result = createModelRoute(SOL)(
       request(SOL, { reason: "continuation", state }),
       registry,
     );
 
     expect(result.model.id).toBe("gpt-6-sol");
+  });
+});
+
+describe("createModelRoute: profiles", () => {
+  it("large routes to kimi-k3", () => {
+    vi.spyOn(Math, "random").mockReturnValue(0);
+
+    const result = createModelRoute(LARGE)(request(LARGE), KIMI_REGISTRY);
+
+    expect(result.state).toEqual({
+      provider: "synthetic",
+      modelId: "hf:moonshotai/Kimi-K3",
+    });
+  });
+
+  it("stays pinned when a newer version appears", () => {
+    const registry = fakeRegistry({
+      authed: ["neuralwatt"],
+      models: [
+        ["neuralwatt", "kimi-k3"],
+        ["neuralwatt", "kimi-k3.5"],
+      ],
+    });
+
+    const result = createModelRoute(LARGE)(request(LARGE), registry);
+
+    expect(result.model).toEqual(fakeModel("neuralwatt", "kimi-k3"));
+  });
+
+  it("flash routes to deepseek-v4.1-flash, not v4 or glm", () => {
+    const registry = fakeRegistry({
+      authed: ["neuralwatt", "synthetic"],
+      models: [
+        ["neuralwatt", "glm-5.3-flash"],
+        ["neuralwatt", "deepseek-v4.1-flash"],
+        ["neuralwatt", "deepseek-v4-flash"],
+      ],
+    });
+
+    const result = createModelRoute(FLASH)(request(FLASH), registry);
+
+    expect(result.model).toEqual(
+      fakeModel("neuralwatt", "deepseek-v4.1-flash"),
+    );
+  });
+
+  it("small routes to Qwen 3.8 27B, not the 35B", () => {
+    const registry = fakeRegistry({
+      authed: ["neuralwatt", "synthetic"],
+      models: [
+        ["neuralwatt", "qwen3.6-35b"],
+        ["neuralwatt", "qwen-3.8-27b"],
+        ["synthetic", "hf:Qwen/Qwen3.8-27B"],
+      ],
+    });
+
+    vi.spyOn(Math, "random").mockReturnValue(0);
+
+    const result = createModelRoute(SMALL)(request(SMALL), registry);
+
+    expect(result.model).toEqual(fakeModel("neuralwatt", "qwen-3.8-27b"));
+  });
+
+  it("throws naming the profile provider when nothing matches", () => {
+    const route = createModelRoute(FLASH);
+
+    expect(() => route(request(FLASH), fakeRegistry({}))).toThrow(
+      /profile\/flash:/,
+    );
   });
 });

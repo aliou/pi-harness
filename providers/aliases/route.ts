@@ -3,10 +3,10 @@ import type {
   ModelRoute,
   ModelRouteRequest,
 } from "@earendil-works/pi-coding-agent";
-import { type AliasDefinition, normalizeModelId } from "./table";
+import { normalizeModelId, type RoutedModelDefinition } from "./table";
 
 /** Sticky pick stored on the session branch by Pi's virtual model runtime. */
-export interface AliasState {
+export interface RouteState {
   provider: string;
   modelId: string;
 }
@@ -20,8 +20,6 @@ export interface RouteRegistry {
 interface Candidate {
   model: Model<Api>;
   version: number[];
-  /** Index in `definition.providers`; lower is preferred. */
-  rank: number;
 }
 
 function parseVersion(captured: string | undefined): number[] {
@@ -37,22 +35,22 @@ function compareVersions(a: number[], b: number[]): number {
 }
 
 function toCandidate(
-  definition: AliasDefinition,
+  definition: RoutedModelDefinition,
   model: Model<Api>,
 ): Candidate | undefined {
-  const rank = definition.providers.indexOf(model.provider);
-  if (rank < 0) return undefined;
   const match = definition.match.exec(normalizeModelId(model.id));
   if (!match) return undefined;
-  return { model, rank, version: parseVersion(match[1]) };
+  return { model, version: parseVersion(match[1]) };
 }
 
 /**
- * Models in the live registry that match the alias and have auth, best first:
- * highest version, then provider preference.
+ * Models in the live registry whose normalized id matches the definition and
+ * whose provider has configured auth, best first: highest version only.
+ * Candidates tied on version keep registry order; the caller picks among
+ * them at random.
  */
 export function rankCandidates(
-  definition: AliasDefinition,
+  definition: RoutedModelDefinition,
   registry: RouteRegistry,
 ): Candidate[] {
   return registry
@@ -60,7 +58,19 @@ export function rankCandidates(
     .filter((model) => registry.hasConfiguredAuth(model))
     .map((model) => toCandidate(definition, model))
     .filter((candidate) => candidate !== undefined)
-    .sort((a, b) => compareVersions(b.version, a.version) || a.rank - b.rank);
+    .sort((a, b) => compareVersions(b.version, a.version));
+}
+
+/** Pick at random among candidates tied on the best version. */
+function pickCandidate(candidates: Candidate[]): Candidate {
+  const best = candidates[0];
+  if (!best) throw new Error("pickCandidate: no candidates");
+  const tied = candidates.filter(
+    (c) => compareVersions(c.version, best.version) === 0,
+  );
+  const picked = tied[Math.floor(Math.random() * tied.length)];
+  if (!picked) throw new Error("pickCandidate: empty tie group");
+  return picked;
 }
 
 function isModel(
@@ -77,7 +87,7 @@ function isModel(
 function toRoute(
   model: Model<Api>,
   thinkingLevel: ModelThinkingLevel,
-): ModelRoute<AliasState> {
+): ModelRoute<RouteState> {
   return {
     model,
     thinkingLevel,
@@ -86,21 +96,22 @@ function toRoute(
 }
 
 /**
- * Build the route function for one alias. Uniform across route reasons: the
- * sticky pick wins while it still matches and stays available, which keeps
- * retries on the failed provider and preserves the prompt cache. A newer
- * version therefore reaches new sessions, not ones already pinned.
+ * Build the route function for one virtual model. Uniform across route
+ * reasons: the sticky pick wins while it still matches and stays available,
+ * which keeps retries on the failed provider and preserves the prompt cache.
+ * A newer version therefore reaches new sessions, not ones already pinned.
+ * A fresh pick is random among providers tied on the best version.
  */
-export function createAliasRoute(definition: AliasDefinition) {
+export function createModelRoute(definition: RoutedModelDefinition) {
   return (
-    request: ModelRouteRequest<AliasState>,
+    request: ModelRouteRequest<RouteState>,
     registry: RouteRegistry,
-  ): ModelRoute<AliasState> => {
+  ): ModelRoute<RouteState> => {
     const candidates = rankCandidates(definition, registry);
     const best = candidates[0];
     if (!best) {
       throw new Error(
-        `alias/${definition.id}: no available model matches ${definition.match} on ${definition.providers.join(", ")}`,
+        `${definition.provider}/${definition.id}: no available model matches ${definition.match} on any provider with configured auth`,
       );
     }
 
@@ -108,14 +119,17 @@ export function createAliasRoute(definition: AliasDefinition) {
     if (sticky)
       return { model: sticky.model, thinkingLevel: request.thinkingLevel };
 
-    // Switching to the alias mid-session keeps the current response model when
-    // it is the latest version on another preferred provider, so the switch
-    // costs no cache miss. An older version is not adopted.
+    // Switching to the virtual model mid-session keeps the current response
+    // model when it ties the best version, so the switch costs no cache
+    // miss. An older version is not adopted.
     const adopted = candidates.find(
       (c) =>
         isModel(c.model, request.previous?.model) &&
         compareVersions(c.version, best.version) === 0,
     );
-    return toRoute((adopted ?? best).model, request.thinkingLevel);
+    return toRoute(
+      (adopted ?? pickCandidate(candidates)).model,
+      request.thinkingLevel,
+    );
   };
 }

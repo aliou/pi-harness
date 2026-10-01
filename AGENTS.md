@@ -192,7 +192,7 @@ Subagents default to the parent session cwd. If a subagent accepts an invocation
 
 | Directory | Purpose | Key files |
 |---|---|---|
-| `aliases/` | Virtual models under the `alias` provider. Each alias is an anchored id pattern plus a provider preference list, resolved against the live registry on each pick: highest captured version wins, then provider order. Aliases name a family (`alias/kimi`, `alias/glm-flash`, `alias/claude-opus`, `alias/gpt-sol`, ...) and pick up new versions once the registry exposes them (models hidden by Aperture never match). The pick stays sticky for the session via Pi's virtual-model router state | `table.ts`, `route.ts` |
+| `aliases/` | Virtual models under the `latest` and `profile` providers. Routing is purely model-id based: no real provider names appear in the extension, and a candidate is any model whose normalized id matches the entry's anchored pattern on a provider with configured auth. `latest/*` entries (`latest/kimi`, `latest/glm-flash`, `latest/claude-opus`, ...) capture the version in the pattern and pick the highest one, so they pick up new versions once the registry exposes them (models hidden by Aperture never match). `profile/*` entries (`profile/large`, `profile/flash`, `profile/small`) pin one exact model id; bumping is a manual edit, usually after trying the `latest` equivalent, so the two can lag each other by design. Candidates tied on version are picked at random; the pick stays sticky for the session via Pi's virtual-model router state | `table.ts`, `route.ts` |
 
 ## Development
 
