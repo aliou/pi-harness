@@ -21,8 +21,8 @@ function registerAlias(pi: ExtensionAPI, definition: AliasDefinition): void {
     id: definition.id,
     name: definition.name,
     thinkingLevels: [...THINKING_LEVELS],
-    contextWindow: definition.contextWindow,
-    maxTokens: definition.maxTokens,
+    // No contextWindow/maxTokens: the target is only known once routed, and
+    // Pi uses the routed model's limits for requests and compaction.
     route: (request, ctx) => route(request, ctx.modelRegistry),
   });
 }

@@ -192,7 +192,7 @@ Subagents default to the parent session cwd. If a subagent accepts an invocation
 
 | Directory | Purpose | Key files |
 |---|---|---|
-| `aliases/` | Cross-provider virtual models under the `alias` provider (e.g. `alias/kimi-k3`); the first available target wins and stays sticky for the session via Pi's virtual-model router state | `table.ts`, `route.ts` |
+| `aliases/` | Virtual models under the `alias` provider. Each alias is an anchored id pattern plus a provider preference list, resolved against the live registry on each pick: highest captured version wins, then provider order. Aliases name a family (`alias/kimi`, `alias/glm-flash`, `alias/claude-opus`, `alias/gpt-sol`, ...) and pick up new versions once the registry exposes them (models hidden by Aperture never match). The pick stays sticky for the session via Pi's virtual-model router state | `table.ts`, `route.ts` |
 
 ## Development
 
