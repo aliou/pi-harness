@@ -156,7 +156,7 @@ Subagents default to the parent session cwd. If a subagent accepts an invocation
 | `resource-loader/` | Append `.agents/AGENTS.local.md` (cwd only) to the system prompt; complements Pi's built-in `AGENTS.md`/`CLAUDE.md` discovery which does not consult `.agents/` | `index.ts`, `load.ts` |
 | `provider-tweaks/` | Provider-specific tweaks; injects `x-session-id` on Anthropic requests, requests detailed reasoning summaries from GPT-5.6 models on `openai` (also accepts `openai-codex`), and adds session-affinity headers | `index.ts`, `anthropic.ts`, `openai.ts` |
 | `at-path-autocomplete/` | `@`-path autocomplete wrapper | Rewrites `@`-file completions to `./`-relative paths on insertion |
-| `chrome/` | Header, footer, terminal title, notifications, auto-naming; footer shows cost and context | `hooks/`, `components/`, `lib/`, `native/` |
+| `chrome/` | Header, footer, terminal title, notifications, auto-naming; footer shows cost, context, and the routed model next to a virtual (alias) selection, with its provider when several providers serve it; the context window shows `?` until an alias answers after being selected | `hooks/`, `components/`, `lib/`, `native/` |
 | `editor-stash/` | `ctrl+shift+s` stash/unstash of editor content | `index.ts`, `lib/` |
 | `event-compat/` | Backwards-compatible event aliases | `index.ts` |
 | `notifications/` | Canonical `ad:notify:*` producer plus terminal (OSC) and sound consumers | `index.ts`, `producer.ts`, `terminal.ts`, `sound.ts` |

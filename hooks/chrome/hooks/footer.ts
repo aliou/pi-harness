@@ -8,6 +8,16 @@ export function setupFooterHook(pi: ExtensionAPI) {
     footer.setup(ctx);
   });
 
+  // The routed model shown next to an alias resets on a switch and appears
+  // with the first response.
+  pi.on("model_select", async () => {
+    footer.refresh();
+  });
+
+  pi.on("message_end", async () => {
+    footer.refresh();
+  });
+
   pi.on("session_shutdown", async () => {
     footer.cleanup();
   });

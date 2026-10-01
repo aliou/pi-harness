@@ -19,7 +19,13 @@ import {
 } from "@harness/events";
 import { buildStatusLine } from "../lib/extension-status";
 import { GitStatusWatcher } from "../lib/git-status";
-import { buildModelIdLine, buildModelLine } from "../lib/model";
+import {
+  buildModelIdLine,
+  buildModelLine,
+  findRoutedModel,
+  formatRoutedModel,
+  isVirtualModel,
+} from "../lib/model";
 import { buildPathParts } from "../lib/path-parts";
 import {
   buildMinimalStatsParts,
@@ -54,8 +60,13 @@ export function createCustomFooter(pi: ExtensionAPI) {
     const branch = footer_data.getGitBranch();
     const sessionName = ctx.sessionManager.getSessionName();
 
+    // An alias has no limits of its own. Until it answers after being
+    // selected, Pi reports the window of the previous model, so hide it.
+    const routed = findRoutedModel(ctx.model, ctx.sessionManager.getBranch());
+    const awaitingRoute = isVirtualModel(ctx.model) && !routed;
+
     const usage = getCumulativeUsage(ctx);
-    const contextUsage = getContextUsage(ctx);
+    const contextUsage = getContextUsage(ctx, !awaitingRoute);
 
     const gitStatus = gitStatusWatcher?.getStatus();
     const pathData = buildPathParts(theme, branch, gitStatus, stashHasContent);
@@ -144,9 +155,15 @@ export function createCustomFooter(pi: ExtensionAPI) {
       }
     }
 
+    const routedModelId =
+      routed && formatRoutedModel(routed, ctx.modelRegistry.getAvailable());
+
     let line2: string;
     if (useMinimal) {
-      const modelIdLine = buildModelIdLine(theme, ctx.model?.id);
+      const modelIdLine = buildModelIdLine(
+        theme,
+        routedModelId ?? ctx.model?.id,
+      );
       line2 = truncateToWidth(modelIdLine, width, "...");
     } else {
       const left_parts2: string[] = [sessionName ?? ""].filter(Boolean);
@@ -166,6 +183,7 @@ export function createCustomFooter(pi: ExtensionAPI) {
         ctx.model?.id,
         hasReasoning,
         thinkingLevel ?? "off",
+        routedModelId,
       );
       const modelWidth = visibleWidth(modelLine);
 
@@ -244,6 +262,8 @@ export function createCustomFooter(pi: ExtensionAPI) {
         };
       });
     },
+    /** Re-render after state the TUI does not watch, such as a model switch. */
+    refresh: () => requestRender?.(),
     cleanup: () => {
       if (ctx) {
         ctx.ui.setFooter(undefined);

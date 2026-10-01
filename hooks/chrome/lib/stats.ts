@@ -56,15 +56,20 @@ export function getCumulativeUsage(ctx: ExtensionContext): CumulativeUsage {
 }
 
 /**
- * Get context usage from session
+ * Get context usage from session. Pass `windowKnown: false` when the window Pi
+ * reports belongs to another model, such as an alias that has not answered
+ * since it was selected; the window then shows as `?`.
  */
 export function getContextUsage(
   ctx: ExtensionContext,
+  windowKnown = true,
 ): ContextUsage | undefined {
   const contextUsage = ctx.getContextUsage();
   if (!contextUsage) return undefined;
 
-  const rawWindow = contextUsage.contextWindow ?? ctx.model?.contextWindow ?? 0;
+  const reportedWindow =
+    contextUsage.contextWindow ?? ctx.model?.contextWindow ?? 0;
+  const rawWindow = windowKnown ? reportedWindow : 0;
   const colorWindow =
     rawWindow > REFERENCE_CONTEXT_WINDOW ? REFERENCE_CONTEXT_WINDOW : rawWindow;
 
@@ -75,15 +80,13 @@ export function getContextUsage(
   const colorPercentValue = colorKnown ? (tokens / colorWindow) * 100 : 0;
   const contextPercent = known ? contextPercentValue.toFixed(1) : "?";
   const tokensDisplay = tokens !== null ? formatTokens(tokens) : "?";
+  const windowDisplay = rawWindow > 0 ? formatTokens(rawWindow) : "?";
 
   return {
     window: rawWindow,
     percent: contextPercentValue,
     colorPercent: colorPercentValue,
-    display:
-      contextPercent === "?"
-        ? `? ?/${formatTokens(rawWindow)}`
-        : `${contextPercent}% ${tokensDisplay}/${formatTokens(rawWindow)}`,
+    display: `${contextPercent}${known ? "%" : ""} ${tokensDisplay}/${windowDisplay}`,
   };
 }
 

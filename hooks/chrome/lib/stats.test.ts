@@ -42,6 +42,22 @@ describe("getContextUsage", () => {
     expect(result.colorPercent).toBeCloseTo(36.76, 2);
     expect(result.display).toBe("10.0% 100k/1.0M");
   });
+
+  it("hides a window that belongs to another model", () => {
+    const ctx = createCommandContext({
+      getContextUsage: () => ({
+        contextWindow: 1_000_000,
+        percent: 10,
+        tokens: 100_000,
+      }),
+    });
+
+    const result = getContextUsage(ctx, false);
+
+    assert(result, "context usage should exist");
+    expect(result.display).toBe("? 100k/?");
+    expect(result.colorPercent).toBe(0);
+  });
 });
 
 describe("buildStatsParts", () => {
