@@ -3,7 +3,6 @@ import type {
   ExtensionContext,
 } from "@earendil-works/pi-coding-agent";
 import { effectiveModelIdentity } from "@harness/models";
-import { addSessionAffinityHeader } from "./anthropic";
 import {
   injectDetailedReasoningSummary,
   type OpenAIResponsesPayload,
@@ -23,10 +22,6 @@ function requestProvider(ctx: ExtensionContext): string | undefined {
 export default function (pi: ExtensionAPI): void {
   pi.on("before_provider_headers", (event, ctx) => {
     addSessionIdHeader(event.headers, ctx.sessionManager.getSessionId());
-
-    if (requestProvider(ctx) !== "anthropic") return;
-
-    addSessionAffinityHeader(event.headers, ctx.sessionManager.getSessionId());
   });
 
   pi.on("before_provider_request", (event, ctx) => {

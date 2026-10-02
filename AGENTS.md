@@ -17,7 +17,6 @@ When adding new content or changing existing behavior, update the closest releva
 - `providers/` - Provider-level registrations: virtual models and provider-facing routing.
 - `tools/` - Agent tools exposed to Pi sessions.
 - `skills/` - Skills shipped with the harness and loaded via the `pi.skills` manifest entry in `package.json`.
-- `evals/` - Live model evals that run separately from unit tests; shared eval infrastructure lives in `evals/lib/`.
 - `packages/` - Shared internal workspace packages. Each package lives in `packages/<name>/` and is imported through its `@harness/*` workspace package name.
 - `scripts/` - Maintenance, native build, and extension Gist release scripts.
 - `tests/` - Test setup and docs. Shared test utilities live in `packages/test-utils`.
@@ -141,22 +140,19 @@ Subagents default to the parent session cwd. If a subagent accepts an invocation
 
 | Directory | Commands | Notes |
 |---|---|---|
-| Directory | Commands | Notes |
-|---|---|---|
 | `continue/` | `/continue` | Continue from a linked parent session |
 | `copy-session-id/` | `/copy:session-id` | Copy session ID to clipboard |
 | `copy-session-path/` | `/copy:session-path` | Copy session file path to clipboard |
-| `proceed/` | `/proceed`, `/proceed status`, `/proceed help` | Resume the current session without sending prompt text to the LLM |
-| `spawn/` | `/spawn [note]` | Create a linked child session |
+| `proceed/` | `/proceed` | Resume the current session without sending prompt text to the LLM |
 
 ## Hooks
 
 | Directory | Purpose | Key files |
 |---|---|---|
 | `resource-loader/` | Append `.agents/AGENTS.local.md` (cwd only) to the system prompt; complements Pi's built-in `AGENTS.md`/`CLAUDE.md` discovery which does not consult `.agents/` | `index.ts`, `load.ts` |
-| `provider-tweaks/` | Provider-specific tweaks; injects `x-session-id` on Anthropic requests, requests detailed reasoning summaries from GPT-5.6 models on `openai` (also accepts `openai-codex`), and adds session-affinity headers | `index.ts`, `anthropic.ts`, `openai.ts` |
+| `provider-tweaks/` | Provider-specific tweaks; injects `x-session-id` on every request and requests detailed reasoning summaries on `openai`/`openai-codex` Responses calls that carry a `reasoning` payload | `index.ts`, `openai.ts`, `session-id.ts` |
 | `at-path-autocomplete/` | `@`-path autocomplete wrapper | Rewrites `@`-file completions to `./`-relative paths on insertion |
-| `chrome/` | Header, footer, terminal title, notifications, auto-naming; footer shows cost, context, and the routed model next to a virtual (alias) selection, with its provider when several providers serve it; the context window shows `?` until an alias answers after being selected | `hooks/`, `components/`, `lib/`, `native/` |
+| `chrome/` | Header and footer; the header shows the logo plus `[hostname] host:org/repo` from workspace metadata; footer shows cost, context, and the routed model next to a virtual (alias) selection, with its provider when several providers serve it; the context window shows `?` until an alias answers after being selected | `hooks/`, `components/`, `lib/`, `native/` |
 | `editor-stash/` | `ctrl+shift+s` stash/unstash of editor content | `index.ts`, `lib/` |
 | `event-compat/` | Backwards-compatible event aliases | `index.ts` |
 | `notifications/` | Canonical `ad:notify:*` producer plus terminal (OSC) and sound consumers | `index.ts`, `producer.ts`, `terminal.ts`, `sound.ts` |
@@ -164,7 +160,6 @@ Subagents default to the parent session cwd. If a subagent accepts an invocation
 | `session-autocomplete/` | `@@` autocomplete for session references | `index.ts`, `provider.ts` |
 | `session-name/` | Auto-name sessions | `index.ts` |
 | `skill-autocomplete/` | `?` skill autocomplete; supports `skillsRoots` plus pinned skill directories in `completion.json`, which load as real Pi skills and take priority over root duplicates; sends each inline skill as a rendered context message and retains skill names in user prose | `index.ts`, `config.ts`, `expand.ts`, `render.ts` |
-| `tps/` | Per-turn tokens-per-second telemetry emitted as `ad:tps:telemetry` for footer display and other consumers | `index.ts`, `utils.ts`, `types.ts` |
 | `workspace-metadata/` | Record model-hidden hostname, canonical cwd, and Git remote metadata for new/forked sessions, and backfill existing sessions that lack it | `index.ts`, `helpers.ts`, `types.ts` |
 | `zoxide-autocomplete/` | `@z:` project path autocomplete | `index.ts` |
 
@@ -182,7 +177,7 @@ Subagents default to the parent session cwd. If a subagent accepts an invocation
 | `list-sessions/` | `list_sessions` | Session directory listing via `@harness/session-store` |
 | `look-at/` | `look_at` | Zero-shot vision subagent; BMP files are converted to PNG before vision analysis |
 | `oracle/` | `oracle`, `resume_oracle` | Zero-shot senior technical advisor; hidden from the active tools when the session model matches the gpt-5.6/gpt-6 families (`utils.ts`), same enable/disable pattern as `look_at` |
-| `read/` | `read` | Passthrough; BMP images are converted to PNG before upstream handling |
+| `read/` | `read` | Directory reads delegate to `ls`; markdown files render formatted when expanded; collapsed `SKILL.md` reads preview the frontmatter description |
 | `read-session/` | `read_session` | Zero-shot past-session extractor |
 | `read-url/` | `read_url` | URL fetch with handler chain and preview |
 | `reviewer/` | `reviewer`, `resume_reviewer` | Zero-shot formal code-review subagent; accepts optional `cwd` so review commands and file reads run in the target repo |
@@ -203,8 +198,6 @@ pnpm install
 pnpm typecheck
 pnpm lint
 pnpm test
-pnpm evals
-pnpm evals:ui
 ```
 
 ## Extension Gist releases
@@ -252,7 +245,7 @@ To run multiple harness instances on the same machine, override these env vars p
 
 ## Custom header
 
-The startup header (`hooks/chrome/components/header.ts`) shows the logo in collapsed mode and a curated list of harness commands, shortcuts, and completion providers when expanded. Extensions register these entries by listening to `AD_HEADER_COLLECT_EVENT` and emitting the matching `AD_HEADER_REGISTER_*` event from `@harness/events`. When adding a new `registerShortcut`, `registerCommand`, or autocomplete provider, ask whether it should be added to the header.
+The startup header (`hooks/chrome/components/header.ts`) shows the `pi` logo plus the workspace identity line (`[hostname] host:org/repo`, falling back to the compact cwd) from the metadata recorded by `hooks/workspace-metadata`.
 
 ## Notes
 

@@ -11,11 +11,6 @@
 
 import type { UserMessage } from "@earendil-works/pi-ai";
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
-import {
-  AD_HEADER_COLLECT_EVENT,
-  AD_HEADER_REGISTER_COMPLETION_EVENT,
-  once,
-} from "@harness/events";
 import type { SessionRef } from "@harness/session-store";
 import {
   buildSessionRefsContent,
@@ -26,13 +21,6 @@ import {
 import { createSessionAutocompleteProvider } from "./provider";
 
 export default async function (pi: ExtensionAPI) {
-  once(pi, AD_HEADER_COLLECT_EVENT, () => {
-    pi.events.emit(AD_HEADER_REGISTER_COMPLETION_EVENT, {
-      trigger: "@@",
-      description: "reference past session",
-    });
-  });
-
   pi.on("session_start", async (_event, ctx) => {
     const currentSessionId = ctx.sessionManager.getSessionId();
     const cwd = ctx.cwd;

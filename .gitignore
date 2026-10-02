@@ -6,7 +6,6 @@ bin/
 *.tsbuildinfo
 .DS_Store
 .osgrep
-.vitest-evals/
 
 pi-*.html
 

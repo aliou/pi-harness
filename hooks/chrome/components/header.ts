@@ -1,26 +1,20 @@
 /**
- * Custom header showing harness shortcuts and commands.
+ * Custom header showing the workspace identity line:
+ * `pi [hostname] host:org/repo` (or the compact cwd when no remote exists).
  *
- * Instead of the built-in keybinding hints, displays only
- * the custom shortcuts and commands defined in harness extensions.
- *
- * Data is collected dynamically at session_start via the event bus so
- * extensions can register themselves regardless of load order.
+ * Metadata comes from the workspace-metadata hook: read from the session
+ * entries on session_start, updated live via ad:workspace-metadata:captured.
  */
 
 import type { ExtensionContext, Theme } from "@earendil-works/pi-coding-agent";
-import { rawKeyHint } from "@earendil-works/pi-coding-agent";
 import { Container, Spacer, Text } from "@earendil-works/pi-tui";
 import type { WorkspaceMetadata } from "@harness/events";
 import { collapseHomePath } from "@harness/utils/path";
 
+const LOGO = "pi";
+
 export interface HeaderData {
-  logo: string;
-  logoRegistered?: boolean;
   workspaceMetadata?: WorkspaceMetadata;
-  commands: Array<{ name: string; description: string }>;
-  shortcuts: Array<{ key: string; description: string }>;
-  completions: Array<{ trigger: string; description: string }>;
 }
 
 function cleanHeaderText(value: string): string {
@@ -60,15 +54,8 @@ class HeaderComponent extends Container {
   constructor(
     private readonly theme: Theme,
     private readonly data: HeaderData,
-    private expanded = false,
   ) {
     super();
-    this.rebuild();
-  }
-
-  setExpanded(expanded: boolean) {
-    if (this.expanded === expanded) return;
-    this.expanded = expanded;
     this.rebuild();
   }
 
@@ -78,80 +65,25 @@ class HeaderComponent extends Container {
   }
 
   private rebuild() {
-    const {
-      logo,
-      logoRegistered,
-      workspaceMetadata,
-      commands,
-      shortcuts,
-      completions,
-    } = this.data;
-    const workspaceLine = formatWorkspaceMetadata(workspaceMetadata);
+    const workspaceLine = formatWorkspaceMetadata(this.data.workspaceMetadata);
 
     this.clear();
     this.addChild(new Spacer(1));
 
-    if (workspaceLine && !logoRegistered) {
+    if (workspaceLine) {
       this.addChild(
         new Text(
-          `${this.theme.fg("accent", logo)} ${this.theme.fg("success", workspaceLine)}`,
+          `${this.theme.fg("accent", LOGO)} ${this.theme.fg("success", workspaceLine)}`,
           1,
           0,
         ),
       );
     } else {
-      this.addChild(new Text(this.theme.fg("accent", logo), 1, 0));
-    }
-
-    if (workspaceLine && logoRegistered) {
-      this.addChild(new Text(this.theme.fg("success", workspaceLine), 1, 0));
+      this.addChild(new Text(this.theme.fg("accent", LOGO), 1, 0));
     }
 
     this.addChild(new Spacer(1));
-
-    if (!this.expanded) return;
-
-    if (commands.length > 0) {
-      this.addChild(new Text(this.theme.fg("muted", "Commands"), 1, 0));
-      for (const command of commands) {
-        this.addChild(
-          new Text(rawKeyHint(`/${command.name}`, command.description), 1, 0),
-        );
-      }
-      this.addChild(new Spacer(1));
-    }
-
-    if (shortcuts.length > 0) {
-      this.addChild(new Text(this.theme.fg("muted", "Shortcuts"), 1, 0));
-      for (const shortcut of shortcuts) {
-        this.addChild(
-          new Text(rawKeyHint(shortcut.key, shortcut.description), 1, 0),
-        );
-      }
-      this.addChild(new Spacer(1));
-    }
-
-    if (completions.length > 0) {
-      this.addChild(new Text(this.theme.fg("muted", "Completions"), 1, 0));
-      for (const completion of completions) {
-        this.addChild(
-          new Text(
-            rawKeyHint(completion.trigger, completion.description),
-            1,
-            0,
-          ),
-        );
-      }
-      this.addChild(new Spacer(1));
-    }
   }
-}
-
-export function createHeaderComponent(
-  theme: Theme,
-  data: HeaderData,
-): HeaderComponent {
-  return new HeaderComponent(theme, data);
 }
 
 export function createCustomHeader() {
@@ -164,7 +96,7 @@ export function createCustomHeader() {
 
       currentData = data;
       ctx.ui.setHeader((_tui: unknown, theme: Theme) => {
-        component = createHeaderComponent(theme, data);
+        component = new HeaderComponent(theme, data);
         return component;
       });
     },

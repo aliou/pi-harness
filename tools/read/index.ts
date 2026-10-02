@@ -17,21 +17,15 @@ import {
   SettingsManager,
 } from "@earendil-works/pi-coding-agent";
 import { Markdown, Text } from "@earendil-works/pi-tui";
-import {
-  convertBmpToPng,
-  detectImageMimeType,
-  isBmpBuffer,
-} from "@harness/image-formats";
 import { SkillDescriptionPreviewComponent } from "@harness/ui";
 import { parseSkillDescription } from "@harness/utils";
 
 /**
- * Override the built-in read tool to handle directories, BMP images, and
- * markdown rendering.
+ * Override the built-in read tool to handle directories and markdown
+ * rendering.
  *
  * - If the path is a directory, delegate to the native `ls` tool instead of
  *   throwing EISDIR.
- * - BMP files are converted to PNG before upstream image processing.
  * - Markdown files (`.md`, `.markdown`) are rendered as formatted markdown
  *   (headings, lists, code blocks, links) when expanded and non-error. All
  *   other cases delegate to the native read renderer, so non-markdown files
@@ -47,10 +41,6 @@ export default function (pi: ExtensionAPI): void {
   pi.registerTool({
     ...nativeDef,
     annotations: { readOnlyHint: true, openWorldHint: false },
-    description: nativeDef.description.replace(
-      /\(jpg, png, gif, webp\)/,
-      "(jpg, png, gif, webp, bmp)",
-    ),
     async execute(toolCallId, params, signal, onUpdate, ctx) {
       const { path } = params;
       const absolutePath = resolve(ctx.cwd, path);
@@ -131,18 +121,7 @@ function createNativeReadTool(cwd: string) {
     autoResizeImages,
     operations: {
       access: (absolutePath) => fsAccess(absolutePath, constants.R_OK),
-      readFile: async (absolutePath) => {
-        const buffer = await fsReadFile(absolutePath);
-        if (isBmpBuffer(buffer)) {
-          return convertBmpToPng(buffer);
-        }
-        return buffer;
-      },
-      detectImageMimeType: async (absolutePath) => {
-        const mime = await detectImageMimeType(absolutePath);
-        // Report BMP as PNG because the bytes we hand to upstream are PNG.
-        return mime === "image/bmp" ? "image/png" : mime;
-      },
+      readFile: (absolutePath) => fsReadFile(absolutePath),
     },
   });
 }

@@ -6,26 +6,21 @@ interface OpenAIReasoning {
 }
 
 export interface OpenAIResponsesPayload {
-  model?: unknown;
   reasoning?: OpenAIReasoning;
   [key: string]: unknown;
 }
 
-const GPT_56_MODELS = new Set([
-  "gpt-5.6",
-  "gpt-5.6-sol",
-  "gpt-5.6-terra",
-  "gpt-5.6-luna",
-]);
-
+/**
+ * Request detailed reasoning summaries on every Responses-API call that
+ * carries a `reasoning` object (i.e. reasoning effort was requested). Pi
+ * defaults `summary` to "auto"; "detailed" yields the longer thinking blocks.
+ * Only Responses-API payloads have this shape, so no model-id check is
+ * needed.
+ */
 export function injectDetailedReasoningSummary(
   payload: OpenAIResponsesPayload,
 ): OpenAIResponsesPayload {
-  if (
-    typeof payload.model !== "string" ||
-    !GPT_56_MODELS.has(payload.model) ||
-    !payload.reasoning
-  ) {
+  if (!payload.reasoning) {
     return payload;
   }
 

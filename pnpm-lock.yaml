@@ -100,9 +100,6 @@ importers:
       vitest:
         specifier: ^4.1.10
         version: 4.1.10(@opentelemetry/api@1.9.0)(@types/node@22.19.7)(vite@7.3.1(@types/node@22.19.7)(jiti@2.7.0)(lightningcss@1.31.1)(tsx@4.21.0)(yaml@2.9.0))
-      vitest-evals:
-        specifier: ^0.15.0
-        version: 0.15.0(tinyrainbow@3.1.0)(vitest@4.1.10(@opentelemetry/api@1.9.0)(@types/node@22.19.7)(vite@7.3.1(@types/node@22.19.7)(jiti@2.7.0)(lightningcss@1.31.1)(tsx@4.21.0)(yaml@2.9.0)))(zod@4.4.3)
 
   packages/agent-kit:
     dependencies:
@@ -1241,12 +1238,6 @@ packages:
   '@types/retry@0.12.0':
     resolution: {integrity: sha512-wWKOClTTiizcZhXnPY4wikVAwmdYHp8q6DmC+EJUzAMsycb7HB32Kh9RN4+0gExjmPmZSAQjgURXIGATPegAvA==}
 
-  '@vitest-evals/core@0.15.0':
-    resolution: {integrity: sha512-kqyg3ocVtZxr3rP9oh01oAycRgXNRasvTgLZ8MbFGBJ4BRd4tk7Bgww253HY7fw7ZFUp4UPYNmDp5AcHajm++w==}
-
-  '@vitest-evals/report-ui@0.15.0':
-    resolution: {integrity: sha512-icrutiRhZ2T1MrHo2RW09hcEwfi/tV/FgsGAE76Wd0C02tZyCleQRjt11RWhBJiYDPpsjjjTHGCHIO6tmtX5zQ==}
-
   '@vitest/expect@4.1.10':
     resolution: {integrity: sha512-YsCn+qAk1GWjQOWFEsEcL2gNQ0zmVmQu3T03qP6UyjhtmdtwtbuI+DASn/7iQB3HGTXkdBwGddzxPlmiql5vlA==}
 
@@ -1810,20 +1801,6 @@ packages:
       tsx:
         optional: true
       yaml:
-        optional: true
-
-  vitest-evals@0.15.0:
-    resolution: {integrity: sha512-bOYALQdLXKYFRCV8aQ+yLeH7XkmYsTxUWQxLHzJdIEcIBx2v/kPgG3Zg6m231jMCphuoM6xH4YQB3+0pDP7LLw==}
-    hasBin: true
-    peerDependencies:
-      ai: '>=4 <7'
-      tinyrainbow: '>=2 <4'
-      vitest: '>=4 <5'
-      zod: '>=3 <5'
-    peerDependenciesMeta:
-      ai:
-        optional: true
-      zod:
         optional: true
 
   vitest@4.1.10:
@@ -2780,14 +2757,6 @@ snapshots:
 
   '@types/retry@0.12.0': {}
 
-  '@vitest-evals/core@0.15.0':
-    dependencies:
-      zod: 4.4.3
-
-  '@vitest-evals/report-ui@0.15.0':
-    dependencies:
-      '@vitest-evals/core': 0.15.0
-
   '@vitest/expect@4.1.10':
     dependencies:
       '@standard-schema/spec': 1.1.0
@@ -3388,15 +3357,6 @@ snapshots:
       tsx: 4.21.0
       yaml: 2.9.0
 
-  vitest-evals@0.15.0(tinyrainbow@3.1.0)(vitest@4.1.10(@opentelemetry/api@1.9.0)(@types/node@22.19.7)(vite@7.3.1(@types/node@22.19.7)(jiti@2.7.0)(lightningcss@1.31.1)(tsx@4.21.0)(yaml@2.9.0)))(zod@4.4.3):
-    dependencies:
-      '@vitest-evals/core': 0.15.0
-      '@vitest-evals/report-ui': 0.15.0
-      tinyrainbow: 3.1.0
-      vitest: 4.1.10(@opentelemetry/api@1.9.0)(@types/node@22.19.7)(vite@7.3.1(@types/node@22.19.7)(jiti@2.7.0)(lightningcss@1.31.1)(tsx@4.21.0)(yaml@2.9.0))
-    optionalDependencies:
-      zod: 4.4.3
-
   vitest@4.1.10(@opentelemetry/api@1.9.0)(@types/node@22.19.7)(vite@7.3.1(@types/node@22.19.7)(jiti@2.7.0)(lightningcss@1.31.1)(tsx@4.21.0)(yaml@2.9.0)):
     dependencies:
       '@vitest/expect': 4.1.10
@@ -3468,4 +3428,5 @@ snapshots:
 
   yaml@2.9.0: {}
 
-  zod@4.4.3: {}
+  zod@4.4.3:
+    optional: true

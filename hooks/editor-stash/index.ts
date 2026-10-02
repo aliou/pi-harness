@@ -1,10 +1,7 @@
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import {
   AD_EDITOR_STASH_CHANGED_EVENT,
-  AD_HEADER_COLLECT_EVENT,
-  AD_HEADER_REGISTER_SHORTCUT_EVENT,
   type AdEditorStashChangedEvent,
-  once,
 } from "@harness/events";
 import {
   determineAction,
@@ -68,12 +65,5 @@ export default function editorStashHook(pi: ExtensionAPI): void {
   pi.on("session_start", async (_event, ctx) => {
     const entries = ctx.sessionManager.getEntries();
     emitStashState(pi, isLastEntryStashWithContent(entries));
-  });
-
-  once(pi, AD_HEADER_COLLECT_EVENT, () => {
-    pi.events.emit(AD_HEADER_REGISTER_SHORTCUT_EVENT, {
-      key: "ctrl+shift+s",
-      description: "stash/unstash editor",
-    });
   });
 }

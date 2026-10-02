@@ -34,11 +34,6 @@
 
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import {
-  AD_HEADER_COLLECT_EVENT,
-  AD_HEADER_REGISTER_COMPLETION_EVENT,
-  once,
-} from "@harness/events";
-import {
   getCompletionConfigPath,
   type ResolvedPinnedSkills,
   type ResolvedSkillsRoots,
@@ -81,13 +76,6 @@ export default async function (pi: ExtensionAPI) {
     SKILL_INVOCATION_MESSAGE_TYPE,
     renderSkillInvocation,
   );
-
-  once(pi, AD_HEADER_COLLECT_EVENT, () => {
-    pi.events.emit(AD_HEADER_REGISTER_COMPLETION_EVENT, {
-      trigger: "?",
-      description: "insert skill",
-    });
-  });
 
   pi.on("input", (event, ctx) => {
     if (skillsRoots.length === 0 && pinnedSkills.length === 0) {

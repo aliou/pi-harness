@@ -1,11 +1,4 @@
-import {
-  createEventBus,
-  type ExtensionAPI,
-} from "@earendil-works/pi-coding-agent";
-import {
-  AD_HEADER_COLLECT_EVENT,
-  AD_HEADER_REGISTER_COMMAND_EVENT,
-} from "@harness/events";
+import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import setupProceedCommand, { PROCEED_DESCRIPTION } from "./index";
 
@@ -13,13 +6,10 @@ function createMockPi() {
   return {
     on: vi.fn(),
     registerCommand: vi.fn(),
-    registerShortcut: vi.fn(),
     sendMessage: vi.fn(),
-    events: createEventBus(),
   } as unknown as ExtensionAPI & {
     on: ReturnType<typeof vi.fn>;
     registerCommand: ReturnType<typeof vi.fn>;
-    registerShortcut: ReturnType<typeof vi.fn>;
     sendMessage: ReturnType<typeof vi.fn>;
   };
 }
@@ -35,14 +25,7 @@ function getContextHandler(pi: ReturnType<typeof createMockPi>) {
 function getCommandHandler(pi: ReturnType<typeof createMockPi>) {
   const call = pi.registerCommand.mock.calls[0];
   if (!call) throw new Error("command not registered");
-  return call[1].handler as (
-    args: string,
-    ctx: {
-      ui: { notify: ReturnType<typeof vi.fn> };
-      isIdle: () => boolean;
-      sessionManager: { getEntries: () => unknown[] };
-    },
-  ) => Promise<void>;
+  return call[1].handler as () => Promise<void>;
 }
 
 describe("/proceed command", () => {
@@ -63,28 +46,10 @@ describe("/proceed command", () => {
     );
   });
 
-  it("registers itself in the header", () => {
-    const emitSpy = vi.spyOn(pi.events, "emit");
-    pi.events.emit(AD_HEADER_COLLECT_EVENT, undefined);
-
-    expect(emitSpy).toHaveBeenCalledWith(
-      AD_HEADER_REGISTER_COMMAND_EVENT,
-      expect.objectContaining({
-        name: "proceed",
-        description: expect.any(String),
-      }),
-    );
-  });
-
   it("sends a hidden custom message that triggers a follow-up turn", async () => {
     const handler = getCommandHandler(pi);
-    const ctx = {
-      ui: { notify: vi.fn() },
-      isIdle: () => true,
-      sessionManager: { getEntries: () => [] },
-    };
 
-    await handler("", ctx);
+    await handler();
 
     expect(pi.sendMessage).toHaveBeenCalledTimes(1);
     expect(pi.sendMessage).toHaveBeenCalledWith(
@@ -117,51 +82,5 @@ describe("/proceed command", () => {
     const result = handler({ messages: [user] });
 
     expect(result).toBeUndefined();
-  });
-
-  it("shows status with idle state and last assistant text", async () => {
-    const handler = getCommandHandler(pi);
-    const notify = vi.fn();
-    const ctx = {
-      ui: { notify },
-      isIdle: () => false,
-      sessionManager: {
-        getEntries: () => [
-          { type: "message", message: { role: "user", content: "hi" } },
-          {
-            type: "message",
-            message: { role: "assistant", content: "working" },
-          },
-        ],
-      },
-    };
-
-    await handler("status", ctx);
-
-    expect(notify).toHaveBeenCalledWith(
-      expect.stringContaining("Agent idle: no"),
-      "info",
-    );
-    expect(notify).toHaveBeenCalledWith(
-      expect.stringContaining("Last assistant: working"),
-      "info",
-    );
-  });
-
-  it("shows help text", async () => {
-    const handler = getCommandHandler(pi);
-    const notify = vi.fn();
-    const ctx = {
-      ui: { notify },
-      isIdle: () => true,
-      sessionManager: { getEntries: () => [] },
-    };
-
-    await handler("help", ctx);
-
-    expect(notify).toHaveBeenCalledWith(
-      expect.stringContaining("/proceed"),
-      "info",
-    );
   });
 });
