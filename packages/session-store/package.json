@@ -9,7 +9,7 @@
     "./schema": "./schema.ts"
   },
   "dependencies": {
-    "@aliou/sesame": "^0.13.0",
+    "@aliou/sesame": "^0.14.1",
     "@earendil-works/pi-coding-agent": "*",
     "@harness/utils": "workspace:*",
     "typebox": "*"

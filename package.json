@@ -33,7 +33,7 @@
   },
   "dependencies": {
     "@aliou/pi-utils-ui": "^0.4.1",
-    "@aliou/sesame": "^0.13.0",
+    "@aliou/sesame": "^0.14.1",
     "@aliou/sh": "^0.2.0",
     "@harness/agent-kit": "workspace:*",
     "@harness/audio-player": "workspace:*",

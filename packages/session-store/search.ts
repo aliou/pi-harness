@@ -17,13 +17,14 @@ import type {
 
 /** Map our SearchOptions to sesame's SearchOptions. */
 function toSesameOptions(options: SearchOptions): SesameSearchOptions {
-  const { cwd, after, before, limit } = options;
+  const { cwd, after, before, limit, via } = options;
 
   return {
     cwd,
     after: toSesameDate(after),
     before: toSesameDate(before),
     limit,
+    via,
   };
 }
 

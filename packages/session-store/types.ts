@@ -31,6 +31,8 @@ export interface SearchOptions {
   after?: string;
   before?: string;
   limit?: number;
+  /** Only sessions with tool calls that ran nested inside this tool (e.g. "codemode"). */
+  via?: string;
 }
 
 /** Options for listSessions. */

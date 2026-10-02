@@ -50,6 +50,12 @@ const FindSessionsParams = Type.Object({
       maximum: 100,
     }),
   ),
+  via: Type.Optional(
+    Type.String({
+      description:
+        "Only sessions with tool calls that ran nested inside this tool (e.g. 'codemode' for pi codemode scripts)",
+    }),
+  ),
 });
 
 interface FindSessionsDetails {
@@ -59,6 +65,7 @@ interface FindSessionsDetails {
     after?: string;
     before?: string;
     limit?: number;
+    via?: string;
   };
   resultCount: number;
   results: SessionResult[];
@@ -216,7 +223,7 @@ Uses Sesame indexed search.`,
     _onUpdate,
     ctx,
   ): Promise<ExecuteResult> {
-    const { cwd, after, before, limit } = params;
+    const { cwd, after, before, limit, via } = params;
     const query = params.query?.trim() || undefined;
 
     // Get current session ID to filter it out
@@ -229,6 +236,7 @@ Uses Sesame indexed search.`,
       after,
       before,
       limit: limit || 10,
+      via,
     };
 
     // Execute search
@@ -264,7 +272,7 @@ Uses Sesame indexed search.`,
       structuredContent: output,
       details: {
         query,
-        filters: { cwd, after, before, limit: limit || 10 },
+        filters: { cwd, after, before, limit: limit || 10, via },
         resultCount: results.length,
         results,
       },
@@ -287,6 +295,7 @@ Uses Sesame indexed search.`,
           ...(args.cwd ? [{ label: "cwd", value: args.cwd }] : []),
           ...(args.after ? [{ label: "after", value: args.after }] : []),
           ...(args.before ? [{ label: "before", value: args.before }] : []),
+          ...(args.via ? [{ label: "via", value: args.via }] : []),
         ],
         longArgs:
           query && query.length > 70

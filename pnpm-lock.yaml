@@ -19,8 +19,8 @@ importers:
         specifier: ^0.4.1
         version: 0.4.1(@earendil-works/pi-coding-agent@1.0.0(@aws-sdk/credential-provider-node@3.972.83)(@smithy/signature-v4@5.7.3)(ws@8.21.0)(zod@4.4.3))(@earendil-works/pi-tui@1.0.0)
       '@aliou/sesame':
-        specifier: ^0.13.0
-        version: 0.13.0
+        specifier: ^0.14.1
+        version: 0.14.1
       '@aliou/sh':
         specifier: ^0.2.0
         version: 0.2.0
@@ -158,8 +158,8 @@ importers:
   packages/session-store:
     dependencies:
       '@aliou/sesame':
-        specifier: ^0.13.0
-        version: 0.13.0
+        specifier: ^0.14.1
+        version: 0.14.1
       '@earendil-works/pi-coding-agent':
         specifier: 1.0.0
         version: 1.0.0(@aws-sdk/credential-provider-node@3.972.83)(@smithy/signature-v4@5.7.3)(ws@8.21.0)(zod@4.4.3)
@@ -234,8 +234,8 @@ packages:
       '@earendil-works/pi-tui':
         optional: true
 
-  '@aliou/sesame@0.13.0':
-    resolution: {integrity: sha512-Fs/aRGeG7RZuxNGFI+l3tt3zUQTmUT82RYHHcNS5993KLFA1IXDRNGWn5qFodoqV6ktsOLxqSw+jPPMmsPuP3g==}
+  '@aliou/sesame@0.14.1':
+    resolution: {integrity: sha512-JRDKwZgOvyhFpc2BmmWitj4+G1GxqDsZleN9zBO+/d9fu2D8/KEnh+dM1gtEZ/JKPYyZ+yRCHtMd/DywVBgSsg==}
     engines: {node: '>=26.0.0'}
 
   '@aliou/sh@0.2.0':
@@ -1889,7 +1889,7 @@ snapshots:
       '@earendil-works/pi-coding-agent': 1.0.0(@aws-sdk/credential-provider-node@3.972.83)(@smithy/signature-v4@5.7.3)(ws@8.21.0)(zod@4.4.3)
       '@earendil-works/pi-tui': 1.0.0
 
-  '@aliou/sesame@0.13.0': {}
+  '@aliou/sesame@0.14.1': {}
 
   '@aliou/sh@0.2.0': {}
 
