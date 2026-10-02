@@ -24,6 +24,11 @@ import {
   NVIM_UNDO_REGISTER_TOOL_EVENT,
   NVIM_UNDO_REQUEST_TOOLS_EVENT,
 } from "@harness/events";
+import {
+  type BranchEntryLike,
+  effectiveModelIdentity,
+  type ModelIdentity,
+} from "@harness/models";
 import { enableStrictOnEditTool } from "./anthropic/strict";
 import { createApplyPatchToolDefinition } from "./apply-patch/tool";
 import { resolveApplyPatch } from "./apply-patch/undo";
@@ -54,9 +59,19 @@ function registerEditDefinition(
   }
 }
 
-/** Swap the active edit interface to match the active model. */
-function routeEditTool(pi: ExtensionAPI, model: unknown): void {
-  const desired = pickEditTool(model as Parameters<typeof pickEditTool>[0]);
+/**
+ * Swap the active edit interface to match the active model. Under a virtual
+ * (alias) selection the rules apply to the routed physical model; an alias
+ * that never answered on this branch leaves the interface as it is.
+ */
+function routeEditTool(
+  pi: ExtensionAPI,
+  model: (ModelIdentity & { api?: string }) | undefined,
+  branch: readonly BranchEntryLike[],
+): void {
+  const identity = effectiveModelIdentity(model, branch);
+  if (!identity) return;
+  const desired = pickEditTool(identity);
   if (desired === currentChoice) return;
 
   registerEditDefinition(pi, desired);
@@ -92,17 +107,17 @@ export default function editTool(pi: ExtensionAPI): void {
   pi.events.on(NVIM_UNDO_REQUEST_TOOLS_EVENT, registerApplyPatchUndoHandle);
 
   pi.on("session_start", (_event, ctx) => {
-    routeEditTool(pi, ctx.model);
+    routeEditTool(pi, ctx.model, ctx.sessionManager.getBranch());
   });
 
-  pi.on("model_select", (event) => {
-    routeEditTool(pi, event.model);
+  pi.on("model_select", (event, ctx) => {
+    routeEditTool(pi, event.model, ctx.sessionManager.getBranch());
   });
 
   // Backstop: ensure routing is correct before the first turn even if
   // `session_start` ran before a model was selected.
   pi.on("agent_start", (_event, ctx) => {
-    routeEditTool(pi, ctx.model);
+    routeEditTool(pi, ctx.model, ctx.sessionManager.getBranch());
   });
 
   // Anthropic strict tool-use: grammar-constrain the `edit` tool's output so
@@ -114,7 +129,11 @@ export default function editTool(pi: ExtensionAPI): void {
   // always selects the `edit` interface for Anthropic models, so the tool set
   // already contains `edit` when this fires.
   pi.on("before_provider_request", (event, ctx) => {
-    if (!isAnthropicModel(ctx.model)) return;
+    const identity = effectiveModelIdentity(
+      ctx.model,
+      ctx.sessionManager.getBranch(),
+    );
+    if (!isAnthropicModel(identity)) return;
     return enableStrictOnEditTool(event.payload);
   });
 }

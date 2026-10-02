@@ -2,6 +2,11 @@ import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { createSubagent, loadAgentsFilesFromCwd } from "@harness/agent-kit";
 import type { SubagentToolSpec } from "@harness/agent-kit/types";
 import {
+  type BranchEntryLike,
+  effectiveModelIdentity,
+  type ModelIdentity,
+} from "@harness/models";
+import {
   configuredSubagent,
   getSubagentModelPreferences,
 } from "@harness/subagent-models";
@@ -97,13 +102,21 @@ export default async function advisor(pi: ExtensionAPI): Promise<void> {
   if (!subagent.configured) return;
 
   // Same pattern as the look_at tool: keep the advisor tools active unless
-  // the session model belongs to a family that should not use them.
+  // the session model belongs to a family that should not use them. Under a
+  // virtual (alias) selection the family lives on the routed physical model;
+  // an alias that never answered on this branch leaves the tools as they are.
+  const syncTools = (
+    model: (ModelIdentity & { api?: string }) | undefined,
+    branch: readonly BranchEntryLike[],
+  ): void => {
+    const identity = effectiveModelIdentity(model, branch);
+    if (!identity) return;
+    disablesAdvisorTools(identity) ? disableTools(pi) : enableTools(pi);
+  };
   pi.on("agent_start", (_event, ctx) => {
-    const model = ctx.model;
-    if (!model) return;
-    disablesAdvisorTools(model) ? disableTools(pi) : enableTools(pi);
+    syncTools(ctx.model, ctx.sessionManager.getBranch());
   });
-  pi.on("model_select", (event) => {
-    disablesAdvisorTools(event.model) ? disableTools(pi) : enableTools(pi);
+  pi.on("model_select", (event, ctx) => {
+    syncTools(event.model, ctx.sessionManager.getBranch());
   });
 }

@@ -192,7 +192,7 @@ Subagents default to the parent session cwd. If a subagent accepts an invocation
 
 | Directory | Purpose | Key files |
 |---|---|---|
-| `aliases/` | Virtual models under the `latest` and `profile` providers. Routing is purely model-id based: no real provider names appear in the extension, and a candidate is any model whose normalized id matches the entry's anchored pattern on a provider with configured auth. `latest/*` entries (`latest/kimi`, `latest/glm-flash`, `latest/claude-opus`, ...) capture the version in the pattern and pick the highest one, so they pick up new versions once the registry exposes them (models hidden by Aperture never match). `profile/*` entries (`profile/large`, `profile/flash`, `profile/small`) pin one exact model id; bumping is a manual edit, usually after trying the `latest` equivalent, so the two can lag each other by design. Candidates tied on version are picked at random; the pick stays sticky for the session via Pi's virtual-model router state | `table.ts`, `route.ts` |
+| `aliases/` | Virtual models under the `latest` and `profile` providers. Routing is purely model-id based: no real provider names appear in the extension, and a candidate is any model whose normalized id matches the entry's anchored pattern on a provider with configured auth. `latest/*` entries (`latest/kimi`, `latest/glm-flash`, `latest/claude-opus`, ...) capture the version in the pattern and pick the highest one, so they pick up new versions once the registry exposes them (models hidden by Aperture never match). `profile/*` entries (`profile/large`, `profile/flash`, `profile/small`) pin one exact model id; bumping is a manual edit, usually after trying the `latest` equivalent, so the two can lag each other by design. Candidates tied on version are picked at random; the pick stays sticky for the session via Pi's virtual-model router state. Under an alias selection `ctx.model` is the virtual model with provider `latest`/`profile`, so model- and family-keyed behavior (edit interface, advisor/oracle visibility, provider tweaks) resolves the routed physical model with `effectiveModelIdentity` from `@harness/models`, which reads the sticky route state from the session branch and returns undefined until the alias first answers | `table.ts`, `route.ts` |
 
 ## Development
 
@@ -234,7 +234,7 @@ Workspace packages:
 | `packages/completion/` | `@harness/completion` | Completion logic |
 | `packages/events/` | `@harness/events` | Shared event names and event payload types |
 | `packages/image-formats/` | `@harness/image-formats` | Image MIME detection and format conversion |
-| `packages/models/` | `@harness/models` | Model identity helpers (`ModelIdentity`, `knownModelFamily`, `modelKey`) |
+| `packages/models/` | `@harness/models` | Model identity helpers (`ModelIdentity`, `knownModelFamily`, `modelKey`) and `effectiveModelIdentity`, which resolves the routed physical model for virtual (alias) selections from the session branch |
 | `packages/session-store/` | `@harness/session-store` | Session directory access, Sesame search, listing, and the session summary schema shared by `find_sessions` and `list_sessions` |
 | `packages/session-tools/` | `@harness/session-tools` | Pi-agnostic session entry indexing, branch/tree traversal, and bounded read-session helpers |
 | `packages/subagent-models/` | `@harness/subagent-models` | Global subagent model roster config (`settings/subagent-models.json`), async loader, and disabled-subagent registration helper |

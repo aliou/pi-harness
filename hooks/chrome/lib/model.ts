@@ -1,4 +1,7 @@
 import type { Theme, ThemeColor } from "@earendil-works/pi-coding-agent";
+import { isVirtualModel } from "@harness/models";
+
+export { isVirtualModel };
 
 const THINKING_LEVEL_COLOR_MAP: Record<string, ThemeColor> = {
   off: "thinkingOff",
@@ -11,13 +14,6 @@ const THINKING_LEVEL_COLOR_MAP: Record<string, ThemeColor> = {
 
 function thinkingLevelToColorToken(level: string): ThemeColor {
   return THINKING_LEVEL_COLOR_MAP[level] ?? "thinkingMinimal";
-}
-
-/** `Model.api` of virtual models (Pi's `VIRTUAL_MODEL_API`, not exported). */
-const VIRTUAL_MODEL_API = "pi-virtual";
-
-export function isVirtualModel(model: { api: string } | undefined): boolean {
-  return model?.api === VIRTUAL_MODEL_API;
 }
 
 interface BranchEntryLike {
