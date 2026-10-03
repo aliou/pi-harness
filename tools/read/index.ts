@@ -13,6 +13,7 @@ import type {
 import {
   createLsTool,
   createReadToolDefinition,
+  detectSupportedImageMimeTypeFromFile,
   getMarkdownTheme,
   SettingsManager,
 } from "@earendil-works/pi-coding-agent";
@@ -122,6 +123,9 @@ function createNativeReadTool(cwd: string) {
     operations: {
       access: (absolutePath) => fsAccess(absolutePath, constants.R_OK),
       readFile: (absolutePath) => fsReadFile(absolutePath),
+      // Passing `operations` replaces upstream defaults wholesale; without
+      // this, mimeType is undefined and every file is read as text.
+      detectImageMimeType: detectSupportedImageMimeTypeFromFile,
     },
   });
 }
