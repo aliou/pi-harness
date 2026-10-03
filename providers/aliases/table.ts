@@ -26,6 +26,26 @@
  * the highest version. Candidates tied on version are picked at random. To
  * pin a provider, select the concrete model on that provider instead of the
  * alias.
+ *
+ * Consumer contract (relied on by pi-rig's `@rig/models` and provider-gated
+ * hooks):
+ *
+ * - Virtuality is the only safe discriminator: alias selections carry
+ *   `api: "pi-virtual"`. The listing provider (`latest`, `profile`, or a
+ *   forced physical provider name such as `openai`) is a namespace and
+ *   never identifies the routed provider. Consumers must resolve through
+ *   the sticky route state before any provider or id check.
+ * - Alias ids are stable family names (`claude-opus`, `gpt-sol`, `kimi`,
+ *   ...) regardless of the listing provider: forcing the provider changes
+ *   the namespace, never the id. `profile` ids name task shapes and imply
+ *   nothing about the routed family.
+ * - Fast-capability is a family property: `claude-opus` and `gpt-*` aliases
+ *   only route to fast-capable families, so consumers may open fast mode on
+ *   the selection alone. Whether fast actually applies is still decided per
+ *   request from the routed model and its auth.
+ * - The sticky route state (`{ provider, modelId }` on
+ *   `pi.virtual-model-state` entries) is the canonical handoff to
+ *   consumers; the latest matching entry on the branch wins.
  */
 export interface RoutedModelDefinition {
   /** Virtual provider the model lives under (`latest`, `profile`). */
