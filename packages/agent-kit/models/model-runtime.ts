@@ -4,12 +4,13 @@ import {
   type ModelRegistry,
   ModelRuntime,
 } from "@earendil-works/pi-coding-agent";
+import { isVirtualModel } from "@harness/models";
 
 type CreateModelRuntime = typeof ModelRuntime.create;
 
 /**
- * Build an SDK model runtime that inherits the selected provider's current
- * extension registration and resolved parent-session credential.
+ * Physical selections inherit one provider; virtual selections inherit the
+ * parent's available physical providers. Routes load through the child loader.
  */
 export async function createSubagentModelRuntime(
   registry: ModelRegistry,
@@ -17,6 +18,23 @@ export async function createSubagentModelRuntime(
   createRuntime: CreateModelRuntime = ModelRuntime.create,
 ): Promise<ModelRuntime> {
   const runtime = await createRuntime();
+  const models = isVirtualModel(model)
+    ? registry.getAvailable().filter((candidate) => !isVirtualModel(candidate))
+    : [model];
+  const providers = new Map(
+    models.map((candidate) => [candidate.provider, candidate]),
+  );
+  for (const candidate of providers.values()) {
+    await inheritProvider(runtime, registry, candidate);
+  }
+  return runtime;
+}
+
+async function inheritProvider(
+  runtime: ModelRuntime,
+  registry: ModelRegistry,
+  model: Model<Api>,
+): Promise<void> {
   // All first-party providers register natively (pi.registerProvider(provider)
   // routes to registerNativeProvider), so copying the native registration is
   // the single inheritance path. It also carries aperture-wrapped providers
@@ -39,6 +57,4 @@ export async function createSubagentModelRuntime(
       if (!(error instanceof CredentialSynchronizationError)) throw error;
     }
   }
-
-  return runtime;
 }

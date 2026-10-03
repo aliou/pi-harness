@@ -19,7 +19,6 @@
     "evals/**/*.ts",
     "hooks/**/*.ts",
     "packages/**/*.ts",
-    "providers/**/*.ts",
     "tests/**/*.ts",
     "tools/**/*.ts"
   ]

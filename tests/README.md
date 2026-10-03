@@ -21,7 +21,7 @@ it("registers the tool", () => {
 
 Pass your extension's setup function (the `ExtensionFactory`) to `createPiTestHarness`. It loads the extension through `loadExtensionFromFactory`, the same code path Pi uses at runtime.
 
-`tests/vitest.setup.ts` mocks `node:fs` and `node:fs/promises` with `memfs` for the whole suite, resets the volume before each test, and creates the virtual system temp directory. The harness creates its default cwd in that volume. Seed fixtures with `vol.fromJSON()`; tests that need a fixed home or temp path can mock `node:os` locally. A spawned shell or `rg` process cannot see memfs. `tools/bash/index.test.ts` and `tools/scout/tools/grep.test.ts` unmock `node:fs`, create temporary host directories, and run their real subprocesses.
+`tests/vitest.setup.ts` mocks `node:fs` and `node:fs/promises` with `memfs` for the whole suite, resets the volume before each test, and creates the virtual system temp directory. The harness creates its default cwd in that volume. Seed fixtures with `vol.fromJSON()`; tests that need a fixed home or temp path can mock `node:os` locally. A spawned shell or `rg` process cannot see memfs. `tools/bash/index.test.ts` and `tools/scout/tools/grep.test.ts` unmock `node:fs`, create temporary host directories, and run their real subprocesses. `packages/agent-kit/resources/virtual-models.integration.test.ts` also uses a temporary host directory because Pi's externalized package resolver reads the real filesystem. The unit config excludes `node_modules` so workspace symlinks do not duplicate tests.
 
 ## Testing tools
 

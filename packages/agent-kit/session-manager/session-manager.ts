@@ -20,6 +20,7 @@ import {
   type SubagentSkippedModel,
 } from "../models";
 import { SubagentResourceLoader } from "../resources/loader";
+import { virtualModelExtensionPaths } from "../resources/virtual-models";
 import {
   SUBAGENT_SESSION_CUSTOM_TYPE,
   type SubagentSessionRecord,
@@ -240,6 +241,11 @@ export class SubagentSessionManager<Params extends TSchema = TSchema> {
       .filter((tool) => tool.type === "custom")
       .map((tool) => tool.spec(cwd));
 
+    const routingPaths = await virtualModelExtensionPaths(
+      selection.model,
+      ctx.cwd,
+      getAgentDir(),
+    );
     const resourceLoader = new SubagentResourceLoader(
       cwd,
       this.config.systemPrompt,
@@ -247,6 +253,7 @@ export class SubagentSessionManager<Params extends TSchema = TSchema> {
       mergeExtensionPaths(
         DEFAULT_SUBAGENT_EXTENSION_PATHS,
         this.config.extensionPaths ?? [],
+        routingPaths,
       ),
       getAgentDir(),
       agentsFiles,

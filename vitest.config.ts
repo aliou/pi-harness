@@ -14,12 +14,11 @@ export default defineConfig({
   },
   test: {
     environment: "node",
-    exclude: ["evals/**", "**/*.eval.ts"],
+    exclude: ["evals/**", "**/*.eval.ts", "**/node_modules/**"],
     include: [
       "commands/**/*.test.ts",
       "hooks/**/*.test.ts",
       "packages/**/*.test.ts",
-      "providers/**/*.test.ts",
       "tools/**/*.test.ts",
     ],
     setupFiles: ["./tests/vitest.setup.ts"],

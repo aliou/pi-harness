@@ -18,7 +18,7 @@ export interface BranchEntryLike {
   data?: unknown;
 }
 
-/** Sticky pick `providers/aliases` stores as router state on the branch. */
+/** Physical pick stored by a virtual router on the session branch. */
 interface AliasRouteState {
   provider: string;
   modelId: string;

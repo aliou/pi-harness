@@ -14,7 +14,6 @@ When adding new content or changing existing behavior, update the closest releva
 
 - `commands/` - Slash commands and command-like UI flows.
 - `hooks/` - Event hooks, lifecycle behavior, autocomplete providers, chrome, and background behavior.
-- `providers/` - Provider-level registrations: virtual models and provider-facing routing.
 - `tools/` - Agent tools exposed to Pi sessions.
 - `skills/` - Skills shipped with the harness and loaded via the `pi.skills` manifest entry in `package.json`.
 - `packages/` - Shared internal workspace packages. Each package lives in `packages/<name>/` and is imported through its `@harness/*` workspace package name.
@@ -29,7 +28,6 @@ New functionality should be added as one of:
 
 - `commands/<name>/` for slash commands.
 - `hooks/<name>/` for event-driven behavior, UI chrome, autocomplete, lifecycle hooks, or background observers.
-- `providers/<name>/` for virtual models and provider-level registrations.
 - `tools/<name>/` for agent-callable tools.
 - `packages/<name>/` for shared internal code.
 - `skills/<name>/` for skills shipped with the harness (declared in `package.json` under `pi.skills`).
@@ -96,6 +94,15 @@ Subagent model rosters are not defined in this repository. They live in the glob
 
 `@harness/subagent-models` owns the path, the async cached loader, and validation. Each subagent passes `modelPreferences: () => getSubagentModelPreferences("<name>")` to `createSubagent` and awaits `subagent.ready`. There are no built-in defaults: when the file is missing/invalid or has no roster for a name, the subagent stays disabled — registration is a no-op (via `configuredSubagent`) and the user gets a single session-start warning. Execution-time roster replacement for evals (`SubagentRunOptions.modelPreferences`) is unchanged.
 
+For virtual selections, agent-kit resolves the enabled
+`hooks/virtual-models/index.ts` resource from the installed `@aliou/pi-rig`
+package and passes its absolute path to the child resource loader. It discovers
+resources using the parent cwd and skips missing packages rather than installing
+them. Missing routing resources fail child creation explicitly. The child
+runtime inherits each available physical provider once, while physical
+selections inherit only their selected provider. Pi binds routing to the
+child's context, so pins belong to the child session. Package identity and
+relative extension path live in `packages/agent-kit/resources/virtual-models.ts`.
 
 #### Weight semantics
 
@@ -182,12 +189,6 @@ Subagents default to the parent session cwd. If a subagent accepts an invocation
 | `read-url/` | `read_url` | URL fetch with handler chain and preview |
 | `reviewer/` | `reviewer`, `resume_reviewer` | Zero-shot formal code-review subagent; accepts optional `cwd` so review commands and file reads run in the target repo |
 | `scout/` | `scout`, `resume_scout` | Zero-shot local codebase researcher; grep/find run with capped output readers |
-
-## Providers
-
-| Directory | Purpose | Key files |
-|---|---|---|
-| `aliases/` | Virtual models under the `latest` and `profile` providers. Routing is purely model-id based: no real provider names appear in the extension, and a candidate is any model whose normalized id matches the entry's anchored pattern on a provider with configured auth. `latest/*` entries (`latest/kimi`, `latest/glm-flash`, `latest/claude-opus`, ...) capture the version in the pattern and pick the highest one, so they pick up new versions once the registry exposes them (models hidden by Aperture never match). `profile/*` entries (`profile/large`, `profile/flash`, `profile/small`) pin one exact model id; bumping is a manual edit, usually after trying the `latest` equivalent, so the two can lag each other by design. Candidates tied on version are picked at random; the pick stays sticky for the session via Pi's virtual-model router state. Under an alias selection `ctx.model` is the virtual model with provider `latest`/`profile`, so model- and family-keyed behavior (edit interface, advisor/oracle visibility, provider tweaks) resolves the routed physical model with `effectiveModelIdentity` from `@harness/models`, which reads the sticky route state from the session branch and returns undefined until the alias first answers | `table.ts`, `route.ts` |
 
 ## Development
 

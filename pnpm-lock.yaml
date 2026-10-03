@@ -112,6 +112,9 @@ importers:
       '@earendil-works/pi-tui':
         specifier: 1.0.0
         version: 1.0.0
+      '@harness/models':
+        specifier: workspace:*
+        version: link:../models
       '@harness/subagent-models':
         specifier: workspace:*
         version: link:../subagent-models
