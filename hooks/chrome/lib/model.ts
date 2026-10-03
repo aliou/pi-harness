@@ -3,6 +3,9 @@ import { isVirtualModel } from "@harness/models";
 
 export { isVirtualModel };
 
+/** Thunderbolt marking fast mode; an escape keeps the source ASCII-only. */
+export const FAST_MARK = "\u{26A1}";
+
 const THINKING_LEVEL_COLOR_MAP: Record<string, ThemeColor> = {
   off: "thinkingOff",
   minimal: "thinkingMinimal",
@@ -83,7 +86,7 @@ export function formatRoutedModel(
 
 /**
  * Build model line for footer line 2 right side. A routed model id renders as
- * `alias/claude-opus → claude-opus-5-5:hig`.
+ * `alias/claude-opus → claude-opus-5-5:hig`. Fast mode adds a FAST_MARK prefix.
  */
 export function buildModelLine(
   theme: Theme,
@@ -92,10 +95,12 @@ export function buildModelLine(
   hasReasoning: boolean,
   thinkingLevel: string,
   routedModelId?: string,
+  fast = false,
 ): string {
   const providerName = provider ?? "unknown";
   const routed = routedModelId ? ` → ${routedModelId}` : "";
-  const modelPart = `${providerName}/${modelId ?? "no-model"}${routed}:`;
+  const fastMark = fast ? `${FAST_MARK} ` : "";
+  const modelPart = `${fastMark}${providerName}/${modelId ?? "no-model"}${routed}:`;
 
   if (hasReasoning) {
     const formattedLevel =
@@ -120,6 +125,10 @@ export function buildModelLine(
 export function buildModelIdLine(
   theme: Theme,
   modelId: string | undefined,
+  fast = false,
 ): string {
-  return theme.fg("thinkingMinimal", modelId ?? "no-model");
+  const id = fast
+    ? `${FAST_MARK} ${modelId ?? "no-model"}`
+    : (modelId ?? "no-model");
+  return theme.fg("thinkingMinimal", id);
 }

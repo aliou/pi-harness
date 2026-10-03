@@ -1,6 +1,12 @@
 import type { Theme } from "@earendil-works/pi-coding-agent";
 import { describe, expect, it } from "vitest";
-import { buildModelLine, findRoutedModel, formatRoutedModel } from "./model";
+import {
+  buildModelIdLine,
+  buildModelLine,
+  FAST_MARK,
+  findRoutedModel,
+  formatRoutedModel,
+} from "./model";
 
 const theme = { fg: (_color: string, text: string) => text } as Theme;
 
@@ -82,5 +88,31 @@ describe("buildModelLine", () => {
         "claude-opus-5-5",
       ),
     ).toBe("alias/claude-opus → claude-opus-5-5:hig");
+  });
+
+  it("prefixes a thunderbolt while fast mode is on", () => {
+    expect(
+      buildModelLine(
+        theme,
+        "anthropic",
+        "claude-opus-5-5",
+        true,
+        "high",
+        undefined,
+        true,
+      ),
+    ).toBe(`${FAST_MARK} anthropic/claude-opus-5-5:hig`);
+  });
+});
+
+describe("buildModelIdLine", () => {
+  it("prefixes a thunderbolt while fast mode is on", () => {
+    expect(buildModelIdLine(theme, "claude-opus-5-5", true)).toBe(
+      `${FAST_MARK} claude-opus-5-5`,
+    );
+  });
+
+  it("renders the bare id while fast mode is off", () => {
+    expect(buildModelIdLine(theme, "claude-opus-5-5")).toBe("claude-opus-5-5");
   });
 });

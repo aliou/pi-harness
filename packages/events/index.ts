@@ -48,3 +48,25 @@ export interface WorkspaceMetadata {
 
 export const NVIM_UNDO_REGISTER_TOOL_EVENT = "neovim:undo:register-tool";
 export const NVIM_UNDO_REQUEST_TOOLS_EVENT = "neovim:undo:request-tools";
+
+// pi-rig fast mode (`/fast`, code.378labs.dev/aliou/pi-rig `@rig/types`).
+// The status lives in memory in the rig extension and is broadcast over
+// `pi.events`; it is not written to the session. Vendored here so harness
+// extensions can reflect the toggle without a dependency on the rig repo.
+
+export const FAST_STATUS_CHANGED_EVENT = "rig:fast:status-changed";
+export const FAST_STATUS_REQUEST_EVENT = "rig:fast:status-request";
+
+export interface FastStatus {
+  enabled: boolean;
+  provider?: string;
+}
+
+export interface FastStatusRequest {
+  reply: (status: FastStatus) => void;
+}
+
+export function isFastStatus(value: unknown): value is FastStatus {
+  if (typeof value !== "object" || value === null) return false;
+  return typeof (value as FastStatus).enabled === "boolean";
+}

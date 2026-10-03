@@ -16,6 +16,9 @@ import { truncateToWidth, visibleWidth } from "@earendil-works/pi-tui";
 import {
   AD_EDITOR_STASH_CHANGED_EVENT,
   type AdEditorStashChangedEvent,
+  FAST_STATUS_CHANGED_EVENT,
+  FAST_STATUS_REQUEST_EVENT,
+  isFastStatus,
 } from "@harness/events";
 import { buildStatusLine } from "../lib/extension-status";
 import { GitStatusWatcher } from "../lib/git-status";
@@ -42,11 +45,18 @@ export function createCustomFooter(pi: ExtensionAPI) {
   let requestRender: (() => void) | undefined;
   let gitStatusWatcher: GitStatusWatcher | undefined;
   let stashHasContent = false;
+  let fastEnabled = false;
 
   pi.events.on(AD_EDITOR_STASH_CHANGED_EVENT, (data: unknown) => {
     const event = data as AdEditorStashChangedEvent;
     stashHasContent = event.hasContent;
     if (!ctx) return;
+    requestRender?.();
+  });
+
+  pi.events.on(FAST_STATUS_CHANGED_EVENT, (data: unknown) => {
+    if (!isFastStatus(data)) return;
+    fastEnabled = data.enabled;
     requestRender?.();
   });
 
@@ -163,6 +173,7 @@ export function createCustomFooter(pi: ExtensionAPI) {
       const modelIdLine = buildModelIdLine(
         theme,
         routedModelId ?? ctx.model?.id,
+        fastEnabled,
       );
       line2 = truncateToWidth(modelIdLine, width, "...");
     } else {
@@ -184,6 +195,7 @@ export function createCustomFooter(pi: ExtensionAPI) {
         hasReasoning,
         thinkingLevel ?? "off",
         routedModelId,
+        fastEnabled,
       );
       const modelWidth = visibleWidth(modelLine);
 
@@ -236,6 +248,16 @@ export function createCustomFooter(pi: ExtensionAPI) {
   return {
     setup: (context: ExtensionContext) => {
       ctx = context;
+
+      // Fast mode may have been toggled before this footer subscribed (or in
+      // a previous session of the same process); ask rig for the current
+      // status. The rig handler replies synchronously.
+      pi.events.emit(FAST_STATUS_REQUEST_EVENT, {
+        reply: (status: unknown) => {
+          if (isFastStatus(status)) fastEnabled = status.enabled;
+        },
+      });
+
       ctx.ui.setFooter((tui, theme, footerData) => {
         requestRender = () => tui.requestRender?.();
 

@@ -18,6 +18,12 @@ vi.mock("../lib/git-status", () => ({
   },
 }));
 
+import {
+  FAST_STATUS_CHANGED_EVENT,
+  FAST_STATUS_REQUEST_EVENT,
+  type FastStatusRequest,
+} from "@harness/events";
+import { FAST_MARK } from "../lib/model";
 import { createCustomFooter } from "./footer";
 
 const theme = {
@@ -43,6 +49,7 @@ interface Captured {
 
 interface Fixture {
   component: Captured;
+  notify: (event: string, data: unknown) => void;
   dispose: () => void;
 }
 
@@ -51,7 +58,7 @@ interface Fixture {
  * total cost $0.140, context 5% of a 200k window, model glm-5.2-short.
  */
 function createFixture(
-  options: { statuses?: Map<string, string> } = {},
+  options: { statuses?: Map<string, string>; fastAtSetup?: boolean } = {},
 ): Fixture {
   // First assistant entry is the branch leaf; getBranch() returns it so
   // branchCost diverges from totalCost and the stats line carries the
@@ -89,6 +96,12 @@ function createFixture(
         const list = handlers.get(event) ?? [];
         list.push(handler);
         handlers.set(event, list);
+      }),
+      emit: vi.fn((event: string, data: unknown) => {
+        // Mimic rig's synchronous reply to a fast-status request.
+        if (event === FAST_STATUS_REQUEST_EVENT && options.fastAtSetup) {
+          (data as FastStatusRequest).reply({ enabled: true });
+        }
       }),
     },
     getThinkingLevel: vi.fn(() => "off"),
@@ -131,6 +144,9 @@ function createFixture(
 
   return {
     component,
+    notify: (event: string, data: unknown) => {
+      for (const handler of handlers.get(event) ?? []) handler(data);
+    },
     dispose: () => {
       component.dispose?.();
       footer.cleanup();
@@ -156,6 +172,40 @@ describe("custom footer width safety", () => {
     for (const line of lines) {
       expect(visibleWidth(line)).toBeLessThanOrEqual(10);
     }
+  });
+});
+
+describe("fast mode", () => {
+  let fixture: Fixture;
+  afterEach(() => fixture?.dispose());
+
+  it("shows a thunderbolt before the model while fast mode is on", () => {
+    fixture = createFixture();
+    fixture.notify(FAST_STATUS_CHANGED_EVENT, {
+      enabled: true,
+      provider: "anthropic",
+    });
+    expect(fixture.component.render(120)[1]).toContain(
+      `${FAST_MARK} zai/glm-5.2-short`,
+    );
+  });
+
+  it("drops the thunderbolt when fast mode turns off", () => {
+    fixture = createFixture();
+    fixture.notify(FAST_STATUS_CHANGED_EVENT, { enabled: true });
+    fixture.notify(FAST_STATUS_CHANGED_EVENT, { enabled: false });
+    expect(fixture.component.render(120)[1]).not.toContain(FAST_MARK);
+  });
+
+  it("picks up fast mode enabled before the footer was set up", () => {
+    fixture = createFixture({ fastAtSetup: true });
+    expect(fixture.component.render(120)[1]).toContain(FAST_MARK);
+  });
+
+  it("ignores malformed status payloads", () => {
+    fixture = createFixture();
+    fixture.notify(FAST_STATUS_CHANGED_EVENT, "nope");
+    expect(fixture.component.render(120)[1]).not.toContain(FAST_MARK);
   });
 });
 
