@@ -12,7 +12,7 @@ import { ScoutParams } from "./types";
 
 const extensionPaths = ["./tools/read", "./tools/find"];
 
-export default async function scout(pi: ExtensionAPI): Promise<void> {
+export async function registerScout(pi: ExtensionAPI): Promise<void> {
   const tools = createScoutTools(pi);
 
   const subagent = createSubagent(pi, {

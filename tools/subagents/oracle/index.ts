@@ -10,6 +10,8 @@ import {
   configuredSubagent,
   getSubagentModelPreferences,
 } from "@harness/subagent-models";
+import { addTools, removeTools } from "../shared/active-tools";
+import { disablesAdvisoryTools } from "../shared/family-gate";
 import { buildPrompt, ORACLE_SYSTEM_PROMPT } from "./prompt";
 import {
   oracleToolRenderers,
@@ -17,7 +19,6 @@ import {
   renderOracleHeader,
 } from "./render";
 import { OracleParams } from "./types";
-import { disablesOracleTools } from "./utils";
 
 const tools: SubagentToolSpec[] = [
   { name: "read", type: "native", render: oracleToolRenderers.read },
@@ -46,17 +47,16 @@ const extensionPaths = ["./tools", "npm:@aliou/pi-synthetic"];
 const TOOL_NAMES = ["oracle", "resume_oracle"];
 
 function enableTools(pi: ExtensionAPI): void {
-  const active = pi.getActiveTools();
-  const missing = TOOL_NAMES.filter((name) => !active.includes(name));
-  if (missing.length > 0) pi.setActiveTools([...active, ...missing]);
+  const next = addTools(pi.getActiveTools(), TOOL_NAMES);
+  if (next) pi.setActiveTools(next);
 }
 
 function disableTools(pi: ExtensionAPI): void {
-  const active = pi.getActiveTools();
-  pi.setActiveTools(active.filter((name) => !TOOL_NAMES.includes(name)));
+  const next = removeTools(pi.getActiveTools(), TOOL_NAMES);
+  if (next) pi.setActiveTools(next);
 }
 
-export default async function oracle(pi: ExtensionAPI): Promise<void> {
+export async function registerOracle(pi: ExtensionAPI): Promise<void> {
   const subagent = createSubagent(pi, {
     name: "oracle",
     modelPreferences: () => getSubagentModelPreferences("oracle"),
@@ -105,7 +105,7 @@ export default async function oracle(pi: ExtensionAPI): Promise<void> {
   ): void => {
     const identity = effectiveModelIdentity(model, branch);
     if (!identity) return;
-    disablesOracleTools(identity) ? disableTools(pi) : enableTools(pi);
+    disablesAdvisoryTools(identity) ? disableTools(pi) : enableTools(pi);
   };
   pi.on("agent_start", (_event, ctx) => {
     syncTools(ctx.model, ctx.sessionManager.getBranch());

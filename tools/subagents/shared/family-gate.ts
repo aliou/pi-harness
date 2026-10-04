@@ -1,7 +1,7 @@
 import { knownModelFamily } from "@harness/models";
 
-/** Advisor tools stay disabled for the GPT-5.6 and GPT-6 model families. */
-export function disablesAdvisorTools(
+/** Advisory subagent tools stay disabled for the GPT-5.6 and GPT-6 families. */
+export function disablesAdvisoryTools(
   model: { provider: string; id: string } | undefined,
 ): boolean {
   if (!model) return false;

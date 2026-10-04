@@ -1,11 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { disablesAdvisorTools } from "./utils";
+import { disablesAdvisoryTools } from "./family-gate";
 
 function model(id: string) {
   return { provider: "openai", id };
 }
 
-describe("disablesAdvisorTools", () => {
+describe("disablesAdvisoryTools", () => {
   it.each([
     "gpt-5.6",
     "gpt-5.6-luna",
@@ -19,7 +19,7 @@ describe("disablesAdvisorTools", () => {
     "gpt-6-other-name",
     "GPT-6-ASTRA",
   ])("disables for gpt-5.6/gpt-6 family models: %s", (id) => {
-    expect(disablesAdvisorTools(model(id))).toBe(true);
+    expect(disablesAdvisoryTools(model(id))).toBe(true);
   });
 
   it.each([
@@ -30,11 +30,11 @@ describe("disablesAdvisorTools", () => {
     "gpt-5.4-mini",
     "claude-opus-4-8",
     "glm-5.2",
-  ])("keeps advisor for other models: %s", (id) => {
-    expect(disablesAdvisorTools(model(id))).toBe(false);
+  ])("keeps tools for other models: %s", (id) => {
+    expect(disablesAdvisoryTools(model(id))).toBe(false);
   });
 
-  it("keeps advisor when no model is selected", () => {
-    expect(disablesAdvisorTools(undefined)).toBe(false);
+  it("keeps tools when no model is selected", () => {
+    expect(disablesAdvisoryTools(undefined)).toBe(false);
   });
 });

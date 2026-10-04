@@ -20,7 +20,7 @@ When adding new content or changing existing behavior, update the closest releva
 - `scripts/` - Maintenance, native build, and extension Gist release scripts.
 - `tests/` - Test setup and docs. Shared test utilities live in `packages/test-utils`.
 
-Unit tests use `memfs` for filesystem fixtures via `tests/vitest.setup.ts`. `createPiTestHarness` creates its default cwd in the virtual volume. Subprocesses cannot read memfs; `tools/bash/index.test.ts` and `tools/scout/tools/grep.test.ts` use real temporary host directories for their integration tests. Test conventions live in `tests/README.md`.
+Unit tests use `memfs` for filesystem fixtures via `tests/vitest.setup.ts`. `createPiTestHarness` creates its default cwd in the virtual volume. Subprocesses cannot read memfs; `tools/bash/index.test.ts` and `tools/subagents/scout/tools/grep.test.ts` use real temporary host directories for their integration tests. Test conventions live in `tests/README.md`.
 
 ## New feature placement
 
@@ -78,7 +78,7 @@ Tools that spawn a subagent follow a different layout:
 - `tools/` - Subagent tool definitions, visible only inside the subagent.
 - `lib/` - Supporting logic.
 
-Current subagent-based tools include `advisor`, `look-at`, `oracle`, `read-session`, `reviewer`, and `scout`.
+Current subagent-based tools include `advisor`, `look-at`, `oracle`, `read-session`, `reviewer`, and `scout`. They live under `tools/subagents/<name>/`, each exporting a `register<Name>(pi)` entry function from its `index.ts`; `tools/subagents/index.ts` is the discovered extension entry point and calls each registration in order. Helpers shared between subagent tools live in `tools/subagents/shared/`.
 
 ### Subagent model rosters
 
@@ -174,7 +174,7 @@ Subagents default to the parent session cwd. If a subagent accepts an invocation
 
 | Directory | Tool name | Notes |
 |---|---|---|
-| `advisor/` | `advisor`, `resume_advisor` | Zero-shot strategic advisor for hard decisions, stuck work, risk review, and pre-completion second opinions; hidden from the active tools when the session model matches the gpt-5.6/gpt-6 families (`utils.ts`), same enable/disable pattern as `look_at` |
+| `subagents/advisor/` | `advisor`, `resume_advisor` | Zero-shot strategic advisor for hard decisions, stuck work, risk review, and pre-completion second opinions; hidden from the active tools when the session model matches the gpt-5.6/gpt-6 families (`subagents/shared/family-gate.ts`), same enable/disable pattern as `look_at` |
 | `ask-user/` | `ask_user` | Sequential structured input dialogs |
 | `bash/` | `bash` | Adds `cwd` while preserving Pi's session environment, spawn hooks, and sanitization |
 | `edit/` | `edit`, `apply_patch` | Model-aware edit tool. Routes GPT-5/6 models on `openai` and all models on compatibility provider `openai-codex` to a queued `apply_patch` (V4A freeform patch, replacing `edit`+`write`), Kimi K2.7 Code to a queued `edit` with `old_string`/`new_string`, and everyone else to the native JSON `edit` with capability-aware constrained sampling |
@@ -182,13 +182,13 @@ Subagents default to the parent session cwd. If a subagent accepts an invocation
 | `find-sessions/` | `find_sessions` | Session search or recent-session browsing via `@harness/session-store`; reports match provenance |
 | `get-current-time/` | `get_current_time` | Passthrough |
 | `list-sessions/` | `list_sessions` | Session directory listing via `@harness/session-store` |
-| `look-at/` | `look_at` | Zero-shot vision subagent; BMP files are converted to PNG before vision analysis |
-| `oracle/` | `oracle`, `resume_oracle` | Zero-shot senior technical advisor; hidden from the active tools when the session model matches the gpt-5.6/gpt-6 families (`utils.ts`), same enable/disable pattern as `look_at` |
+| `subagents/look-at/` | `look_at` | Zero-shot vision subagent; BMP files are converted to PNG before vision analysis |
+| `subagents/oracle/` | `oracle`, `resume_oracle` | Zero-shot senior technical advisor; hidden from the active tools when the session model matches the gpt-5.6/gpt-6 families (`subagents/shared/family-gate.ts`), same enable/disable pattern as `look_at` |
 | `read/` | `read` | Directory reads delegate to `ls`; markdown files render formatted when expanded; collapsed `SKILL.md` reads preview the frontmatter description |
-| `read-session/` | `read_session` | Zero-shot past-session extractor |
+| `subagents/read-session/` | `read_session` | Zero-shot past-session extractor |
 | `read-url/` | `read_url` | URL fetch with handler chain and preview |
-| `reviewer/` | `reviewer`, `resume_reviewer` | Zero-shot formal code-review subagent; accepts optional `cwd` so review commands and file reads run in the target repo |
-| `scout/` | `scout`, `resume_scout` | Zero-shot local codebase researcher; grep/find run with capped output readers |
+| `subagents/reviewer/` | `reviewer`, `resume_reviewer` | Zero-shot formal code-review subagent; accepts optional `cwd` so review commands and file reads run in the target repo |
+| `subagents/scout/` | `scout`, `resume_scout` | Zero-shot local codebase researcher; grep/find run with capped output readers |
 
 ## Development
 

@@ -10,6 +10,8 @@ import {
   configuredSubagent,
   getSubagentModelPreferences,
 } from "@harness/subagent-models";
+import { addTools, removeTools } from "../shared/active-tools";
+import { disablesAdvisoryTools } from "../shared/family-gate";
 import { ADVISOR_SYSTEM_PROMPT, buildPrompt } from "./prompt";
 import {
   advisorToolRenderers,
@@ -17,7 +19,6 @@ import {
   renderAdvisorHeader,
 } from "./render";
 import { AdvisorParams } from "./types";
-import { disablesAdvisorTools } from "./utils";
 
 const tools: SubagentToolSpec[] = [
   { name: "read", type: "native", render: advisorToolRenderers.read },
@@ -50,17 +51,16 @@ const extensionPaths = [
 const TOOL_NAMES = ["advisor", "resume_advisor"];
 
 function enableTools(pi: ExtensionAPI): void {
-  const active = pi.getActiveTools();
-  const missing = TOOL_NAMES.filter((name) => !active.includes(name));
-  if (missing.length > 0) pi.setActiveTools([...active, ...missing]);
+  const next = addTools(pi.getActiveTools(), TOOL_NAMES);
+  if (next) pi.setActiveTools(next);
 }
 
 function disableTools(pi: ExtensionAPI): void {
-  const active = pi.getActiveTools();
-  pi.setActiveTools(active.filter((name) => !TOOL_NAMES.includes(name)));
+  const next = removeTools(pi.getActiveTools(), TOOL_NAMES);
+  if (next) pi.setActiveTools(next);
 }
 
-export default async function advisor(pi: ExtensionAPI): Promise<void> {
+export async function registerAdvisor(pi: ExtensionAPI): Promise<void> {
   const subagent = createSubagent(pi, {
     name: "advisor",
     modelPreferences: () => getSubagentModelPreferences("advisor"),
@@ -111,7 +111,7 @@ export default async function advisor(pi: ExtensionAPI): Promise<void> {
   ): void => {
     const identity = effectiveModelIdentity(model, branch);
     if (!identity) return;
-    disablesAdvisorTools(identity) ? disableTools(pi) : enableTools(pi);
+    disablesAdvisoryTools(identity) ? disableTools(pi) : enableTools(pi);
   };
   pi.on("agent_start", (_event, ctx) => {
     syncTools(ctx.model, ctx.sessionManager.getBranch());

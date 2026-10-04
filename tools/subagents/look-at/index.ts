@@ -7,23 +7,27 @@ import {
   configuredSubagent,
   getSubagentModelPreferences,
 } from "@harness/subagent-models";
+import { addTools, removeTools } from "../shared/active-tools";
 import { ANALYSIS_SYSTEM_PROMPT } from "./prompt";
 import { renderLookAtDetails, renderLookAtHeader } from "./render";
 import { LookAtParams, type LookAtParamsInput } from "./types";
 import {
   detectSupportedImageMimeType,
-  disableTool,
   injectLookAtGuidance,
   isVisionCapable,
 } from "./utils";
 
 const TOOL_NAME = "look_at";
+const TOOL_NAMES = [TOOL_NAME];
 
 function enableTool(pi: ExtensionAPI) {
-  const active = pi.getActiveTools();
-  if (!active.includes(TOOL_NAME)) {
-    pi.setActiveTools([...active, TOOL_NAME]);
-  }
+  const next = addTools(pi.getActiveTools(), TOOL_NAMES);
+  if (next) pi.setActiveTools(next);
+}
+
+function disableTool(pi: ExtensionAPI) {
+  const next = removeTools(pi.getActiveTools(), TOOL_NAMES);
+  if (next) pi.setActiveTools(next);
 }
 
 /** Creates the production look-at subagent for registration and eval harnesses. */
@@ -95,7 +99,7 @@ Always provide a clear objective describing what you want to learn from the imag
   });
 }
 
-export default async function lookAt(pi: ExtensionAPI): Promise<void> {
+export async function registerLookAt(pi: ExtensionAPI): Promise<void> {
   const subagent = createLookAtSubagent(pi);
   await subagent.ready;
 
@@ -134,14 +138,14 @@ export default async function lookAt(pi: ExtensionAPI): Promise<void> {
     if (!model) return;
 
     if (isVisionCapable(model)) {
-      disableTool(pi, TOOL_NAME);
+      disableTool(pi);
     } else {
       enableTool(pi);
     }
   });
 
   pi.on("model_select", (evt, _ctx) => {
-    isVisionCapable(evt.model) ? disableTool(pi, TOOL_NAME) : enableTool(pi);
+    isVisionCapable(evt.model) ? disableTool(pi) : enableTool(pi);
   });
 
   // When the active model cannot see images, detect referenced image files in

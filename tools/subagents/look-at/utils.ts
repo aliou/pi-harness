@@ -3,7 +3,6 @@ import { homedir } from "node:os";
 import { resolve } from "node:path";
 import type { AgentMessage } from "@earendil-works/pi-agent-core";
 import type { TextContent, UserMessage } from "@earendil-works/pi-ai";
-import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { detectImageMimeTypeFromBuffer } from "@harness/image-formats";
 
 // Matches image file extensions, lookahead ensures the extension is at
@@ -137,8 +136,4 @@ export function injectLookAtGuidance(
     last.content = [...last.content, { type: "text", text: guidance }];
   }
   return true;
-}
-
-export function disableTool(pi: ExtensionAPI, toolName: string): void {
-  pi.setActiveTools(pi.getActiveTools().filter((t) => t !== toolName));
 }

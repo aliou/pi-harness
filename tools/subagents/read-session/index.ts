@@ -8,7 +8,7 @@ import { buildPrompt, SYSTEM_PROMPT } from "./prompt";
 import { renderReadSessionHeader, tools } from "./tools";
 import { ReadSessionParams } from "./types";
 
-export default async function readSession(pi: ExtensionAPI): Promise<void> {
+export async function registerReadSession(pi: ExtensionAPI): Promise<void> {
   const subagent = createSubagent(pi, {
     name: "read_session",
     modelPreferences: () => getSubagentModelPreferences("read_session"),

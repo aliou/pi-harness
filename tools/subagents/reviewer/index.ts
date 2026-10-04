@@ -29,7 +29,7 @@ const nativeTools: SubagentToolSpec[] = [
 
 const extensionPaths = ["./tools", "npm:@aliou/pi-synthetic"];
 
-export default async function reviewer(pi: ExtensionAPI): Promise<void> {
+export async function registerReviewer(pi: ExtensionAPI): Promise<void> {
   const tools = [...nativeTools, ...createReviewerTools(pi)];
 
   const subagent = createSubagent(pi, {
