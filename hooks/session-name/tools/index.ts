@@ -7,7 +7,10 @@ import {
   type SessionNameChangeCustomEntry,
 } from "../constants";
 
-export function createSessionNameTools(pi: ExtensionAPI): SubagentToolSpec[] {
+export function createSessionNameTools(
+  pi: ExtensionAPI,
+  onAutoName: (name: string) => void,
+): SubagentToolSpec[] {
   return [
     {
       name: "set_name",
@@ -31,6 +34,9 @@ export function createSessionNameTools(pi: ExtensionAPI): SubagentToolSpec[] {
           async execute(_toolCallId, params) {
             const previousName = pi.getSessionName();
             const name = truncate(params.name.trim(), 80);
+            // Record before setSessionName so the resulting
+            // session_info_changed event is recognized as our own.
+            onAutoName(name);
             pi.setSessionName(name);
 
             if (previousName !== name) {

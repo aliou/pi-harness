@@ -165,7 +165,7 @@ Subagents default to the parent session cwd. If a subagent accepts an invocation
 | `notifications/` | Canonical `ad:notify:*` producer plus terminal (OSC) and sound consumers | `index.ts`, `producer.ts`, `terminal.ts`, `sound.ts` |
 | `protect-sessions-dir/` | Gate agent access to sessions directory | `gate.ts`, `session-gate-dialog.ts`, `bash-parser.ts` |
 | `session-autocomplete/` | `@@` autocomplete for session references | `index.ts`, `provider.ts` |
-| `session-name/` | Auto-name sessions | `index.ts` |
+| `session-name/` | Auto-name sessions; skips initial naming and refines once the user set the name themselves (derived from `session_info` vs `session_name_change` entries), and cancels the in-flight run when the name changes mid-run | `index.ts`, `pinned.ts` |
 | `skill-autocomplete/` | `?` skill autocomplete; supports `skillsRoots` plus pinned skill directories in `completion.json`, which load as real Pi skills and take priority over root duplicates; sends each inline skill as a rendered context message and retains skill names in user prose | `index.ts`, `config.ts`, `expand.ts`, `render.ts` |
 | `workspace-metadata/` | Record model-hidden hostname, canonical cwd, and Git remote metadata for new/forked sessions, and backfill existing sessions that lack it | `index.ts`, `helpers.ts`, `types.ts` |
 | `zoxide-autocomplete/` | `@z:` project path autocomplete | `index.ts` |

@@ -10,17 +10,21 @@ import {
   SESSION_NAME_FIRST_TOKEN_TIMEOUT_MS,
   SESSION_NAME_REFINE_EVERY,
 } from "./constants";
+import { isSessionNamePinned } from "./pinned";
 import { buildPrompt, SESSION_NAME_SYSTEM_PROMPT } from "./prompt";
 import { createSessionNameTools } from "./tools";
 import { countCompletedAssistantTurns, getRecentTurns } from "./turns";
 
-export function createSessionNameSubagent(pi: ExtensionAPI) {
+export function createSessionNameSubagent(
+  pi: ExtensionAPI,
+  onAutoName: (name: string) => void,
+) {
   return createSubagent(pi, {
     name: "session_name",
     label: "Session Name",
     description: "Generate or refine a concise session name.",
     systemPrompt: SESSION_NAME_SYSTEM_PROMPT,
-    tools: createSessionNameTools(pi),
+    tools: createSessionNameTools(pi, onAutoName),
     maxToolCalls: 1,
     modelPreferences: () => getSubagentModelPreferences("session_name"),
     parameters: Type.Object({
@@ -44,7 +48,12 @@ interface ActiveRun {
 }
 
 export default async function sessionName(pi: ExtensionAPI): Promise<void> {
-  const subagent = createSessionNameSubagent(pi);
+  // Name most recently set by the naming subagent itself, used to tell its
+  // session_info_changed events apart from names set by the user.
+  let lastAutoName: string | undefined;
+  const subagent = createSessionNameSubagent(pi, (name) => {
+    lastAutoName = name;
+  });
   await subagent.ready;
 
   const { notifyOnSessionStart } = configuredSubagent(
@@ -68,6 +77,14 @@ export default async function sessionName(pi: ExtensionAPI): Promise<void> {
     activeRun = null;
   };
 
+  // When the name is set or cleared by anything other than the naming
+  // subagent (the /name command, RPC, another extension), cancel the
+  // in-flight run so it cannot clobber that name.
+  pi.on("session_info_changed", (event) => {
+    if (event.name !== undefined && event.name === lastAutoName) return;
+    cancelActiveRun();
+  });
+
   // When the user starts a new turn, cancel a naming run that has not started
   // responding yet so its hung connection does not linger. A run that already
   // started streaming is left to finish in the background (it is about to set
@@ -83,6 +100,11 @@ export default async function sessionName(pi: ExtensionAPI): Promise<void> {
     if (event.message.stopReason !== "stop") return;
 
     const entries = ctx.sessionManager.getBranch();
+
+    // A name the user set themselves is pinned: skip both the initial naming
+    // and later refines for the rest of the session.
+    if (isSessionNamePinned(entries)) return;
+
     const turnCount = countCompletedAssistantTurns(entries);
 
     const isInitial = turnCount === 1;
