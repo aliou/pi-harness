@@ -15,7 +15,6 @@ import {
   MAX_PROJECT_SUGGESTIONS,
   PROJECT_PREFIX,
   PROJECT_TOKEN_RE,
-  PROJECTS_ROOT,
 } from "./types";
 
 function extractProjectToken(textBeforeCursor: string): string | undefined {
@@ -53,7 +52,7 @@ export function createProjectAutocompleteProvider(
         if (prefixCandidate !== undefined) {
           const prefixItem = createPrefixCompletionItem({
             value: PROJECT_PREFIX,
-            description: "zoxide entries in ~/code/src",
+            description: "zoxide directories",
           });
 
           return {
@@ -69,7 +68,7 @@ export function createProjectAutocompleteProvider(
         const tokenLower = token.toLowerCase();
         const projects = await listProjects(pi, options.signal).then((items) =>
           items
-            .filter((p) => p.relPath.toLowerCase().includes(tokenLower))
+            .filter((p) => p.path.toLowerCase().includes(tokenLower))
             .slice(0, MAX_PROJECT_SUGGESTIONS),
         );
 
@@ -84,9 +83,9 @@ export function createProjectAutocompleteProvider(
         const items: AutocompleteItem[] = projects.map((project) => {
           const score = project.score.toFixed(1).padStart(6, "0");
           return {
-            value: project.relPath,
+            value: project.path,
             label: project.label,
-            description: `${score} · ${project.tildePath}`,
+            description: `${score} · ${project.path}`,
           };
         });
 
@@ -128,14 +127,12 @@ export function createProjectAutocompleteProvider(
         );
       }
 
-      // Insert ~/code/src/<relPath> instead of the bare relPath
-      const tildePath = `${PROJECTS_ROOT}/${item.value}`;
       return replaceAutocompletePrefix(
         lines,
         cursorLine,
         cursorCol,
         prefix,
-        `${tildePath} `,
+        `${item.value} `,
       );
     },
 

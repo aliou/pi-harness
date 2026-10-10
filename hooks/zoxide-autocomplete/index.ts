@@ -1,9 +1,9 @@
 /**
  * `@z:` zoxide autocomplete provider.
  *
- * On `@z:<token>` in the input editor, suggests zoxide entries under
- * ~/code/src. Accepting a completion replaces the full `@z:<token>` prefix
- * with the tilde path.
+ * On `@z:<token>` in the input editor, suggests entries from the full zoxide
+ * database. Accepting a completion replaces the full `@z:<token>` prefix
+ * with the path (tilde form under $HOME).
  */
 
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
