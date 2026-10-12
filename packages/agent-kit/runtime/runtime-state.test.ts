@@ -1,24 +1,9 @@
 import type { AgentSession } from "@earendil-works/pi-coding-agent";
-import { Type } from "typebox";
 import { describe, expect, it } from "vitest";
-import type { ResolvedSubagentConfig } from "../types";
 import { SubagentRuntimeState } from "./runtime-state";
-
-const Params = Type.Object({ task: Type.String() });
 
 describe("SubagentRuntimeState", () => {
   it("records the session model and thinking level", () => {
-    const config: ResolvedSubagentConfig<typeof Params> = {
-      name: "eval-agent",
-      label: "Eval Agent",
-      description: "Evaluate an agent",
-      systemPrompt: "Evaluate the task",
-      tools: [],
-      modelPreferences: [],
-      configured: true,
-      parameters: Params,
-      buildPrompt: () => ({ text: "Evaluate" }),
-    };
     const session = {
       sessionId: "session-id",
       sessionFile: "/tmp/session.jsonl",
@@ -26,11 +11,33 @@ describe("SubagentRuntimeState", () => {
       thinkingLevel: "high",
     } as AgentSession;
 
-    const state = new SubagentRuntimeState(config, session);
+    const state = new SubagentRuntimeState(session);
 
     expect(state.snapshot().model).toEqual({
       provider: "openrouter",
       model: "z-ai/glm-5.2",
+      thinking: "high",
+    });
+  });
+
+  it("resolves the physical model under a virtual selection", () => {
+    const session = {
+      sessionId: "session-id",
+      sessionFile: "/tmp/session.jsonl",
+      // Virtual (alias) selection served by a physical model.
+      model: { provider: "pi-virtual", id: "fast", api: "pi-virtual" },
+      thinkingLevel: "medium",
+      routedModel: {
+        model: { provider: "synthetic", id: "gpt-6.1-sol" },
+        thinkingLevel: "high",
+      },
+    } as AgentSession;
+
+    const state = new SubagentRuntimeState(session);
+
+    expect(state.snapshot().model).toEqual({
+      provider: "synthetic",
+      model: "gpt-6.1-sol",
       thinking: "high",
     });
   });

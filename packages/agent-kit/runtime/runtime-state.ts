@@ -3,8 +3,6 @@ import type {
   AgentSession,
   AgentSessionEvent,
 } from "@earendil-works/pi-coding-agent";
-import type { TSchema } from "typebox";
-import type { ResolvedSubagentConfig } from "../types";
 import {
   emptyUsage,
   isAssistantMessage,
@@ -14,29 +12,19 @@ import { SubagentMessageTracker } from "./message-tracker";
 import { SubagentToolCallTracker } from "./tool-call-tracker";
 import type { SubagentDetails } from "./types";
 
-export class SubagentRuntimeState<Params extends TSchema = TSchema> {
+export class SubagentRuntimeState {
   private messageTracker = new SubagentMessageTracker();
   private toolCallTracker = new SubagentToolCallTracker();
   private costTracker = new SubagentCostTracker();
   private lastAssistantMessage?: AssistantMessage;
   private details: SubagentDetails;
 
-  constructor(config: ResolvedSubagentConfig<Params>, session: AgentSession) {
+  constructor(private session: AgentSession) {
     this.details = {
       sessionId: session.sessionId,
       sessionFile: session.sessionFile ?? "",
       prompt: "",
-      model: session.model
-        ? {
-            provider: session.model.provider,
-            model: session.model.id,
-            thinking: session.thinkingLevel,
-          }
-        : config.modelPreferences.find(
-            (model) =>
-              model.model === session.model?.id &&
-              model.provider === session.model?.provider,
-          ),
+      model: undefined,
 
       status: "pending",
       thinking: false,
@@ -47,6 +35,7 @@ export class SubagentRuntimeState<Params extends TSchema = TSchema> {
       startedAt: null,
       endedAt: null,
     };
+    this.syncModel();
   }
 
   get value() {
@@ -100,6 +89,9 @@ export class SubagentRuntimeState<Params extends TSchema = TSchema> {
       case "message_end": {
         if (isAssistantMessage(event.message)) {
           this.lastAssistantMessage = event.message;
+          // A response names the physical model it ran on; the routed model
+          // becomes resolvable the first time an assistant message completes.
+          this.syncModel();
         }
         const changed = this.costTracker.update(event);
         if (!changed) return false;
@@ -161,6 +153,32 @@ export class SubagentRuntimeState<Params extends TSchema = TSchema> {
       ...this.messageTracker.activity,
       ...this.toolCallTracker.activity,
     ].sort((a, b) => a.startedAt - b.startedAt);
+  }
+
+  /**
+   * Track the model the run actually answers with. Under a virtual (alias)
+   * selection, `routedModel` names the physical model of the latest response;
+   * before the first response (and for physical selections) it is undefined
+   * and the selection itself is what the footer shows.
+   */
+  private syncModel() {
+    const routed = this.session.routedModel;
+    if (routed) {
+      this.details.model = {
+        provider: routed.model.provider,
+        model: routed.model.id,
+        thinking: routed.thinkingLevel ?? this.session.thinkingLevel,
+      };
+      return;
+    }
+    const model = this.session.model;
+    if (model) {
+      this.details.model = {
+        provider: model.provider,
+        model: model.id,
+        thinking: this.session.thinkingLevel,
+      };
+    }
   }
 
   private markRunning() {

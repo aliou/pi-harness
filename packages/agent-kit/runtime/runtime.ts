@@ -42,7 +42,7 @@ export class SubagentRuntime<Params extends TSchema = TSchema> {
   ) {
     this.signal = signal;
     this.signal?.addEventListener?.("abort", this.onAbort);
-    this.state = new SubagentRuntimeState(config, session);
+    this.state = new SubagentRuntimeState(session);
   }
 
   async execute(
