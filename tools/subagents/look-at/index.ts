@@ -1,8 +1,12 @@
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
-import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
+import type {
+  ExtensionAPI,
+  ExtensionContext,
+} from "@earendil-works/pi-coding-agent";
 import { createSubagent } from "@harness/agent-kit";
 import { convertBmpToPng } from "@harness/image-formats";
+import { resolveEffectiveModel } from "@harness/models";
 import {
   configuredSubagent,
   getSubagentModelPreferences,
@@ -133,20 +137,21 @@ export async function registerLookAt(pi: ExtensionAPI): Promise<void> {
 
   if (!subagent.configured) return;
 
-  pi.on("agent_start", (_evt, ctx) => {
-    const model = ctx.model;
+  // The vision capability lives on the effective model: the selection itself
+  // when physical, or the routed physical model under a virtual (alias)
+  // selection. An alias that never answered on this branch leaves the tool
+  // as it is.
+  const syncTool = (ctx: ExtensionContext): void => {
+    const model = resolveEffectiveModel(
+      ctx.model,
+      ctx.sessionManager.getBranch(),
+      ctx.modelRegistry.getAvailable(),
+    );
     if (!model) return;
-
-    if (isVisionCapable(model)) {
-      disableTool(pi);
-    } else {
-      enableTool(pi);
-    }
-  });
-
-  pi.on("model_select", (evt, _ctx) => {
-    isVisionCapable(evt.model) ? disableTool(pi) : enableTool(pi);
-  });
+    isVisionCapable(model) ? disableTool(pi) : enableTool(pi);
+  };
+  pi.on("agent_start", (_evt, ctx) => syncTool(ctx));
+  pi.on("model_select", (_evt, ctx) => syncTool(ctx));
 
   // When the active model cannot see images, detect referenced image files in
   // the conversation and append look_at guidance to those user messages. The
@@ -155,7 +160,11 @@ export async function registerLookAt(pi: ExtensionAPI): Promise<void> {
   pi.on("context", (event, ctx) => {
     if (!pi.getActiveTools().includes(TOOL_NAME)) return;
 
-    const model = ctx.model;
+    const model = resolveEffectiveModel(
+      ctx.model,
+      ctx.sessionManager.getBranch(),
+      ctx.modelRegistry.getAvailable(),
+    );
     if (!model || isVisionCapable(model)) return;
 
     if (!injectLookAtGuidance(event.messages, ctx.cwd)) return;
