@@ -53,3 +53,27 @@ export function effectiveModelIdentity(
   }
   return undefined;
 }
+
+/**
+ * The full catalog entry a selection effectively uses: the selection itself
+ * when physical, or, for a virtual (alias) selection, the available model
+ * matching the routed identity. Use this when a check needs more than
+ * provider/id, such as capability flags like `input`. Undefined when the
+ * alias never answered on this branch, or when the routed model is not in
+ * the available catalog.
+ */
+export function resolveEffectiveModel<
+  M extends ModelIdentity & { api?: string },
+>(
+  model: M | undefined,
+  branch: readonly BranchEntryLike[],
+  available: readonly M[],
+): M | undefined {
+  if (!model || !isVirtualModel(model)) return model;
+  const identity = effectiveModelIdentity(model, branch);
+  if (!identity) return undefined;
+  return available.find(
+    (candidate) =>
+      candidate.provider === identity.provider && candidate.id === identity.id,
+  );
+}

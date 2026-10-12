@@ -3,6 +3,7 @@ import {
   type BranchEntryLike,
   effectiveModelIdentity,
   isVirtualModel,
+  resolveEffectiveModel,
 } from "./routed-model";
 
 function virtual(provider: string, id: string) {
@@ -84,6 +85,49 @@ describe("effectiveModelIdentity", () => {
     ).toBeUndefined();
     expect(
       effectiveModelIdentity(virtual("latest", "gpt-sol"), []),
+    ).toBeUndefined();
+  });
+});
+
+function physical(provider: string, id: string, input: string[]) {
+  return { provider, id, api: provider, input };
+}
+
+describe("resolveEffectiveModel", () => {
+  it("passes physical selections through", () => {
+    const model = physical("anthropic", "claude-opus-5-5", ["text", "image"]);
+    expect(resolveEffectiveModel(model, [], [])).toBe(model);
+    expect(resolveEffectiveModel(undefined, [OTHER_ENTRY], [])).toBeUndefined();
+  });
+
+  it("returns the available catalog entry for the routed model", () => {
+    const routed = physical("synthetic", "hf:moonshotai/kimi-k3", ["text"]);
+    const branch = [
+      stateEntry("latest", "kimi", "synthetic", "hf:moonshotai/kimi-k3"),
+    ];
+    expect(
+      resolveEffectiveModel(virtual("latest", "kimi"), branch, [
+        physical("anthropic", "claude-opus-5-5", ["text", "image"]),
+        routed,
+      ]),
+    ).toBe(routed);
+  });
+
+  it("returns undefined when the alias never answered or the routed model is unavailable", () => {
+    const available = [physical("anthropic", "claude-opus-5-5", ["text"])];
+    expect(
+      resolveEffectiveModel(
+        virtual("latest", "kimi"),
+        [OTHER_ENTRY],
+        available,
+      ),
+    ).toBeUndefined();
+
+    const branch = [
+      stateEntry("latest", "kimi", "synthetic", "hf:moonshotai/kimi-k3"),
+    ];
+    expect(
+      resolveEffectiveModel(virtual("latest", "kimi"), branch, available),
     ).toBeUndefined();
   });
 });

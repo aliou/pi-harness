@@ -228,7 +228,7 @@ Workspace packages:
 | `packages/completion/` | `@harness/completion` | Completion logic |
 | `packages/events/` | `@harness/events` | Shared event names and event payload types |
 | `packages/image-formats/` | `@harness/image-formats` | Image MIME detection and format conversion |
-| `packages/models/` | `@harness/models` | Model identity helpers (`ModelIdentity`, `knownModelFamily`, `modelKey`) and `effectiveModelIdentity`, which resolves the routed physical model for virtual (alias) selections from the session branch |
+| `packages/models/` | `@harness/models` | Model identity helpers (`ModelIdentity`, `knownModelFamily`, `modelKey`) and `effectiveModelIdentity`, which resolves the routed physical model for virtual (alias) selections from the session branch, and `resolveEffectiveModel`, which joins that identity against the available catalog when a check needs capability flags such as `input` |
 | `packages/session-store/` | `@harness/session-store` | Session directory access, Sesame search, listing, and the session summary schema shared by `find_sessions` and `list_sessions` |
 | `packages/session-tools/` | `@harness/session-tools` | Pi-agnostic session entry indexing, branch/tree traversal, and bounded read-session helpers |
 | `packages/subagent-models/` | `@harness/subagent-models` | Global subagent model roster config (`settings/subagent-models.json`), async loader, and disabled-subagent registration helper |
