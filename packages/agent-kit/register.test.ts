@@ -44,13 +44,12 @@ describe("subagent tool registration", () => {
     }
   });
 
-  it("keeps subagent tools out of codemode scripts", () => {
+  it("lets codemode scripts call the subagent tools", () => {
     const tools = registerSubagent();
 
-    expect(tools.map((tool) => tool.exposure)).toEqual([
-      "model-only",
-      "model-only",
-    ]);
+    // Unset exposure means pi's `direct` default: declared to the model while
+    // active and callable from codemode scripts.
+    expect(tools.map((tool) => tool.exposure)).toEqual([undefined, undefined]);
   });
 
   it("lets a subagent override the annotations", () => {
