@@ -99,6 +99,26 @@ export function isVisionCapable(model: { input: string[] }): boolean {
   return model.input.includes("image");
 }
 
+/** What the visibility gate should do with the look_at tool. */
+export type ToolGateAction = "enable" | "disable" | "keep";
+
+/**
+ * Decide the gate action from the resolved effective model and the tool's
+ * current visibility. An unresolved model (alias never answered on this
+ * branch, or the routed model is not in the catalog) keeps the current
+ * state.
+ */
+export function lookAtGateAction(
+  model: { input: string[] } | undefined,
+  active: boolean,
+): ToolGateAction {
+  if (!model) return "keep";
+  const vision = isVisionCapable(model);
+  if (vision && active) return "disable";
+  if (!vision && !active) return "enable";
+  return "keep";
+}
+
 /** Extract the concatenated text of a user message's content. */
 function userMessageText(content: UserMessage["content"]): string {
   if (typeof content === "string") return content;

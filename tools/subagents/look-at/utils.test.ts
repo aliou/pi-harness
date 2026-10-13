@@ -1,7 +1,11 @@
 import { join } from "node:path";
 import { vol } from "memfs";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { detectSupportedImageMimeType, referencesImageFiles } from "./utils";
+import {
+  detectSupportedImageMimeType,
+  lookAtGateAction,
+  referencesImageFiles,
+} from "./utils";
 
 vi.mock("node:os", () => ({
   homedir: () => "/home/user",
@@ -215,5 +219,28 @@ describe("detectSupportedImageMimeType", () => {
     ]);
 
     expect(detectSupportedImageMimeType(invalidPng)).toBeNull();
+  });
+});
+
+describe("lookAtGateAction", () => {
+  const visionModel = { input: ["text", "image"] };
+  const textModel = { input: ["text"] };
+
+  it("disables when the effective model is vision-capable and the tool is active", () => {
+    expect(lookAtGateAction(visionModel, true)).toBe("disable");
+  });
+
+  it("enables when the effective model is not vision-capable and the tool is hidden", () => {
+    expect(lookAtGateAction(textModel, false)).toBe("enable");
+  });
+
+  it("keeps the state when it already matches", () => {
+    expect(lookAtGateAction(visionModel, false)).toBe("keep");
+    expect(lookAtGateAction(textModel, true)).toBe("keep");
+  });
+
+  it("keeps the state when the model is unresolved (alias never answered)", () => {
+    expect(lookAtGateAction(undefined, true)).toBe("keep");
+    expect(lookAtGateAction(undefined, false)).toBe("keep");
   });
 });

@@ -18,7 +18,7 @@ import { LookAtParams, type LookAtParamsInput } from "./types";
 import {
   detectSupportedImageMimeType,
   injectLookAtGuidance,
-  isVisionCapable,
+  lookAtGateAction,
 } from "./utils";
 
 const TOOL_NAME = "look_at";
@@ -140,15 +140,23 @@ export async function registerLookAt(pi: ExtensionAPI): Promise<void> {
   // The vision capability lives on the effective model: the selection itself
   // when physical, or the routed physical model under a virtual (alias)
   // selection. An alias that never answered on this branch leaves the tool
-  // as it is.
+  // as it is. The gate is re-applied in the context handler too: agent_start
+  // only fires once per run, but an alias's routing state first appears
+  // mid-run (written when the alias answers), so within the very first run
+  // on an alias the context event is the only point that sees the routed
+  // model.
   const syncTool = (ctx: ExtensionContext): void => {
     const model = resolveEffectiveModel(
       ctx.model,
       ctx.sessionManager.getBranch(),
       ctx.modelRegistry.getAvailable(),
     );
-    if (!model) return;
-    isVisionCapable(model) ? disableTool(pi) : enableTool(pi);
+    const action = lookAtGateAction(
+      model,
+      pi.getActiveTools().includes(TOOL_NAME),
+    );
+    if (action === "disable") disableTool(pi);
+    else if (action === "enable") enableTool(pi);
   };
   pi.on("agent_start", (_evt, ctx) => syncTool(ctx));
   pi.on("model_select", (_evt, ctx) => syncTool(ctx));
@@ -158,6 +166,7 @@ export async function registerLookAt(pi: ExtensionAPI): Promise<void> {
   // context event is non-destructive: changes are re-applied each LLM call and
   // never persisted to the session file.
   pi.on("context", (event, ctx) => {
+    syncTool(ctx);
     if (!pi.getActiveTools().includes(TOOL_NAME)) return;
 
     const model = resolveEffectiveModel(
@@ -165,7 +174,7 @@ export async function registerLookAt(pi: ExtensionAPI): Promise<void> {
       ctx.sessionManager.getBranch(),
       ctx.modelRegistry.getAvailable(),
     );
-    if (!model || isVisionCapable(model)) return;
+    if (!model) return;
 
     if (!injectLookAtGuidance(event.messages, ctx.cwd)) return;
     return { messages: event.messages };

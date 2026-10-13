@@ -182,7 +182,7 @@ Subagents default to the parent session cwd. If a subagent accepts an invocation
 | `find-sessions/` | `find_sessions` | Session search or recent-session browsing via `@harness/session-store`; reports match provenance |
 | `get-current-time/` | `get_current_time` | Passthrough |
 | `list-sessions/` | `list_sessions` | Session directory listing via `@harness/session-store` |
-| `subagents/look-at/` | `look_at` | Zero-shot vision subagent; BMP files are converted to PNG before vision analysis; hidden for vision-capable models, checked against the routed physical model under a virtual (alias) selection |
+| `subagents/look-at/` | `look_at` | Zero-shot vision subagent; BMP files are converted to PNG before vision analysis; hidden for vision-capable models, checked against the routed physical model under a virtual (alias) selection and re-checked before every LLM call (the `context` event), since an alias's routing state first appears mid-run |
 | `subagents/oracle/` | `oracle`, `resume_oracle` | Zero-shot senior technical advisor; hidden from the active tools when the session model matches the gpt-5.6/gpt-6 families (`subagents/shared/family-gate.ts`), same enable/disable pattern as `look_at` |
 | `read/` | `read` | Directory reads delegate to `ls`; markdown files render formatted when expanded; collapsed `SKILL.md` reads preview the frontmatter description |
 | `subagents/read-session/` | `read_session` | Zero-shot past-session extractor |
