@@ -105,6 +105,10 @@ export async function registerAdvisor(pi: ExtensionAPI): Promise<void> {
   // the session model belongs to a family that should not use them. Under a
   // virtual (alias) selection the family lives on the routed physical model;
   // an alias that never answered on this branch leaves the tools as they are.
+  // The gate is re-applied in the context handler too: agent_start only fires
+  // once per run, but an alias's routing state first appears mid-run (written
+  // when the alias answers), so within the very first run on an alias the
+  // context event is the only point that sees the routed model.
   const syncTools = (
     model: (ModelIdentity & { api?: string }) | undefined,
     branch: readonly BranchEntryLike[],
@@ -118,5 +122,8 @@ export async function registerAdvisor(pi: ExtensionAPI): Promise<void> {
   });
   pi.on("model_select", (event, ctx) => {
     syncTools(event.model, ctx.sessionManager.getBranch());
+  });
+  pi.on("context", (_event, ctx) => {
+    syncTools(ctx.model, ctx.sessionManager.getBranch());
   });
 }

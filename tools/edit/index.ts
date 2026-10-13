@@ -11,9 +11,13 @@
  *     Anthropic and GLM. For Anthropic models, strict tool-use validation is
  *     enabled on the `edit` tool via `before_provider_request`.
  *
- * Routing runs on `session_start`, `model_select`, and `agent_start` (the last
- * is a backstop for startup-before-model-select). The active-tool set is swapped
- * in place with `pi.setActiveTools`, mirroring the `look_at` tool's pattern.
+ * Routing runs on `session_start`, `model_select`, `agent_start` (the last
+ * is a backstop for startup-before-model-select), and `context` (a re-sync
+ * before every LLM call: an alias's routing state first appears mid-run,
+ * written when the alias answers, so within the very first run on an alias
+ * the context event is the only point that sees the routed model). The
+ * active-tool set is swapped in place with `pi.setActiveTools`, mirroring
+ * the `look_at` tool's pattern.
  *
  * File layout (per AGENTS.md): all `pi.*` / `ctx.*` calls live here. Pure logic
  * is in `router.ts`, `default/edit.ts`, `anthropic/strict.ts`, and `apply-patch/*`.
@@ -117,6 +121,13 @@ export default function editTool(pi: ExtensionAPI): void {
   // Backstop: ensure routing is correct before the first turn even if
   // `session_start` ran before a model was selected.
   pi.on("agent_start", (_event, ctx) => {
+    routeEditTool(pi, ctx.model, ctx.sessionManager.getBranch());
+  });
+
+  // Re-sync before every LLM call: under a virtual (alias) selection the
+  // routing state first appears mid-run, after the alias's first answer.
+  // `routeEditTool` no-ops when the choice already matches.
+  pi.on("context", (_event, ctx) => {
     routeEditTool(pi, ctx.model, ctx.sessionManager.getBranch());
   });
 
