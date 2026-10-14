@@ -3,10 +3,9 @@
  *
  * Moved from:
  * - breadcrumbs/lib/session-search.ts: getSessionsDir(), encodeCwd(), decodeCwd()
- * - hooks/protect-sessions-dir/path-utils.ts: isInSessionsDir()
  */
 
-import { isAbsolute, join, relative, resolve } from "node:path";
+import { join, resolve } from "node:path";
 import { getAgentDir } from "@earendil-works/pi-coding-agent";
 
 /** Get the sessions directory, respecting PI_CODING_AGENT_DIR env var. */
@@ -38,12 +37,4 @@ export function decodeCwd(encoded: string): string {
   const stripped = encoded.replace(/^--/, "").replace(/--$/, "");
   // Replace hyphens with slashes and prepend leading slash
   return `/${stripped.replace(/-/g, "/")}`;
-}
-
-/** Check if a resolved absolute path falls within the sessions directory. */
-export function isInSessionsDir(path: string): boolean {
-  const sessionsDir = getSessionsDir();
-  const absolutePath = resolve(path);
-  const rel = relative(sessionsDir, absolutePath);
-  return rel !== "" && !rel.startsWith("..") && !isAbsolute(rel);
 }

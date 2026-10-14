@@ -4,7 +4,7 @@ export {
   extractSessionIds,
   messageText,
 } from "./format";
-export { decodeCwd, encodeCwd, getSessionsDir, isInSessionsDir } from "./paths";
+export { decodeCwd, encodeCwd, getSessionsDir } from "./paths";
 export {
   type SessionSummary,
   SessionSummarySchema,
