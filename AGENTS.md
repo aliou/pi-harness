@@ -6,244 +6,49 @@ This repo is a pnpm workspace. Internal shared dependencies live in `packages/` 
 
 ## Documentation maintenance
 
-Keep this file current when adding, removing, moving, or materially changing commands, hooks, tools, extensions, packages, or shared architecture.
+Keep this file current when adding, removing, moving, or materially changing commands, hooks, tools, extensions, packages, or shared architecture. When adding new content or changing existing behavior, update the closest relevant documentation in the same change. Feature-specific docs belong next to that feature only when they are actively maintained.
 
-When adding new content or changing existing behavior, update the closest relevant documentation in the same change. Repository-level docs belong here. Feature-specific docs belong next to that feature only when they are actively maintained.
+## Structure and placement
 
-## Structure
+New functionality goes in `commands/<name>/` (slash commands), `hooks/<name>/` (event-driven behavior, UI chrome, autocomplete, lifecycle, background observers), `tools/<name>/` (agent-callable tools), `packages/<name>/` (shared internal `@harness/*` code), or `skills/<name>/` (shipped skills, declared under `pi.skills`). Avoid cross-imports between `commands/`, `hooks/`, and `tools/`; share code by vendoring it locally if tiny, adding it to an existing `packages/*` package, or creating a new one when it is a distinct shared concern.
 
-- `commands/` - Slash commands and command-like UI flows.
-- `hooks/` - Event hooks, lifecycle behavior, autocomplete providers, chrome, and background behavior.
-- `tools/` - Agent tools exposed to Pi sessions.
-- `skills/` - Skills shipped with the harness and loaded via the `pi.skills` manifest entry in `package.json`.
-- `packages/` - Shared internal workspace packages. Each package lives in `packages/<name>/` and is imported through its `@harness/*` workspace package name.
-- `scripts/` - Maintenance, native build, and extension Gist release scripts.
-- `tests/` - Test setup and docs. Shared test utilities live in `packages/test-utils`.
-
-Unit tests use `memfs` for filesystem fixtures via `tests/vitest.setup.ts`. `createPiTestHarness` creates its default cwd in the virtual volume. Subprocesses cannot read memfs; `tools/bash/index.test.ts` and `tools/subagents/scout/tools/grep.test.ts` use real temporary host directories for their integration tests. Test conventions live in `tests/README.md`.
-
-## New feature placement
-
-New functionality should be added as one of:
-
-- `commands/<name>/` for slash commands.
-- `hooks/<name>/` for event-driven behavior, UI chrome, autocomplete, lifecycle hooks, or background observers.
-- `tools/<name>/` for agent-callable tools.
-- `packages/<name>/` for shared internal code.
-- `skills/<name>/` for skills shipped with the harness (declared in `package.json` under `pi.skills`).
-
-Avoid cross-imports between `commands/`, `hooks/`, and `tools/`. If code needs to be shared across those areas:
-
-1. Vendor it locally if it is tiny and unlikely to grow.
-2. Prefer adding it to an existing `packages/*` workspace package when it fits.
-3. Create a new `packages/*` workspace package when it is a distinct shared concern.
-
-## Entry point convention
-
-Every extension entry point is `export default function(pi: ExtensionAPI)`, calling `pi.registerCommand(...)`, `pi.registerTool(...)`, or `pi.on(...)` directly. No wrapper functions.
-
-Pi discovers extensions from the root `package.json` `pi.extensions` array. Directories in that list are scanned for `index.ts` entry points.
-
-## File layout convention
-
-Within a command, hook, or tool directory:
-
-- `index.ts` - Registration code. All `pi.*` and `ctx.*` calls live here.
-- `types.ts` - Type definitions and TypeBox schemas when needed.
-- `render.ts` / `renderers.ts` - Tool/message render functions when needed.
-- `helpers.ts` / `fetch.ts` / `sanitize.ts` / `blocked-paths.ts` - Pure functions and utilities. Names vary by domain.
-
-No `pi.*` or `ctx.*` calls outside `index.ts`. Other files contain only pure functions, types, components, or utils.
+Every extension entry point is `export default function(pi: ExtensionAPI)`, calling `pi.registerCommand(...)`, `pi.registerTool(...)`, or `pi.on(...)` directly — no wrapper functions. Within a command, hook, or tool directory, every `pi.*`/`ctx.*` call lives in `index.ts`; other files contain only pure functions, types, schemas, components, or renderers.
 
 ## Tool result contract
 
 Every tool the main agent can call follows Pi's tool result contract, so `codemode` scripts get data and permission extensions get honest hints:
 
-- Declare `outputSchema` (TypeBox) and always return a matching `structuredContent`. The model still receives `content`; scripts receive `structuredContent`. Type the builder's return value with `Static<typeof schema>`, since Pi does not validate it at runtime. `structuredContent` must be JSON: build it from type aliases or fresh literals and drop `undefined` fields with `withoutUndefined` from `@harness/utils`.
-- `structuredContent` carries the result data, not the model-facing view. When `content` is a truncated preview, return the full data up to 1 MiB and state the cap in the schema field description (see `read_url`). It is not saved in the session, so size costs nothing there.
+- Declare `outputSchema` (TypeBox) and always return matching `structuredContent`, typed with `Static<typeof schema>`. Pi does not validate it at runtime. It must be JSON: build from type aliases or fresh literals and drop `undefined` fields with `withoutUndefined` from `@harness/utils`.
+- `structuredContent` carries the result data, not the model-facing view. It is not saved in the session, so return the full data up to 1 MiB when `content` is a truncated preview, stating the cap in the schema field description.
 - Report a failure that still carries data with `isError: true` and `structuredContent`, not a normal result whose text is an error. Throw for failures without data.
 - Set `annotations` (`readOnlyHint`, `destructiveHint`, `idempotentHint`, `openWorldHint`). Missing hints mean "may be destructive, open world".
-- Test with `expectStructuredOutput` from `@harness/test-utils/structured-output`.
+- Test with `expectStructuredOutput` from `@harness/test-utils/structured-output`. Only tools the main agent can call follow the contract; tools registered inside subagent sessions do not.
 
-Subagent tools get this from `@harness/agent-kit`: `SubagentOutputSchema` (`response`, `sessionId`, `resumable`, `model`, `status`, `usage`) and read-only, open-world annotations, which a subagent can override with `annotations` in its config. Subagent and `resume_*` tools use the default `direct` exposure: the model calls them and codemode scripts can too. A nested call shows as one line in the codemode result, its trace is not saved in the session, and a script loop can start many paid runs. Only the tools the main agent can call follow the contract; tools registered inside subagent sessions do not.
+Subagent tools that spawn a subagent follow a different layout under `tools/subagents/<name>/`: a `register<Name>(pi)` entry function in `index.ts`, `prompt.ts` for the system prompt, and `tools/` visible only inside the subagent. Shared framework code is `@harness/agent-kit`.
 
-### Subagent-based tools
+Each subagent hardcodes its roster in its `createSubagent` call as the single pi-rig virtual alias `agents/<name>`, so physical model choice and usage-aware routing live in pi-rig, not here. Subagents have no roster-level `enabled` flag; parent-model gates may still hide their tools. Attempt order is roster order; ranking and failover mechanics live in `packages/agent-kit/` — read them before changing roster behavior.
 
-Tools that spawn a subagent follow a different layout:
+Before changing child model or resource loading, read `packages/agent-kit/resources/virtual-models.ts` and `packages/agent-kit/models/model-runtime.ts`. Discover routing resources from the parent cwd without installing missing packages; require the enabled pi-rig routing extension and fail explicitly when it is unavailable. Keep routing pins scoped to the child session. The caller-facing failover rules that must hold regardless of implementation: only failures before the first streamed token advance to the next roster entry (once output has streamed, a failure is fatal — a fresh session on another model would silently drop what the caller already saw); context overflow, aborts, prompt-build failures, and clean-but-empty completions are never retried; resumed runs never fail over, because the pinned model owns the session history.
 
-- `index.ts` - Registration code. Spawns the subagent via `ctx.newSession()`.
-- `types.ts` - Subagent details schema and shared types.
-- `prompt.ts` - System prompt builder for the subagent.
-- `models/index.ts` - Model selection for the subagent.
-- `tools/` - Subagent tool definitions, visible only inside the subagent.
-- `lib/` - Supporting logic.
+Subagents are zero-shot: only their final response is returned to the parent, and a run with no final answer fails the parent tool call. Make each subagent call self-contained. Advisory and review subagents prefer outcome-first prompts (outcome, what good means, constraints, verification, evidence, desired shape); research and extraction subagents prefer narrow scope and requested evidence over inference. Model-specific research and compatibility constraints live in `docs/prompting-*.md` — read the matching doc before changing a subagent's prompt or model roster. Sol 6.1 requires at least `low` reasoning and Responses for tools; use Luna when a role needs thinking `off`. `buildPrompt` receives the resolved subagent model: keep model selection in `modelPreferences`, model identity helpers in `@harness/models`, and model-specific prompt compilation inside the tool's `prompt.ts`. Keep model names out of parent-facing tool guidelines unless the caller must choose or configure a model directly.
 
-Current subagent-based tools include `advisor`, `look-at`, `oracle`, `read-session`, `reviewer`, and `scout`. They live under `tools/subagents/<name>/`, each exporting a `register<Name>(pi)` entry function from its `index.ts`; `tools/subagents/index.ts` is the discovered extension entry point and calls each registration in order. Helpers shared between subagent tools live in `tools/subagents/shared/`.
+Edit routing and the `advisor`, `oracle`, and `look_at` visibility gates resync before every LLM call through the `context` event, because an alias's routing state first appears mid-run. Edit routing decides `latest/*` and `fast/*` aliases from the alias id immediately (GPT aliases get `apply_patch` in place of `edit` and `write`, Kimi aliases the Kimi `edit` schema); other selections, including `agents/*`, use `effectiveModelIdentity` from `@harness/models`. The advisory gates hide `advisor`/`oracle` and their resume tools for GPT-5.6 and GPT-6 physical models, falling back to the alias id only before routing state exists. The `look_at` gate checks the effective model's image capability through `resolveEffectiveModel`; before that resolves, aliases pinning a vision-capable family hide it and unresolved mixed aliases keep the current visibility.
 
-### Subagent model rosters
-
-Each subagent hardcodes its roster in its `createSubagent` call. All rosters map
-to a single virtual alias, `agents/<name>` (registered by pi-rig), so the
-physical model choice and usage-aware routing live in pi-rig. Attempt order is
-roster order; `rankModels` filters unknown, unauthed, and recently-cooled
-providers before ranking. Subagents are always enabled; execution-time roster
-replacement for evals (`SubagentRunOptions.modelPreferences`) is unchanged.
-
-For virtual selections, agent-kit resolves the enabled
-`hooks/virtual-models/index.ts` resource from the installed `@aliou/pi-rig`
-package and passes its absolute path to the child resource loader. It discovers
-resources using the parent cwd and skips missing packages rather than installing
-them. Missing routing resources fail child creation explicitly. The child
-runtime inherits each available physical provider once, while physical
-selections inherit only their selected provider. Pi binds routing to the
-child's context, so pins belong to the child session. Package identity and
-relative extension path live in `packages/agent-kit/resources/virtual-models.ts`.
-
-#### Weight semantics
-
-A roster is a ranking, not a single draw. `rankModels` filters out entries the registry does not know or cannot auth, then orders the survivors:
-
-- **Positive weights** are ranked by weighted random sampling without replacement. The first entry follows the same distribution as a plain weighted draw (`weight 2` leads twice as often as `weight 1`), and the rest are a fair continuation of it. Two `weight 1` entries are a deliberate 50/50 split.
-- **Zero and negative weights are never drawn.** They are appended after every positive-weight entry, in roster order, as last-resort fallbacks. Roster order is the only thing that breaks ties between them, so list credit-based providers last.
-
-There is no `enabled` flag: to stop using a model, remove it from the roster.
-
-#### Failover
-
-A fresh run walks the ranking until a model answers. Only failures **before the first streamed token** advance to the next entry — quota/billing exhaustion, transient 429/5xx, transport errors, deterministic model rejections, and connect-but-no-tokens stalls. Once output has streamed, a failure is fatal, because a fresh session on another model would silently drop what the caller already saw. Context overflow, aborts, prompt-build failures, and clean-but-empty completions are never retried.
-
-A provider-scoped failure (quota, transient, or stall) also drops that provider's remaining entries for the invocation and arms a 5-minute in-process cooldown, so the next spawn skips it instead of re-probing. When every usable candidate is cooled the cooldown is ignored — one probe beats no subagent.
-
-The startup (time-to-first-token) timeout is armed **per attempt** (25s), under an invocation-wide budget (60s) that keeps several stalling providers from stacking full windows. Both disarm permanently on the first streamed output. Fatal subagent errors name the provider/model that produced them.
-
-Resumed runs never fail over: the pinned model owns the session history, so a failed resume is fatal and names the provider/model.
-
-### Parent prompts for subagents
-
-Subagents are zero-shot: only their final response is returned to the parent. Parent agents should make each subagent call self-contained.
-
-Subagent runs that produce no final answer fail the parent tool call. Provider context-overflow errors tell the parent to start a fresh, narrower subagent call because resuming retains the oversized context.
-
-- Advisory and review subagents (`advisor`, `oracle`, `reviewer`) prefer outcome-first prompts: outcome, what good means, constraints, how to verify, available evidence, and desired final shape. Avoid process-heavy step lists unless the sequence is a hard requirement.
-- Research and extraction subagents (`scout`, `read-session`) prefer narrow scope, explicit constraints, concrete search targets, and requested evidence. Ask for files, line ranges, session evidence, or `not found` instead of allowing inference.
-- Vision subagents (`look-at`) prefer precise multimodal objectives: what visible evidence to inspect, what to ignore, and the desired output format.
-
-Code-reading subagents can opt into project context through `resolveAgentsFiles`. The resolver runs only for new invocations and returns the exact AGENTS.md-style files exposed to the subagent. Agent-kit marks those files as factual reference context rather than authoritative instructions, so their implementation and workflow directives do not override the subagent's assigned role. `advisor`, `oracle`, `reviewer`, and `scout` opt in; Scout resolves context from its requested `cwd`, while the others use the parent session cwd.
-
-Model-specific research behind these caller-facing rules lives in `docs/prompting-*.md`. Each prompting doc covers one model or model family. Keep model names out of parent-facing tool guidelines unless the caller must choose or configure a model directly.
-
-`buildPrompt` receives the resolved subagent model. Keep model selection in `modelPreferences`, model identity helpers in `@harness/models`, and model-specific prompt compilation inside the tool's `prompt.ts`.
-
-`knownModelFamily` recognizes GPT-6 minor releases such as `gpt-6.1-sol` independently of provider. GPT-6 advisory, review, local research, and session extraction prompts define read-only autonomy, evidence requirements, and stopping conditions. The official family guide covering Sol 6.1 lives in `docs/prompting-gpt-6.1-sol.md`; the harness summary lives in `docs/prompting-gpt-6.md`. Sol 6.1 requires at least `low` reasoning and Responses for tools; use Luna when a role needs thinking `off`.
-
-Subagents default to the parent session cwd. If a subagent accepts an invocation-level `cwd` parameter, set `resolveCwd` in its `createSubagent` config so the subagent session and exposed tools use the same effective root.
-
-## Commands
-
-| Directory | Commands | Notes |
-|---|---|---|
-| `continue/` | `/continue` | Continue from a linked parent session |
-| `copy-session-id/` | `/copy:session-id` | Copy session ID to clipboard |
-| `copy-session-path/` | `/copy:session-path` | Copy session file path to clipboard |
-| `proceed/` | `/proceed` | Resume the current session without sending prompt text to the LLM |
-
-## Hooks
-
-| Directory | Purpose | Key files |
-|---|---|---|
-| `resource-loader/` | Append `.agents/AGENTS.local.md` (cwd only) to the system prompt; complements Pi's built-in `AGENTS.md`/`CLAUDE.md` discovery which does not consult `.agents/` | `index.ts`, `load.ts` |
-| `provider-tweaks/` | Provider-specific tweaks; injects `x-session-id` on every request and requests detailed reasoning summaries on `openai`/`openai-codex` Responses calls that carry a `reasoning` payload | `index.ts`, `openai.ts`, `session-id.ts` |
-| `at-path-autocomplete/` | `@`-path autocomplete wrapper | Rewrites `@`-file completions to `./`-relative paths on insertion |
-| `chrome/` | Header and footer; the header shows the logo plus `[hostname] host:org/repo` from workspace metadata; footer shows cost, context, and the routed model next to a virtual (alias) selection, with its provider when several providers serve it, prefixed by a thunderbolt glyph while pi-rig's `/fast` mode is on (tracked via the `rig:fast:*` events vendored in `@harness/events`); the context window shows `?` until an alias answers after being selected | `hooks/`, `components/`, `lib/`, `native/` |
-| `editor-stash/` | `ctrl+shift+s` stash/unstash of editor content | `index.ts`, `lib/` |
-| `event-compat/` | Backwards-compatible event aliases | `index.ts` |
-| `notifications/` | Canonical `ad:notify:*` producer plus terminal (OSC) and sound consumers | `index.ts`, `producer.ts`, `terminal.ts`, `sound.ts` |
-| `session-autocomplete/` | `@@` autocomplete for session references | `index.ts`, `provider.ts` |
-| `session-name/` | Auto-name sessions; skips initial naming and refines once the user set the name themselves (derived from `session_info` vs `session_name_change` entries), and cancels the in-flight run when the name changes mid-run | `index.ts`, `pinned.ts` |
-| `skill-autocomplete/` | `?` skill autocomplete; supports `skillsRoots` plus pinned skill directories in `completion.json`, which load as real Pi skills and take priority over root duplicates; sends each inline skill as a rendered context message and retains skill names in user prose | `index.ts`, `config.ts`, `expand.ts`, `render.ts` |
-| `workspace-metadata/` | Record model-hidden hostname, canonical cwd, and Git remote metadata for new/forked sessions, and backfill existing sessions that lack it | `index.ts`, `helpers.ts`, `types.ts` |
-| `zoxide-autocomplete/` | `@z:` project path autocomplete | `index.ts` |
-
-## Tools
-
-| Directory | Tool name | Notes |
-|---|---|---|
-| `subagents/advisor/` | `advisor`, `resume_advisor` | Zero-shot strategic advisor for hard decisions, stuck work, risk review, and pre-completion second opinions; hidden from the active tools when the session model matches the gpt-5.6/gpt-6 families (`subagents/shared/family-gate.ts`) — `latest/*`/`fast/*` gpt aliases hide them from selection time, other selections are checked against the routed physical model — same enable/disable pattern as `look_at` |
-| `ask-user/` | `ask_user` | Sequential structured input dialogs |
-| `bash/` | `bash` | Adds `cwd` while preserving Pi's session environment, spawn hooks, and sanitization |
-| `edit/` | `edit`, `apply_patch` | Model-aware edit tool. Routes GPT-5/6 models on `openai` and all models on compatibility provider `openai-codex` to a queued `apply_patch` (V4A freeform patch, replacing `edit`+`write`), Kimi K2.7 Code to a queued `edit` with `old_string`/`new_string`, and everyone else to the native JSON `edit` with capability-aware constrained sampling. `latest/*`/`fast/*` GPT aliases get `apply_patch` and kimi aliases get the Kimi `edit` from selection time — the alias id pins the family, so no wait for routing state; `agents/*` rosters and physical models decide from the routed physical model |
-| `find/` | `find` | Adds `glob`, blocked paths |
-| `find-sessions/` | `find_sessions` | Session search or recent-session browsing via `@harness/session-store`; reports match provenance |
-| `get-current-time/` | `get_current_time` | Passthrough |
-| `list-sessions/` | `list_sessions` | Session directory listing via `@harness/session-store` |
-| `subagents/look-at/` | `look_at` | Zero-shot vision subagent; BMP files are converted to PNG before vision analysis; hidden for vision-capable models — `latest/*`/`fast/*` aliases that pin a vision-capable family (gpt, claude, kimi, glm-flash) hide it from selection time, other aliases are checked against the routed physical model and re-checked before every LLM call (the `context` event), since an alias's routing state first appears mid-run |
-| `subagents/oracle/` | `oracle`, `resume_oracle` | Zero-shot senior technical advisor; hidden from the active tools when the session model matches the gpt-5.6/gpt-6 families (`subagents/shared/family-gate.ts`) — `latest/*`/`fast/*` gpt aliases hide them from selection time, other selections are checked against the routed physical model — same enable/disable pattern as `look_at` |
-| `read/` | `read` | Directory reads delegate to `ls`; markdown files render formatted when expanded; collapsed `SKILL.md` reads preview the frontmatter description |
-| `subagents/read-session/` | `read_session` | Zero-shot past-session extractor |
-| `read-url/` | `read_url` | URL fetch with handler chain and preview |
-| `subagents/reviewer/` | `reviewer`, `resume_reviewer` | Zero-shot formal code-review subagent; accepts optional `cwd` so review commands and file reads run in the target repo |
-| `subagents/scout/` | `scout`, `resume_scout` | Zero-shot local codebase researcher; grep/find run with capped output readers |
+Code-reading subagents can opt into project context through `resolveAgentsFiles`; agent-kit marks those files as factual reference context, so their implementation and workflow directives do not override the subagent's assigned role. Subagents default to the parent session cwd; if a subagent accepts an invocation-level `cwd` parameter, set `resolveCwd` in its `createSubagent` config so the subagent session and exposed tools use the same effective root.
 
 ## Development
 
-Uses pnpm workspaces. Nix environment available via `flake.nix`.
-
-```sh
-pnpm install
-pnpm typecheck
-pnpm lint
-pnpm test
-```
+pnpm workspaces; Nix environment via `flake.nix`. Unit tests use `memfs` for filesystem fixtures via `tests/vitest.setup.ts`; subprocesses cannot read memfs, so integration tests that spawn processes use real temporary host directories. Read `tests/README.md` and follow its conventions before writing tests.
 
 ## Extension Gist releases
 
-`scripts/extension-gists.json` is the opt-in release manifest for standalone extension Gists. Each entry records its package metadata, runtime executable requirements, visibility, and stable Gist ID. A missing Gist ID means the first publish creates the Gist and writes its ID back to the manifest; later publishes update that Gist.
-
-The Nushell release script builds each selected extension as `index.js` and each declared `@harness/*` workspace package as a separate flat ESM file. Pi runtime packages remain optional peer dependencies so Pi can supply its own compatible runtime. The build fails if it reaches third-party `node_modules`, an undeclared workspace import, a non-Pi external package, or known repository-relative runtime resources. Generated packages contain the flat JavaScript files and `package.json` under `dist/extensions/`.
-
-```sh
-# Build every manifest entry, or one entry by path.
-pnpm extensions:build
-pnpm extensions:build hooks/skill-autocomplete
-
-# Preview, create, or update Gists using the current gh login.
-pnpm extensions:publish --dry-run
-pnpm extensions:publish hooks/skill-autocomplete
-```
-
-Review and commit `scripts/extension-gists.json` after a first publish records a new Gist ID. Add only extensions that can run without repository-relative assets or external runtime npm dependencies. Runtime executables such as `git`, `tmux`, or `zoxide` must be declared in the manifest.
-
-Workspace packages:
-
-| Directory | Package | Description |
-|---|---|---|
-| `packages/agent-kit/` | `@harness/agent-kit` | Subagent framework used by harness tools and hooks; ranks the model roster and fails over to the next entry on pre-start provider failures, returns nested model usage for Pi session accounting, fresh runs can replace the model preference roster for evals, and subagent tools share one output schema |
-| `packages/audio-player/` | `@harness/audio-player` | Shared alert sound paths and best-effort audio playback with binary fallback |
-| `packages/completion/` | `@harness/completion` | Completion logic |
-| `packages/events/` | `@harness/events` | Shared event names and event payload types |
-| `packages/image-formats/` | `@harness/image-formats` | Image MIME detection and format conversion |
-| `packages/models/` | `@harness/models` | Model identity helpers (`ModelIdentity`, `knownModelFamily`, `modelKey`) and `effectiveModelIdentity`, which resolves the routed physical model for virtual (alias) selections from the session branch, and `resolveEffectiveModel`, which joins that identity against the available catalog when a check needs capability flags such as `input` |
-| `packages/session-store/` | `@harness/session-store` | Session directory access, Sesame search, listing, and the session summary schema shared by `find_sessions` and `list_sessions` |
-| `packages/session-tools/` | `@harness/session-tools` | Pi-agnostic session entry indexing, branch/tree traversal, and bounded read-session helpers |
-| `packages/test-utils/` | `@harness/test-utils` | Shared Vitest/Pi extension test harness utilities |
-| `packages/ui/` | `@harness/ui` | Shared TUI components/helpers |
-| `packages/utils/` | `@harness/utils` | Shared generic utilities |
+`scripts/extension-gists.json` is the opt-in release manifest for standalone extension Gists; a missing Gist ID is created on first publish and written back to the manifest — review and commit the manifest after a first publish. `pnpm extensions:build` builds each entry as flat ESM; the build fails on third-party `node_modules`, undeclared workspace imports, non-Pi externals, or repository-relative runtime resources. Runtime executables such as `git`, `tmux`, or `zoxide` must be declared in the manifest. Add only extensions that can run without repository-relative assets or external runtime npm dependencies.
 
 ## Instance isolation
 
-To run multiple harness instances on the same machine, override these env vars per instance (alongside Pi's own `PI_CODING_AGENT_DIR`, which already isolates everything under the agent dir):
-
-| Variable | Default | Used by |
-|---|---|---|
-| `HARNESS_DATA_HOME` | `$SESAME_DATA_DIR` or `~/.local/share/sesame` | Sesame session-search SQLite index (`packages/session-store/db.ts`) |
-
-## Custom header
-
-The startup header (`hooks/chrome/components/header.ts`) shows the `pi` logo plus the workspace identity line (`[hostname] host:org/repo`, falling back to the compact cwd) from the metadata recorded by `hooks/workspace-metadata`.
+To run multiple harness instances on the same machine, override `HARNESS_DATA_HOME` (default `$SESAME_DATA_DIR` or `~/.local/share/sesame`), which isolates the Sesame session-search SQLite index in `packages/session-store/`, alongside Pi's own `PI_CODING_AGENT_DIR`.
 
 ## Notes
 
 - This repo is private Pi harness infrastructure first. Not every package here is intended to be published as a standalone package.
-- Keep repository-level docs focused on this Pi harness. Feature-specific details belong next to the feature only when those docs are actively maintained.
-ckage here is intended to be published as a standalone package.
 - Keep repository-level docs focused on this Pi harness. Feature-specific details belong next to the feature only when those docs are actively maintained.
