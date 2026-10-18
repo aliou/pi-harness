@@ -16,9 +16,11 @@ import { ANALYSIS_SYSTEM_PROMPT } from "./prompt";
 import { renderLookAtDetails, renderLookAtHeader } from "./render";
 import { LookAtParams, type LookAtParamsInput } from "./types";
 import {
+  aliasVisionCapable,
   detectSupportedImageMimeType,
   injectLookAtGuidance,
-  lookAtGateAction,
+  isVisionCapable,
+  visionGateAction,
 } from "./utils";
 
 const TOOL_NAME = "look_at";
@@ -139,25 +141,31 @@ export async function registerLookAt(pi: ExtensionAPI): Promise<void> {
 
   // The vision capability lives on the effective model: the selection itself
   // when physical, or the routed physical model under a virtual (alias)
-  // selection. An alias that never answered on this branch leaves the tool
-  // as it is. The gate is re-applied in the context handler too: agent_start
-  // only fires once per run, but an alias's routing state first appears
-  // mid-run (written when the alias answers), so within the very first run
-  // on an alias the context event is the only point that sees the routed
-  // model.
+  // selection. Before an alias has routed on this branch, aliases whose id
+  // pins a vision-capable family (gpt, claude, kimi, glm-flash) decide
+  // immediately, so the tool is hidden from the first run; mixed families
+  // keep the current state until routing state exists. The gate is re-applied
+  // in the context handler too: agent_start only fires once per run, but an
+  // alias's routing state first appears mid-run (written when the alias
+  // answers), so within the very first run on an alias the context event is
+  // the only point that sees the routed model.
   const syncTool = (ctx: ExtensionContext): void => {
-    const model = resolveEffectiveModel(
+    const routed = resolveEffectiveModel(
       ctx.model,
       ctx.sessionManager.getBranch(),
       ctx.modelRegistry.getAvailable(),
     );
-    const action = lookAtGateAction(
-      model,
+    const vision = routed
+      ? isVisionCapable(routed)
+      : aliasVisionCapable(ctx.model);
+    const action = visionGateAction(
+      vision,
       pi.getActiveTools().includes(TOOL_NAME),
     );
     if (action === "disable") disableTool(pi);
     else if (action === "enable") enableTool(pi);
   };
+  pi.on("session_start", (_evt, ctx) => syncTool(ctx));
   pi.on("agent_start", (_evt, ctx) => syncTool(ctx));
   pi.on("model_select", (_evt, ctx) => syncTool(ctx));
 

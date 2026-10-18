@@ -2,9 +2,11 @@ import { join } from "node:path";
 import { vol } from "memfs";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
+  aliasVisionCapable,
   detectSupportedImageMimeType,
   lookAtGateAction,
   referencesImageFiles,
+  visionGateAction,
 } from "./utils";
 
 vi.mock("node:os", () => ({
@@ -242,5 +244,52 @@ describe("lookAtGateAction", () => {
   it("keeps the state when the model is unresolved (alias never answered)", () => {
     expect(lookAtGateAction(undefined, true)).toBe("keep");
     expect(lookAtGateAction(undefined, false)).toBe("keep");
+  });
+});
+
+describe("aliasVisionCapable", () => {
+  it("resolves aliases that pin a vision-capable family", () => {
+    for (const id of [
+      "gpt-sol",
+      "gpt-luna",
+      "gpt-astra",
+      "claude-opus",
+      "claude-fable",
+      "kimi",
+      "glm-flash",
+    ]) {
+      expect(aliasVisionCapable({ provider: "latest", id })).toBe(true);
+    }
+    expect(aliasVisionCapable({ provider: "fast", id: "gpt-sol" })).toBe(true);
+  });
+
+  it("leaves mixed families and non-aliases undecided", () => {
+    for (const id of ["glm", "deepseek-flash", "qwen-27b"]) {
+      expect(aliasVisionCapable({ provider: "latest", id })).toBeUndefined();
+    }
+    expect(
+      aliasVisionCapable({ provider: "agents", id: "advisor" }),
+    ).toBeUndefined();
+    expect(
+      aliasVisionCapable({ provider: "openai", id: "gpt-6.1-sol" }),
+    ).toBeUndefined();
+    expect(aliasVisionCapable(undefined)).toBeUndefined();
+  });
+});
+
+describe("visionGateAction", () => {
+  it("disables on known vision capability", () => {
+    expect(visionGateAction(true, true)).toBe("disable");
+    expect(visionGateAction(true, false)).toBe("keep");
+  });
+
+  it("enables on known text-only capability", () => {
+    expect(visionGateAction(false, false)).toBe("enable");
+    expect(visionGateAction(false, true)).toBe("keep");
+  });
+
+  it("keeps the state when capability is unknown", () => {
+    expect(visionGateAction(undefined, true)).toBe("keep");
+    expect(visionGateAction(undefined, false)).toBe("keep");
   });
 });

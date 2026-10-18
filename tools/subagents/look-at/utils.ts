@@ -99,24 +99,60 @@ export function isVisionCapable(model: { input: string[] }): boolean {
   return model.input.includes("image");
 }
 
+/**
+ * Vision capability decided from a virtual (alias) selection's id alone.
+ * pi-rig's `latest/*` and `fast/*` aliases pin the family through their match
+ * regex, and these families have only vision-capable deployments, so the
+ * gate can hide look_at before the alias has routed. Mixed families (e.g.
+ * `latest/glm` matches text-only GLM-5/5.1/5.2/5.3 deployments as well as
+ * vision-capable GLM-5.3-Flash) return undefined; the routed-model gate
+ * decides for them once routing state exists.
+ */
+export function aliasVisionCapable(
+  model: { provider?: string; id?: string } | undefined,
+): boolean | undefined {
+  const provider = model?.provider;
+  if (provider !== "latest" && provider !== "fast") return undefined;
+  const id = model?.id?.toLowerCase() ?? "";
+  if (
+    id.startsWith("gpt-") ||
+    id.startsWith("claude-") ||
+    id.startsWith("kimi") ||
+    id.startsWith("glm-flash")
+  ) {
+    return true;
+  }
+  return undefined;
+}
+
 /** What the visibility gate should do with the look_at tool. */
 export type ToolGateAction = "enable" | "disable" | "keep";
 
 /**
- * Decide the gate action from the resolved effective model and the tool's
- * current visibility. An unresolved model (alias never answered on this
- * branch, or the routed model is not in the catalog) keeps the current
+ * Decide the gate action from the resolved vision capability and the tool's
+ * current visibility. Unknown capability (alias never routed on this branch
+ * and the alias id does not pin a vision-capable family) keeps the current
  * state.
+ */
+export function visionGateAction(
+  vision: boolean | undefined,
+  active: boolean,
+): ToolGateAction {
+  if (vision === undefined) return "keep";
+  if (vision && active) return "disable";
+  if (!vision && !active) return "enable";
+  return "keep";
+}
+
+/**
+ * Decide the gate action from the resolved effective model and the tool's
+ * current visibility.
  */
 export function lookAtGateAction(
   model: { input: string[] } | undefined,
   active: boolean,
 ): ToolGateAction {
-  if (!model) return "keep";
-  const vision = isVisionCapable(model);
-  if (vision && active) return "disable";
-  if (!vision && !active) return "enable";
-  return "keep";
+  return visionGateAction(model ? isVisionCapable(model) : undefined, active);
 }
 
 /** Extract the concatenated text of a user message's content. */
