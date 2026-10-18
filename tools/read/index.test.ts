@@ -1,5 +1,6 @@
-import { writeFileSync } from "node:fs";
-import { join } from "node:path";
+import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { homedir } from "node:os";
+import { basename, join } from "node:path";
 import { createPiTestHarness } from "@harness/test-utils/pi-test-harness";
 import { describe, expect, it, vi } from "vitest";
 import readExtension from "./index";
@@ -22,6 +23,24 @@ describe("read tool result contract", () => {
       readOnlyHint: true,
       openWorldHint: false,
     });
+  });
+
+  // Regression: node's resolve does not expand `~`, so a tilde directory path
+  // missed the ls delegation and the native read threw EISDIR.
+  it("delegates tilde directory reads to ls", async () => {
+    const homeDir = mkdtempSync(join(homedir(), ".pi-read-test-"));
+    try {
+      writeFileSync(join(homeDir, "note.md"), "hello");
+      const pi = await createPiTestHarness(readExtension);
+
+      const result = await pi
+        .tool("read")
+        .execute({ path: join("~", basename(homeDir)) });
+
+      expect(result.isError).toBeFalsy();
+    } finally {
+      rmSync(homeDir, { recursive: true, force: true });
+    }
   });
 
   // Regression: passing partial `operations` upstream replaces defaults

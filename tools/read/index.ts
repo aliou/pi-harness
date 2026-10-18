@@ -19,7 +19,7 @@ import {
 } from "@earendil-works/pi-coding-agent";
 import { Markdown, Text } from "@earendil-works/pi-tui";
 import { SkillDescriptionPreviewComponent } from "@harness/ui";
-import { parseSkillDescription } from "@harness/utils";
+import { expandHomePath, parseSkillDescription } from "@harness/utils";
 
 /**
  * Override the built-in read tool to handle directories and markdown
@@ -44,7 +44,10 @@ export default function (pi: ExtensionAPI): void {
     annotations: { readOnlyHint: true, openWorldHint: false },
     async execute(toolCallId, params, signal, onUpdate, ctx) {
       const { path } = params;
-      const absolutePath = resolve(ctx.cwd, path);
+      // Expand `~` first: node's resolve does not, so `~/...` would lstat a
+      // literal `<cwd>/~/...` path, miss the directory, and fall through to
+      // the native read (which does expand `~`) and throw EISDIR.
+      const absolutePath = resolve(ctx.cwd, expandHomePath(path));
       const scopedNativeDef = createNativeReadTool(ctx.cwd);
       const scopedNativeLs = createLsTool(ctx.cwd);
 
