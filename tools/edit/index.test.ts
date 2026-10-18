@@ -5,7 +5,7 @@ import { expectStructuredOutput } from "@harness/test-utils/structured-output";
 import { vol } from "memfs";
 import { assert, beforeEach, describe, expect, it, vi } from "vitest";
 import editExtension, { prepareEditArguments } from "./index";
-import { pickEditTool, resolveActiveTools } from "./router";
+import { aliasEditChoice, pickEditTool, resolveActiveTools } from "./router";
 
 vi.mock("node:os", () => ({
   tmpdir: () => "/tmp",
@@ -438,6 +438,43 @@ describe("routing", () => {
       pickEditTool({ provider: "synthetic", id: "hf:zai-org/GLM-5.2" }),
     ).toBe("edit");
     expect(pickEditTool(undefined)).toBe("edit");
+  });
+
+  it("decides alias selections from the alias id alone", () => {
+    expect(aliasEditChoice({ provider: "latest", id: "gpt-sol" })).toBe(
+      "apply_patch",
+    );
+    expect(aliasEditChoice({ provider: "latest", id: "gpt-astra" })).toBe(
+      "apply_patch",
+    );
+    expect(aliasEditChoice({ provider: "fast", id: "gpt-luna" })).toBe(
+      "apply_patch",
+    );
+    expect(aliasEditChoice({ provider: "latest", id: "kimi" })).toBe(
+      "kimi_edit",
+    );
+    // Families that always want the default JSON interface.
+    expect(aliasEditChoice({ provider: "latest", id: "glm-flash" })).toBe(
+      "edit",
+    );
+    expect(aliasEditChoice({ provider: "latest", id: "glm" })).toBe("edit");
+    expect(aliasEditChoice({ provider: "latest", id: "claude-opus" })).toBe(
+      "edit",
+    );
+    expect(aliasEditChoice({ provider: "latest", id: "deepseek-flash" })).toBe(
+      "edit",
+    );
+    expect(aliasEditChoice({ provider: "latest", id: "qwen-27b" })).toBe(
+      "edit",
+    );
+    // Not decidable from the id: falls back to the routed-model decision.
+    expect(
+      aliasEditChoice({ provider: "agents", id: "advisor" }),
+    ).toBeUndefined();
+    expect(
+      aliasEditChoice({ provider: "openai", id: "gpt-6.1-sol" }),
+    ).toBeUndefined();
+    expect(aliasEditChoice(undefined)).toBeUndefined();
   });
 
   it.each([

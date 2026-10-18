@@ -13,11 +13,11 @@
  *
  * Routing runs on `session_start`, `model_select`, `agent_start` (the last
  * is a backstop for startup-before-model-select), and `context` (a re-sync
- * before every LLM call: an alias's routing state first appears mid-run,
- * written when the alias answers, so within the very first run on an alias
- * the context event is the only point that sees the routed model). The
- * active-tool set is swapped in place with `pi.setActiveTools`, mirroring
- * the `look_at` tool's pattern.
+ * before every LLM call). `latest/*` and `fast/*` aliases that pin a family
+ * (gpt, kimi) decide from the alias id alone; other aliases and physical
+ * models decide from the routed physical model, whose state first appears
+ * mid-run, written when the alias answers. The active-tool set is swapped
+ * in place with `pi.setActiveTools`, mirroring the `look_at` tool's pattern.
  *
  * File layout (per AGENTS.md): all `pi.*` / `ctx.*` calls live here. Pure logic
  * is in `router.ts`, `default/edit.ts`, `anthropic/strict.ts`, and `apply-patch/*`.
@@ -39,6 +39,7 @@ import { resolveApplyPatch } from "./apply-patch/undo";
 import { createDefaultEditToolDefinition } from "./default/edit";
 import { createKimiEditToolDefinition } from "./kimi/edit";
 import {
+  aliasEditChoice,
   type EditToolChoice,
   isAnthropicModel,
   pickEditTool,
@@ -64,18 +65,31 @@ function registerEditDefinition(
 }
 
 /**
- * Swap the active edit interface to match the active model. Under a virtual
- * (alias) selection the rules apply to the routed physical model; an alias
- * that never answered on this branch leaves the interface as it is.
+ * Swap the active edit interface to match the active model.
+ *
+ * Virtual (alias) selections decide from the alias id alone when the alias
+ * pins a family (`latest/*` and `fast/*` gpt and kimi aliases): the routed
+ * physical model is always in that family, so the interface is correct from
+ * selection time with no first-run lag. Mixed rosters (`agents/*`) and
+ * physical models decide from the routed physical model, which appears on
+ * the branch after the alias's first answer.
  */
 function routeEditTool(
   pi: ExtensionAPI,
   model: (ModelIdentity & { api?: string }) | undefined,
   branch: readonly BranchEntryLike[],
 ): void {
+  const alias = aliasEditChoice(model);
+  if (alias) {
+    applyChoice(pi, alias);
+    return;
+  }
   const identity = effectiveModelIdentity(model, branch);
   if (!identity) return;
-  const desired = pickEditTool(identity);
+  applyChoice(pi, pickEditTool(identity));
+}
+
+function applyChoice(pi: ExtensionAPI, desired: EditToolChoice): void {
   if (desired === currentChoice) return;
 
   registerEditDefinition(pi, desired);

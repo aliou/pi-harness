@@ -45,6 +45,24 @@ export function pickEditTool(model: ModelLike): EditToolChoice {
 }
 
 /**
+ * Edit interface for a virtual (alias) selection, decided from the alias id
+ * alone. pi-rig's `latest/*` and `fast/*` aliases pin the family through
+ * their match regex: gpt aliases only match `gpt-<version>-<variant>` ids,
+ * kimi aliases only `kimi-k*` ids. Deciding here removes the first-run lag
+ * where the alias has not routed yet. Returns undefined when the id cannot
+ * decide (mixed `agents/*` rosters, unknown providers); those keep the
+ * routed-model decision.
+ */
+export function aliasEditChoice(model: ModelLike): EditToolChoice | undefined {
+  const provider = model?.provider;
+  if (provider !== "latest" && provider !== "fast") return undefined;
+  const id = model?.id?.toLowerCase() ?? "";
+  if (id.startsWith("gpt-")) return "apply_patch";
+  if (id.startsWith("kimi")) return "kimi_edit";
+  return "edit";
+}
+
+/**
  * Compute the next active-tool set for an edit-interface swap.
  *
  * - `apply_patch` (Codex): drop `edit` and `write` (apply_patch's Add File
