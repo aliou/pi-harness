@@ -173,7 +173,7 @@ Subagents default to the parent session cwd. If a subagent accepts an invocation
 
 | Directory | Tool name | Notes |
 |---|---|---|
-| `subagents/advisor/` | `advisor`, `resume_advisor` | Zero-shot strategic advisor for hard decisions, stuck work, risk review, and pre-completion second opinions; hidden from the active tools when the session model matches the gpt-5.6/gpt-6 families (`subagents/shared/family-gate.ts`), same enable/disable pattern as `look_at` |
+| `subagents/advisor/` | `advisor`, `resume_advisor` | Zero-shot strategic advisor for hard decisions, stuck work, risk review, and pre-completion second opinions; hidden from the active tools when the session model matches the gpt-5.6/gpt-6 families (`subagents/shared/family-gate.ts`) — `latest/*`/`fast/*` gpt aliases hide them from selection time, other selections are checked against the routed physical model — same enable/disable pattern as `look_at` |
 | `ask-user/` | `ask_user` | Sequential structured input dialogs |
 | `bash/` | `bash` | Adds `cwd` while preserving Pi's session environment, spawn hooks, and sanitization |
 | `edit/` | `edit`, `apply_patch` | Model-aware edit tool. Routes GPT-5/6 models on `openai` and all models on compatibility provider `openai-codex` to a queued `apply_patch` (V4A freeform patch, replacing `edit`+`write`), Kimi K2.7 Code to a queued `edit` with `old_string`/`new_string`, and everyone else to the native JSON `edit` with capability-aware constrained sampling. `latest/*`/`fast/*` GPT aliases get `apply_patch` and kimi aliases get the Kimi `edit` from selection time — the alias id pins the family, so no wait for routing state; `agents/*` rosters and physical models decide from the routed physical model |
@@ -182,7 +182,7 @@ Subagents default to the parent session cwd. If a subagent accepts an invocation
 | `get-current-time/` | `get_current_time` | Passthrough |
 | `list-sessions/` | `list_sessions` | Session directory listing via `@harness/session-store` |
 | `subagents/look-at/` | `look_at` | Zero-shot vision subagent; BMP files are converted to PNG before vision analysis; hidden for vision-capable models — `latest/*`/`fast/*` aliases that pin a vision-capable family (gpt, claude, kimi, glm-flash) hide it from selection time, other aliases are checked against the routed physical model and re-checked before every LLM call (the `context` event), since an alias's routing state first appears mid-run |
-| `subagents/oracle/` | `oracle`, `resume_oracle` | Zero-shot senior technical advisor; hidden from the active tools when the session model matches the gpt-5.6/gpt-6 families (`subagents/shared/family-gate.ts`), same enable/disable pattern as `look_at` |
+| `subagents/oracle/` | `oracle`, `resume_oracle` | Zero-shot senior technical advisor; hidden from the active tools when the session model matches the gpt-5.6/gpt-6 families (`subagents/shared/family-gate.ts`) — `latest/*`/`fast/*` gpt aliases hide them from selection time, other selections are checked against the routed physical model — same enable/disable pattern as `look_at` |
 | `read/` | `read` | Directory reads delegate to `ls`; markdown files render formatted when expanded; collapsed `SKILL.md` reads preview the frontmatter description |
 | `subagents/read-session/` | `read_session` | Zero-shot past-session extractor |
 | `read-url/` | `read_url` | URL fetch with handler chain and preview |

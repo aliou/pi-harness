@@ -11,7 +11,10 @@ import {
   getSubagentModelPreferences,
 } from "@harness/subagent-models";
 import { addTools, removeTools } from "../shared/active-tools";
-import { disablesAdvisoryTools } from "../shared/family-gate";
+import {
+  aliasDisablesAdvisoryTools,
+  disablesAdvisoryTools,
+} from "../shared/family-gate";
 import { ADVISOR_SYSTEM_PROMPT, buildPrompt } from "./prompt";
 import {
   advisorToolRenderers,
@@ -104,19 +107,26 @@ export async function registerAdvisor(pi: ExtensionAPI): Promise<void> {
   // Same pattern as the look_at tool: keep the advisor tools active unless
   // the session model belongs to a family that should not use them. Under a
   // virtual (alias) selection the family lives on the routed physical model;
-  // an alias that never answered on this branch leaves the tools as they are.
-  // The gate is re-applied in the context handler too: agent_start only fires
-  // once per run, but an alias's routing state first appears mid-run (written
-  // when the alias answers), so within the very first run on an alias the
-  // context event is the only point that sees the routed model.
+  // before the alias has routed on this branch, aliases whose id pins the
+  // family (`latest/*`/`fast/*` gpt aliases) decide immediately, so the tools
+  // are hidden from the first run. The gate is re-applied in the context
+  // handler too: agent_start only fires once per run, but an alias's routing
+  // state first appears mid-run (written when the alias answers), so within
+  // the very first run on an alias the context event is the only point that
+  // sees the routed model.
   const syncTools = (
     model: (ModelIdentity & { api?: string }) | undefined,
     branch: readonly BranchEntryLike[],
   ): void => {
     const identity = effectiveModelIdentity(model, branch);
-    if (!identity) return;
-    disablesAdvisoryTools(identity) ? disableTools(pi) : enableTools(pi);
+    const disable = identity
+      ? disablesAdvisoryTools(identity)
+      : aliasDisablesAdvisoryTools(model);
+    disable ? disableTools(pi) : enableTools(pi);
   };
+  pi.on("session_start", (_event, ctx) => {
+    syncTools(ctx.model, ctx.sessionManager.getBranch());
+  });
   pi.on("agent_start", (_event, ctx) => {
     syncTools(ctx.model, ctx.sessionManager.getBranch());
   });
