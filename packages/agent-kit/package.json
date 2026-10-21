@@ -13,7 +13,6 @@
   },
   "dependencies": {
     "@harness/models": "workspace:*",
-    "@harness/subagent-models": "workspace:*",
     "@harness/utils": "workspace:*",
     "@earendil-works/pi-ai": "*",
     "@earendil-works/pi-coding-agent": "*",

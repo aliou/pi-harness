@@ -42,7 +42,6 @@
     "@harness/models": "workspace:*",
     "@harness/session-store": "workspace:*",
     "@harness/session-tools": "workspace:*",
-    "@harness/subagent-models": "workspace:*",
     "@harness/ui": "workspace:*",
     "@harness/utils": "workspace:*"
   },
