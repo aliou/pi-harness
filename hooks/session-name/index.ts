@@ -1,9 +1,5 @@
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { createSubagent } from "@harness/agent-kit";
-import {
-  configuredSubagent,
-  getSubagentModelPreferences,
-} from "@harness/subagent-models";
 import { isBlank } from "@harness/utils/string";
 import { Type } from "typebox";
 import {
@@ -26,7 +22,9 @@ export function createSessionNameSubagent(
     systemPrompt: SESSION_NAME_SYSTEM_PROMPT,
     tools: createSessionNameTools(pi, onAutoName),
     maxToolCalls: 1,
-    modelPreferences: () => getSubagentModelPreferences("session_name"),
+    modelPreferences: [
+      { provider: "agents", model: "session_name", thinking: "off" },
+    ],
     parameters: Type.Object({
       turns: Type.Array(
         Type.Object({
@@ -54,19 +52,6 @@ export default async function sessionName(pi: ExtensionAPI): Promise<void> {
   const subagent = createSessionNameSubagent(pi, (name) => {
     lastAutoName = name;
   });
-  await subagent.ready;
-
-  const { notifyOnSessionStart } = configuredSubagent(
-    pi,
-    "session_name",
-    "Session Name",
-    subagent,
-    subagent.configured,
-    () => {},
-  );
-  notifyOnSessionStart();
-
-  if (!subagent.configured) return;
 
   let activeRun: ActiveRun | null = null;
 

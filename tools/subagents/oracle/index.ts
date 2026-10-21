@@ -6,10 +6,6 @@ import {
   effectiveModelIdentity,
   type ModelIdentity,
 } from "@harness/models";
-import {
-  configuredSubagent,
-  getSubagentModelPreferences,
-} from "@harness/subagent-models";
 import { addTools, removeTools } from "../shared/active-tools";
 import {
   aliasDisablesAdvisoryTools,
@@ -62,7 +58,9 @@ function disableTools(pi: ExtensionAPI): void {
 export async function registerOracle(pi: ExtensionAPI): Promise<void> {
   const subagent = createSubagent(pi, {
     name: "oracle",
-    modelPreferences: () => getSubagentModelPreferences("oracle"),
+    modelPreferences: [
+      { provider: "agents", model: "oracle", thinking: "off" },
+    ],
     label: "Oracle",
     description:
       "Zero-shot senior technical advisor. Give a self-contained task, relevant context/files, constraints, and the decision or plan you need.",
@@ -85,18 +83,7 @@ export async function registerOracle(pi: ExtensionAPI): Promise<void> {
     extensionPaths,
   });
 
-  await subagent.ready;
-  const { register, notifyOnSessionStart } = configuredSubagent(
-    pi,
-    "oracle",
-    "Oracle",
-    subagent,
-    subagent.configured,
-  );
-  register();
-  notifyOnSessionStart();
-
-  if (!subagent.configured) return;
+  subagent.register();
 
   // Same pattern as the look_at tool: keep the oracle tools active unless
   // the session model belongs to a family that should not use them. Under a

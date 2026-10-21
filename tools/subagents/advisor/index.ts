@@ -6,10 +6,6 @@ import {
   effectiveModelIdentity,
   type ModelIdentity,
 } from "@harness/models";
-import {
-  configuredSubagent,
-  getSubagentModelPreferences,
-} from "@harness/subagent-models";
 import { addTools, removeTools } from "../shared/active-tools";
 import {
   aliasDisablesAdvisoryTools,
@@ -66,7 +62,9 @@ function disableTools(pi: ExtensionAPI): void {
 export async function registerAdvisor(pi: ExtensionAPI): Promise<void> {
   const subagent = createSubagent(pi, {
     name: "advisor",
-    modelPreferences: () => getSubagentModelPreferences("advisor"),
+    modelPreferences: [
+      { provider: "agents", model: "advisor", thinking: "off" },
+    ],
     label: "Advisor",
     description:
       "Zero-shot strategic advisor. Use for hard decisions, stuck work, risk review, and pre-completion second opinions.",
@@ -91,18 +89,7 @@ export async function registerAdvisor(pi: ExtensionAPI): Promise<void> {
     extensionPaths,
   });
 
-  await subagent.ready;
-  const { register, notifyOnSessionStart } = configuredSubagent(
-    pi,
-    "advisor",
-    "Advisor",
-    subagent,
-    subagent.configured,
-  );
-  register();
-  notifyOnSessionStart();
-
-  if (!subagent.configured) return;
+  subagent.register();
 
   // Same pattern as the look_at tool: keep the advisor tools active unless
   // the session model belongs to a family that should not use them. Under a

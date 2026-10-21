@@ -22,11 +22,7 @@ export interface RankModelsOptions {
  * Rank a subagent's model roster into the order attempts should be made in.
  *
  * Entries the registry does not know about, or that have no configured auth,
- * are reported as skipped. Positive-weight entries are ranked by weighted
- * random sampling without replacement, so the first entry follows the same
- * distribution as a plain weighted draw and the rest are a fair continuation
- * of it. Zero/negative-weight entries are never drawn: they are appended after
- * every positive-weight entry, in roster order, as last-resort fallbacks.
+ * are reported as skipped. Roster order is attempt order.
  */
 export function rankModels(
   registry: ModelRegistry,
@@ -51,7 +47,7 @@ export function rankModels(
   const eligible = applyCooldown(usable, isCooled, skipped);
   const candidates: SubagentModelChoice[] = [];
 
-  for (const preference of rankPreferences(eligible)) {
+  for (const preference of eligible) {
     const model = registry.find(preference.provider, preference.model);
     if (!model) continue;
     candidates.push({
@@ -90,7 +86,7 @@ export function resolveModel(
   preferences: readonly SubagentModelPreference[],
   pinned?: SubagentResolvedModel,
 ): SubagentModelChoice | null {
-  if (pinned && !usabilityReason(registry, { ...pinned, weight: 1 })) {
+  if (pinned && !usabilityReason(registry, { ...pinned })) {
     const model = registry.find(pinned.provider, pinned.model);
     if (model) {
       return {
@@ -103,34 +99,6 @@ export function resolveModel(
   }
 
   return pickModel(registry, preferences);
-}
-
-/**
- * Order preferences for attempt: positive weights first, ranked by weighted
- * random sampling without replacement (Efraimidis–Spirakis 2006), then
- * zero-weight entries in roster order.
- *
- * The exponential-key variant is used rather than `u ** (1 / weight)`: it does
- * not underflow for small weights, and `u = 0` cannot collapse a positive-weight
- * key into a tie.
- */
-export function rankPreferences(
-  entries: readonly SubagentModelPreference[],
-  random: () => number = Math.random,
-): SubagentModelPreference[] {
-  const positive: { entry: SubagentModelPreference; key: number }[] = [];
-  const fallbacks: SubagentModelPreference[] = [];
-
-  for (const entry of entries) {
-    if (entry.weight > 0) {
-      positive.push({ entry, key: -Math.log(1 - random()) / entry.weight });
-    } else {
-      fallbacks.push(entry);
-    }
-  }
-
-  positive.sort((a, b) => a.key - b.key);
-  return [...positive.map((item) => item.entry), ...fallbacks];
 }
 
 function applyCooldown(

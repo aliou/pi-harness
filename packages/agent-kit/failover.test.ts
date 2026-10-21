@@ -131,7 +131,7 @@ describe("runWithFailover", () => {
     ]);
   });
 
-  it("falls through to zero-weight fallbacks in ranking order", async () => {
+  it("falls through to later roster entries in ranking order", async () => {
     const runAttempt = vi.fn(async ({ choice: attemptChoice, started }) => {
       if (attemptChoice.preference.provider === "zai") {
         started();

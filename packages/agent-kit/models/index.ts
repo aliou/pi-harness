@@ -7,7 +7,6 @@ export {
   pickModel,
   type RankModelsOptions,
   rankModels,
-  rankPreferences,
   resolveModel,
 } from "./model-resolver";
 export { createSubagentModelRuntime } from "./model-runtime";

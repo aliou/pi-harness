@@ -2,10 +2,6 @@ import * as path from "node:path";
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { createSubagent, loadAgentsFilesFromCwd } from "@harness/agent-kit";
 import type { SubagentToolSpec } from "@harness/agent-kit/types";
-import {
-  configuredSubagent,
-  getSubagentModelPreferences,
-} from "@harness/subagent-models";
 import { buildPrompt, REVIEWER_SYSTEM_PROMPT } from "./prompt";
 import {
   renderReviewerDetails,
@@ -34,7 +30,9 @@ export async function registerReviewer(pi: ExtensionAPI): Promise<void> {
 
   const subagent = createSubagent(pi, {
     name: "reviewer",
-    modelPreferences: () => getSubagentModelPreferences("reviewer"),
+    modelPreferences: [
+      { provider: "agents", model: "reviewer", thinking: "off" },
+    ],
     label: "Reviewer",
     description:
       "Zero-shot formal code reviewer. Provide the exact diff command/description plus focused review criteria; it reviews statically and does not run checks.",
@@ -62,14 +60,5 @@ export async function registerReviewer(pi: ExtensionAPI): Promise<void> {
     extensionPaths,
   });
 
-  await subagent.ready;
-  const { register, notifyOnSessionStart } = configuredSubagent(
-    pi,
-    "reviewer",
-    "Reviewer",
-    subagent,
-    subagent.configured,
-  );
-  register();
-  notifyOnSessionStart();
+  subagent.register();
 }

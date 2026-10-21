@@ -77,7 +77,6 @@ describe("SubagentRuntime", () => {
     systemPrompt: "Review code",
     tools: [],
     modelPreferences: [],
-    configured: true,
     parameters: Params,
     buildPrompt: () => ({ text: "Review this diff" }),
     ...overrides,
@@ -109,7 +108,6 @@ describe("SubagentRuntime", () => {
       systemPrompt: "Review code",
       tools: [],
       modelPreferences: [],
-      configured: true,
       parameters: Params,
       buildPrompt: () => ({ text: "Review this diff" }),
     };
@@ -200,7 +198,6 @@ describe("SubagentRuntime", () => {
       systemPrompt: "Review code",
       tools: [],
       modelPreferences: [],
-      configured: true,
       parameters: Params,
       buildPrompt: () => ({ text: "Review this diff" }),
     };

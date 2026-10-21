@@ -1,9 +1,5 @@
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { createSubagent } from "@harness/agent-kit";
-import {
-  configuredSubagent,
-  getSubagentModelPreferences,
-} from "@harness/subagent-models";
 import { buildPrompt, SYSTEM_PROMPT } from "./prompt";
 import { renderReadSessionHeader, tools } from "./tools";
 import { ReadSessionParams } from "./types";
@@ -11,7 +7,9 @@ import { ReadSessionParams } from "./types";
 export async function registerReadSession(pi: ExtensionAPI): Promise<void> {
   const subagent = createSubagent(pi, {
     name: "read_session",
-    modelPreferences: () => getSubagentModelPreferences("read_session"),
+    modelPreferences: [
+      { provider: "agents", model: "read_session", thinking: "off" },
+    ],
     label: "Read Session",
     description:
       "Zero-shot past-session extractor. Provide a session ID/path plus a specific extraction goal with names, dates, topics, and expected output.",
@@ -40,14 +38,5 @@ export async function registerReadSession(pi: ExtensionAPI): Promise<void> {
     },
   });
 
-  await subagent.ready;
-  const { register, notifyOnSessionStart } = configuredSubagent(
-    pi,
-    "read_session",
-    "Read Session",
-    subagent,
-    subagent.configured,
-  );
-  register();
-  notifyOnSessionStart();
+  subagent.register();
 }

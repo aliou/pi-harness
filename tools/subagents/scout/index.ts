@@ -1,10 +1,6 @@
 import * as path from "node:path";
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { createSubagent, loadAgentsFilesFromCwd } from "@harness/agent-kit";
-import {
-  configuredSubagent,
-  getSubagentModelPreferences,
-} from "@harness/subagent-models";
 import { buildPrompt, SCOUT_SYSTEM_PROMPT } from "./prompt";
 import { renderScoutDetails, renderScoutHeader } from "./render";
 import { createScoutTools } from "./tools";
@@ -17,7 +13,7 @@ export async function registerScout(pi: ExtensionAPI): Promise<void> {
 
   const subagent = createSubagent(pi, {
     name: "scout",
-    modelPreferences: () => getSubagentModelPreferences("scout"),
+    modelPreferences: [{ provider: "agents", model: "scout", thinking: "off" }],
     label: "Scout",
     description:
       "Zero-shot local codebase researcher. Give a scoped query, local cwd/root, relevant symbols/paths, and ask for cited evidence.",
@@ -44,14 +40,5 @@ export async function registerScout(pi: ExtensionAPI): Promise<void> {
     extensionPaths,
   });
 
-  await subagent.ready;
-  const { register, notifyOnSessionStart } = configuredSubagent(
-    pi,
-    "scout",
-    "Scout",
-    subagent,
-    subagent.configured,
-  );
-  register();
-  notifyOnSessionStart();
+  subagent.register();
 }

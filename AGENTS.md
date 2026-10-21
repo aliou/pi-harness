@@ -82,17 +82,12 @@ Current subagent-based tools include `advisor`, `look-at`, `oracle`, `read-sessi
 
 ### Subagent model rosters
 
-Subagent model rosters are not defined in this repository. They live in the global config file `$PI_CODING_AGENT_DIR/settings/subagent-models.json`, a map of subagent name to its full weighted roster:
-
-```json
-{
-  "advisor": [
-    { "provider": "anthropic", "model": "claude-opus-4-8", "thinking": "xhigh", "weight": 1 }
-  ]
-}
-```
-
-`@harness/subagent-models` owns the path, the async cached loader, and validation. Each subagent passes `modelPreferences: () => getSubagentModelPreferences("<name>")` to `createSubagent` and awaits `subagent.ready`. There are no built-in defaults: when the file is missing/invalid or has no roster for a name, the subagent stays disabled — registration is a no-op (via `configuredSubagent`) and the user gets a single session-start warning. Execution-time roster replacement for evals (`SubagentRunOptions.modelPreferences`) is unchanged.
+Each subagent hardcodes its roster in its `createSubagent` call. All rosters map
+to a single virtual alias, `agents/<name>` (registered by pi-rig), so the
+physical model choice and usage-aware routing live in pi-rig. Attempt order is
+roster order; `rankModels` filters unknown, unauthed, and recently-cooled
+providers before ranking. Subagents are always enabled; execution-time roster
+replacement for evals (`SubagentRunOptions.modelPreferences`) is unchanged.
 
 For virtual selections, agent-kit resolves the enabled
 `hooks/virtual-models/index.ts` resource from the installed `@aliou/pi-rig`
@@ -230,7 +225,6 @@ Workspace packages:
 | `packages/models/` | `@harness/models` | Model identity helpers (`ModelIdentity`, `knownModelFamily`, `modelKey`) and `effectiveModelIdentity`, which resolves the routed physical model for virtual (alias) selections from the session branch, and `resolveEffectiveModel`, which joins that identity against the available catalog when a check needs capability flags such as `input` |
 | `packages/session-store/` | `@harness/session-store` | Session directory access, Sesame search, listing, and the session summary schema shared by `find_sessions` and `list_sessions` |
 | `packages/session-tools/` | `@harness/session-tools` | Pi-agnostic session entry indexing, branch/tree traversal, and bounded read-session helpers |
-| `packages/subagent-models/` | `@harness/subagent-models` | Global subagent model roster config (`settings/subagent-models.json`), async loader, and disabled-subagent registration helper |
 | `packages/test-utils/` | `@harness/test-utils` | Shared Vitest/Pi extension test harness utilities |
 | `packages/ui/` | `@harness/ui` | Shared TUI components/helpers |
 | `packages/utils/` | `@harness/utils` | Shared generic utilities |

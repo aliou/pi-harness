@@ -56,18 +56,10 @@ export function createSubagent<Params extends TSchema>(
   config: SubagentConfig<Params>,
 ) {
   const records = new SubagentSessionRecordStore(pi);
-  // Placeholder; populated once by `ready`. All runtime/session-manager
-  // access happens at execution time, after callers have awaited `ready`.
-  const resolved = {
+  const resolved: ResolvedSubagentConfig<Params> = {
     ...config,
-    modelPreferences: [],
-    configured: typeof config.modelPreferences !== "function",
-  } as ResolvedSubagentConfig<Params>;
-  const ready = resolveSubagentConfig(config).then((r) => {
-    resolved.modelPreferences = r.modelPreferences;
-    resolved.configured = r.configured;
-    return resolved;
-  });
+    modelPreferences: config.modelPreferences,
+  };
   const sessions = new SubagentSessionManager(resolved, records);
 
   const runWithParams = async (
@@ -276,16 +268,6 @@ export function createSubagent<Params extends TSchema>(
     asTool,
     subscribe,
     register,
-    /**
-     * Resolves once the model roster has been loaded. Await this before
-     * reading `configured` or executing; renderers and execution paths only
-     * touch the roster after execution starts.
-     */
-    ready,
-    /** False when an async model roster resolver produced no roster. */
-    get configured() {
-      return resolved.configured;
-    },
   };
 }
 
@@ -303,43 +285,6 @@ export async function resolveCwd<Params extends TSchema>(
   ctx: ExtensionContext,
 ): Promise<string | undefined> {
   return resolver ? await resolver(params, ctx) : undefined;
-}
-
-/**
- * Resolve a subagent config's model roster. When `modelPreferences` is a
- * resolver function it is invoked once (async) and the result is cached on
- * the returned config; the original config object is left untouched.
- * `configured` is false when a resolver produced no roster.
- */
-export async function resolveSubagentConfig<Params extends TSchema>(
-  config: SubagentConfig<Params>,
-): Promise<ResolvedSubagentConfig<Params>> {
-  if (typeof config.modelPreferences !== "function") {
-    return {
-      ...config,
-      modelPreferences: config.modelPreferences,
-      configured: true,
-    };
-  }
-
-  const resolved: ResolvedSubagentConfig<Params> = {
-    ...config,
-    modelPreferences: [],
-    configured: false,
-  };
-
-  try {
-    const preferences = await config.modelPreferences();
-    if (preferences && preferences.length > 0) {
-      resolved.modelPreferences = preferences;
-      resolved.configured = true;
-    }
-  } catch (error) {
-    // Leave unconfigured; the extension surfaces the warning.
-    void error;
-  }
-
-  return resolved;
 }
 
 export type { SubagentResolvedModel } from "./models";

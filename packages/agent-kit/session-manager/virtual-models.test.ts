@@ -130,9 +130,8 @@ describe("virtual subagent sessions", () => {
       tools: [],
       parameters,
       buildPrompt: () => ({ text: "test" }),
-      configured: true,
       modelPreferences: [
-        { provider: "agents", model: "scout", thinking: "off", weight: 1 },
+        { provider: "agents", model: "scout", thinking: "off" },
       ],
     };
     const records = new SubagentSessionRecordStore({

@@ -36,7 +36,6 @@ function makeConfig(): ResolvedSubagentConfig<typeof Params> {
     systemPrompt: "x",
     tools: [],
     modelPreferences: [],
-    configured: true,
     parameters: Params,
     buildPrompt: () => ({ text: "q" }),
   };

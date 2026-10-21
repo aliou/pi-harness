@@ -105,14 +105,10 @@ export interface SubagentConfig<Params extends TSchema = TSchema> {
   skills?: Skill[];
   extensionPaths?: string[];
   /**
-   * Weighted model roster for this subagent, or a resolver that loads it
-   * (e.g. from the global subagent-models config). Async resolution is
-   * cached after the first call. Roster resolution happens once at
-   * createSubagent() time.
+   * Model roster for this subagent, in attempt order. Roster resolution
+   * happens once at createSubagent() time.
    */
-  modelPreferences:
-    | SubagentModelPreference[]
-    | (() => Promise<SubagentModelPreference[] | undefined>);
+  modelPreferences: SubagentModelPreference[];
   resumable?: boolean;
   /**
    * Hints for permission extensions. Default: read-only, open world (see
@@ -166,14 +162,12 @@ export interface SubagentConfig<Params extends TSchema = TSchema> {
 }
 
 /**
- * A subagent config after its model roster resolver has been applied.
- * `configured` is false when a resolver produced no roster (e.g. the global
- * subagent-models config has no entry for this subagent).
+ * A subagent config ready for execution. Every subagent is always configured:
+ * its roster is hardcoded at the call site.
  */
 export type ResolvedSubagentConfig<Params extends TSchema = TSchema> = Omit<
   SubagentConfig<Params>,
   "modelPreferences"
 > & {
   modelPreferences: SubagentModelPreference[];
-  configured: boolean;
 };

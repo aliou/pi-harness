@@ -7,10 +7,6 @@ import type {
 import { createSubagent } from "@harness/agent-kit";
 import { convertBmpToPng } from "@harness/image-formats";
 import { resolveEffectiveModel } from "@harness/models";
-import {
-  configuredSubagent,
-  getSubagentModelPreferences,
-} from "@harness/subagent-models";
 import { addTools, removeTools } from "../shared/active-tools";
 import { ANALYSIS_SYSTEM_PROMPT } from "./prompt";
 import { renderLookAtDetails, renderLookAtHeader } from "./render";
@@ -40,7 +36,9 @@ function disableTool(pi: ExtensionAPI) {
 export function createLookAtSubagent(pi: ExtensionAPI) {
   return createSubagent(pi, {
     name: TOOL_NAME,
-    modelPreferences: () => getSubagentModelPreferences(TOOL_NAME),
+    modelPreferences: [
+      { provider: "agents", model: TOOL_NAME, thinking: "off" },
+    ],
     label: "Look At",
     description: `Analyze an image file using a vision subagent. Returns a text description of the image content.
 
@@ -107,37 +105,21 @@ Always provide a clear objective describing what you want to learn from the imag
 
 export async function registerLookAt(pi: ExtensionAPI): Promise<void> {
   const subagent = createLookAtSubagent(pi);
-  await subagent.ready;
+  subagent.subscribe();
+  const tool = subagent.asTool();
+  pi.registerTool({
+    ...tool,
 
-  const { register, notifyOnSessionStart } = configuredSubagent(
-    pi,
-    TOOL_NAME,
-    "Look At",
-    subagent,
-    subagent.configured,
-    () => {
-      const tool = subagent.asTool();
-      subagent.subscribe();
-
-      pi.registerTool({
-        ...tool,
-
-        async execute(
-          toolCallId,
-          params: LookAtParamsInput,
-          signal,
-          onUpdate,
-          ctx,
-        ) {
-          return tool.execute(toolCallId, params, signal, onUpdate, ctx);
-        },
-      });
+    async execute(
+      toolCallId,
+      params: LookAtParamsInput,
+      signal,
+      onUpdate,
+      ctx,
+    ) {
+      return tool.execute(toolCallId, params, signal, onUpdate, ctx);
     },
-  );
-  register();
-  notifyOnSessionStart();
-
-  if (!subagent.configured) return;
+  });
 
   // The vision capability lives on the effective model: the selection itself
   // when physical, or the routed physical model under a virtual (alias)
