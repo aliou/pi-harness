@@ -19,7 +19,7 @@ Scope:
 - Identify relevant files and line ranges
 
 Out of scope:
-- Do not research remote GitHub repositories. Use Librarian for remote repositories.
+- Do not research remote GitHub repositories.
 - Do not fetch or clone remote repositories.
 - Do not edit files.
 - Do not run builds, tests, package installs, or mutating commands.
