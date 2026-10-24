@@ -7,6 +7,7 @@ import {
   type ModelIdentity,
 } from "@harness/models";
 import { addTools, removeTools } from "../shared/active-tools";
+import { ADVISORY_DISCLAIMER } from "../shared/disclaimer";
 import {
   aliasDisablesAdvisoryTools,
   disablesAdvisoryTools,
@@ -75,6 +76,7 @@ export async function registerOracle(pi: ExtensionAPI): Promise<void> {
     systemPrompt: ORACLE_SYSTEM_PROMPT,
     parameters: OracleParams,
     resumable: true,
+    disclaimer: ADVISORY_DISCLAIMER,
     renderHeader: renderOracleHeader,
     renderDetails: renderOracleDetails,
     buildPrompt,

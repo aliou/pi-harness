@@ -7,6 +7,7 @@ import {
   type ModelIdentity,
 } from "@harness/models";
 import { addTools, removeTools } from "../shared/active-tools";
+import { ADVISORY_DISCLAIMER } from "../shared/disclaimer";
 import {
   aliasDisablesAdvisoryTools,
   disablesAdvisoryTools,
@@ -81,6 +82,7 @@ export async function registerAdvisor(pi: ExtensionAPI): Promise<void> {
     systemPrompt: ADVISOR_SYSTEM_PROMPT,
     parameters: AdvisorParams,
     resumable: true,
+    disclaimer: ADVISORY_DISCLAIMER,
     renderHeader: renderAdvisorHeader,
     renderDetails: renderAdvisorDetails,
     buildPrompt,

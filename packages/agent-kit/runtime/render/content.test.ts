@@ -93,6 +93,59 @@ describe("renderSubagentResult activity", () => {
   });
 });
 
+describe("renderSubagentResult disclaimer", () => {
+  beforeAll(() => {
+    initTheme("dark", false);
+  });
+
+  const finishedDetails = {
+    ...details,
+    status: "success",
+    response: "The answer.",
+    endedAt: 1,
+  } as unknown as SubagentDetails;
+
+  const disclaimerConfig = {
+    tools: [],
+    disclaimer: { before: "Before note.", after: "After note." },
+  } as unknown as SubagentConfig;
+
+  function renderFinished(expanded: boolean) {
+    const finished = {
+      details: finishedDetails,
+      content: [],
+    } as unknown as AgentToolResult<unknown>;
+    const options = { expanded, isPartial: false } as ToolRenderResultOptions;
+    return renderSubagentResult(
+      disclaimerConfig,
+      finished,
+      options,
+      NOOP_THEME,
+      ctx,
+    )
+      .render(WIDTH)
+      .map((line) => line.trim())
+      .filter(Boolean)
+      .join("\n");
+  }
+
+  it("renders the notices around the answer without tags when expanded", () => {
+    const output = renderFinished(true);
+
+    expect(output.indexOf("Before note.")).toBeLessThan(
+      output.indexOf("The answer."),
+    );
+    expect(output.indexOf("The answer.")).toBeLessThan(
+      output.indexOf("After note."),
+    );
+    expect(output).not.toContain("<disclaimer>");
+  });
+
+  it("renders no notices when collapsed", () => {
+    expect(renderFinished(false)).not.toContain("Before note.");
+  });
+});
+
 describe("renderSubagentResult error", () => {
   beforeAll(() => {
     initTheme("dark", false);

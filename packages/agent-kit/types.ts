@@ -85,6 +85,18 @@ export type SubagentCwdResolver<Params extends TSchema = TSchema> = (
   ctx: ExtensionContext,
 ) => string | undefined | Promise<string | undefined>;
 
+/**
+ * Harness-authored text delivered around a subagent's answer in the tool
+ * result, so the parent reads the provenance and the caution together with the
+ * answer instead of relying on its prompt to remember them.
+ */
+export interface SubagentDisclaimer {
+  /** Delivered in its own `<disclaimer>` block before the answer. */
+  before?: string;
+  /** Delivered in its own `<disclaimer>` block after the answer. */
+  after?: string;
+}
+
 export interface SubagentConfig<Params extends TSchema = TSchema> {
   name: string;
   label: string;
@@ -118,6 +130,12 @@ export interface SubagentConfig<Params extends TSchema = TSchema> {
   annotations?: ToolAnnotations;
   /** Maximum number of tool calls the subagent may execute before it is forcibly stopped. */
   maxToolCalls?: number;
+  /**
+   * Text the parent model reads around the answer, wrapped in `<disclaimer>`
+   * blocks. The answer itself is never rewritten. Unset means the tool result
+   * is the bare answer, as before. The TUI shows these only when expanded.
+   */
+  disclaimer?: SubagentDisclaimer;
 
   parameters: Params;
   // Method-style (bivariant) signatures so a params-typed config can be used

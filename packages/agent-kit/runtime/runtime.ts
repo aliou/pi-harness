@@ -15,7 +15,11 @@ import {
   SubagentAttemptError,
 } from "./attempt";
 import { buildBlankResponseError } from "./blank-response";
-import { appendSubagentSessionFooter, textContent } from "./content";
+import {
+  appendSubagentSessionFooter,
+  frameSubagentResponse,
+  textContent,
+} from "./content";
 import { buildSubagentOutput } from "./output";
 import { SubagentRuntimeState } from "./runtime-state";
 import { formatSubagentStatus } from "./status";
@@ -131,20 +135,28 @@ export class SubagentRuntime<Params extends TSchema = TSchema> {
   private complete(response: string): AgentToolResult<SubagentDetails> {
     this.state.markSuccess(response);
     const resumable = this.config.resumable ?? false;
+    const framed = frameSubagentResponse(
+      response,
+      this.config.name,
+      this.config.disclaimer,
+    );
     const content = resumable
       ? appendSubagentSessionFooter(
-          response,
+          framed,
           this.config.name,
           this.session.sessionId,
         )
-      : response;
+      : framed;
     const details = this.state.snapshot();
 
     return {
       content: [textContent(content)],
       details,
       usage: details.usage,
-      structuredContent: buildSubagentOutput(details, resumable),
+      structuredContent: buildSubagentOutput(details, {
+        resumable,
+        response: framed,
+      }),
     };
   }
 

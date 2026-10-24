@@ -57,7 +57,7 @@ export function renderSubagentResult(
   } else {
     const text = details.response ?? details.error ?? "";
     if (options.expanded) {
-      container.addChild(new Markdown(text, 0, 0, getMarkdownTheme()));
+      container.addChild(renderExpandedResponse(text, details, config, theme));
     } else {
       const collapsed = renderCollapsedResponse(text);
       container.addChild(collapsed.component);
@@ -69,6 +69,31 @@ export function renderSubagentResult(
   container.addChild(
     new Text(formatCollapsedHint(details, options, footerPrefix), 0, 0),
   );
+
+  return container;
+}
+
+function renderExpandedResponse(
+  text: string,
+  details: SubagentDetails,
+  config: SubagentConfig,
+  theme: Theme,
+) {
+  const container = new Container();
+  // An errored run has no answer the disclaimer qualifies.
+  const { before, after } = details.response ? (config.disclaimer ?? {}) : {};
+
+  if (before) {
+    container.addChild(new Text(theme.fg("muted", before), 0, 0));
+    container.addChild(new Spacer(1));
+  }
+
+  container.addChild(new Markdown(text, 0, 0, getMarkdownTheme()));
+
+  if (after) {
+    container.addChild(new Spacer(1));
+    container.addChild(new Text(theme.fg("muted", after), 0, 0));
+  }
 
   return container;
 }

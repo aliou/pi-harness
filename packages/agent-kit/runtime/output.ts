@@ -32,7 +32,8 @@ const UsageSchema = Type.Object({
 /** `structuredContent` of every subagent tool and its `resume_*` tool. */
 export const SubagentOutputSchema = Type.Object({
   response: Type.String({
-    description: "Final answer of the subagent, without the resume footer",
+    description:
+      "Final answer of the subagent, inside a <subagent-output> block with any configured disclaimers, without the resume footer",
   }),
   sessionId: Type.String(),
   resumable: Type.Boolean({
@@ -59,11 +60,11 @@ export type SubagentOutput = Static<typeof SubagentOutputSchema>;
 
 export function buildSubagentOutput(
   details: SubagentDetails,
-  resumable: boolean,
+  { resumable, response }: { resumable: boolean; response: string },
 ): SubagentOutput {
   const { model } = details;
   return withoutUndefined({
-    response: details.response ?? "",
+    response,
     sessionId: details.sessionId,
     resumable,
     model: model

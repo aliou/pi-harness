@@ -155,7 +155,7 @@ describe("SubagentRuntime", () => {
       {} as ExtensionContext,
     );
 
-    // The model sees the resume footer; scripts get the bare response.
+    // The model sees the resume footer; scripts get the framed answer.
     expect(result.content[0]).toMatchObject({
       text: expect.stringContaining("call resume_reviewer"),
     });
@@ -163,13 +163,58 @@ describe("SubagentRuntime", () => {
       Value.Errors(SubagentOutputSchema, result.structuredContent),
     ).toEqual([]);
     expect(result.structuredContent).toEqual({
-      response: "Finished",
+      response:
+        '<subagent-output agent="reviewer">\nFinished\n</subagent-output>',
       sessionId: "session-id",
       resumable: true,
       model: { provider: "openai-codex", model: "gpt-5.5", thinking: "high" },
       status: "success",
       usage: message.usage,
     });
+  });
+
+  it("delivers the configured disclaimer around the answer", async () => {
+    let listener: ((event: AgentSessionEvent) => void) | undefined;
+    const session = {
+      sessionId: "session-id",
+      sessionFile: "/tmp/session.jsonl",
+      model: { provider: "openai-codex", id: "gpt-5.5" },
+      subscribe: vi.fn((next) => {
+        listener = next;
+        return vi.fn();
+      }),
+      prompt: vi.fn(async () => {
+        listener?.({ type: "message_end", message: successMessage() });
+      }),
+      getLastAssistantText: vi.fn(() => "Finished"),
+      dispose: vi.fn(),
+    } as unknown as AgentSession;
+
+    const runtime = new SubagentRuntime(
+      makeConfig({ resumable: true, disclaimer: { after: "Weigh this." } }),
+      session,
+      undefined,
+    );
+    const result = await runtime.execute(
+      "call-id",
+      { task: "review" },
+      undefined,
+      {} as ExtensionContext,
+    );
+
+    expect(result.content[0]).toMatchObject({
+      text: expect.stringContaining(
+        '<subagent-output agent="reviewer">\nFinished\n</subagent-output>\n\n<disclaimer>\nWeigh this.\n</disclaimer>',
+      ),
+    });
+    // The UI keeps the raw answer; scripts get the framed one.
+    expect(result.details.response).toBe("Finished");
+    expect(result.structuredContent).toMatchObject({
+      response: expect.stringContaining("Weigh this."),
+    });
+    expect(
+      (result.structuredContent as { response: string }).response,
+    ).not.toContain("call resume_reviewer");
   });
 
   it("fails a blank context-overflow response", async () => {
