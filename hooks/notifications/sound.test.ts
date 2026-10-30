@@ -67,6 +67,7 @@ describe("setupSoundConsumer", () => {
   beforeEach(() => {
     vi.resetAllMocks();
     vol.fromJSON({ [PLAY_ALERT_SOUND_BINARY]: "" });
+    process.env.TERM_PROGRAM = "";
   });
 
   afterEach(() => {
@@ -167,6 +168,17 @@ describe("setupSoundConsumer", () => {
     Object.defineProperty(process, "platform", { value: "darwin" });
     process.stdout.isTTY = false;
     process.env.HERDR_ENV = "1";
+
+    const pi = createMockPi();
+    setupSoundConsumer(pi);
+
+    pi.events.emit(AD_NOTIFY_DONE_EVENT, { status: "ok" });
+
+    expect(pi.exec).not.toHaveBeenCalled();
+  });
+
+  it("does not play inside Rex", () => {
+    process.env.TERM_PROGRAM = "rex";
 
     const pi = createMockPi();
     setupSoundConsumer(pi);

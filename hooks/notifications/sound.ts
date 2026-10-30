@@ -49,6 +49,7 @@ export async function playSound(
  */
 export function setupSoundConsumer(pi: ExtensionAPI): () => void {
   if (process.env.HERDR_ENV === "1") return () => {};
+  if (process.env.TERM_PROGRAM === "rex") return () => {};
 
   return setupSoundEvents(pi, [PLAY_ALERT_SOUND_BINARY]);
 }
