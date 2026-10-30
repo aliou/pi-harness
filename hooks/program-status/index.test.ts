@@ -89,7 +89,7 @@ describe("program status hook", () => {
   it("blocks for ask_user and restores working when its tool call ends", () => {
     const pi = startedPi();
 
-    askUser(pi, "tc_1", "Waiting for user input");
+    askUser(pi, "tc_1", "Ask user question");
     pi.fire("tool_execution_end", { toolCallId: "tc_other" });
     pi.fire("tool_execution_end", { toolCallId: "tc_1" });
 

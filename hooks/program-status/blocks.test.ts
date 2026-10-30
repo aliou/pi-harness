@@ -31,7 +31,7 @@ describe("askUserBlock", () => {
   it("accepts ask_user attention with a tool call id", () => {
     expect(askUserBlock({ toolName: "ask_user", toolCallId: "tc_1" })).toEqual({
       toolCallId: "tc_1",
-      label: "Waiting for user input",
+      label: "Ask user question",
     });
   });
 

@@ -21,7 +21,7 @@ describe("notification producer", () => {
       expect(notifyAttention).toHaveBeenCalledTimes(1);
       expect(notifyAttention).toHaveBeenCalledWith({
         source: "notifications:producer",
-        description: "Waiting for user input",
+        description: "Ask user question",
         toolName: "ask_user",
         toolCallId: "tc_ask_1",
       });

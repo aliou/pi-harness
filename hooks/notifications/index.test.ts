@@ -80,7 +80,7 @@ describe("notifications extension entry", () => {
     });
 
     expect(emitted).toMatchObject({
-      description: "Waiting for user input",
+      description: "Ask user question",
       toolName: "ask_user",
       toolCallId: "tc_42",
       source: "notifications:producer",

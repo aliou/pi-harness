@@ -2,7 +2,7 @@ import type { ProgramStatus } from "@earendil-works/pi-tui";
 import type { AdNotifyAttentionEvent } from "@harness/events";
 
 const APP = "pi";
-const DEFAULT_BLOCKED_LABEL = "Waiting for user input";
+const DEFAULT_BLOCKED_LABEL = "Ask user question";
 
 /** An open `ask_user` prompt. It clears when its tool call ends. */
 export interface Block {

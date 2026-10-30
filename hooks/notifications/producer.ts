@@ -200,7 +200,7 @@ const TOOL_NOTIFICATIONS: ToolNotification[] = [
   {
     toolName: "ask_user",
     trigger: "start",
-    handler: () => "Waiting for user input",
+    handler: () => "Ask user question",
   },
 ];
 
