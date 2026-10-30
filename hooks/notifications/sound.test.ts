@@ -67,7 +67,6 @@ describe("setupSoundConsumer", () => {
   beforeEach(() => {
     vi.resetAllMocks();
     vol.fromJSON({ [PLAY_ALERT_SOUND_BINARY]: "" });
-    process.env.TERM_PROGRAM = "";
   });
 
   afterEach(() => {
@@ -178,7 +177,7 @@ describe("setupSoundConsumer", () => {
   });
 
   it("does not play inside Rex", () => {
-    process.env.TERM_PROGRAM = "rex";
+    process.env.REX_SESSION = "session:1";
 
     const pi = createMockPi();
     setupSoundConsumer(pi);

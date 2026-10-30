@@ -15,14 +15,15 @@ import {
   type AdNotifyDangerousEvent,
   type AdNotifyDoneEvent,
 } from "@harness/events";
+import { isManagedTerminal } from "./host";
 
 const TITLE = "Pi";
 
 /**
  * Determine whether terminal OSC effects should be emitted.
  *
- * Inside Herdr, herdr-cast owns the desktop notification surface, so Pi
- * should not write OSC sequences. Outside Herdr, Pi writes OSC on real
+ * Inside Herdr or Rex, the terminal owns the desktop notification surface,
+ * so Pi should not write OSC sequences. Elsewhere, Pi writes OSC on real
  * terminals and lets the terminal/ compositor decide whether to show a
  * banner for a focused window.
  */
@@ -30,7 +31,7 @@ export function shouldUseTerminalEffects(
   env: NodeJS.ProcessEnv,
   stdoutIsTTY: boolean,
 ): boolean {
-  if (env.HERDR_ENV === "1") return false;
+  if (isManagedTerminal(env)) return false;
   return stdoutIsTTY;
 }
 

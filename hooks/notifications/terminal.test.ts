@@ -28,6 +28,12 @@ describe("shouldUseTerminalEffects", () => {
     expect(shouldUseTerminalEffects({ HERDR_ENV: "1" }, true)).toBe(false);
   });
 
+  it("returns false inside Rex", () => {
+    expect(shouldUseTerminalEffects({ REX_SESSION: "session:1" }, true)).toBe(
+      false,
+    );
+  });
+
   it("returns false when stdout is not a TTY", () => {
     expect(shouldUseTerminalEffects({}, false)).toBe(false);
   });

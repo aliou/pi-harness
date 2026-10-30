@@ -3,13 +3,14 @@
  *
  * Maps canonical `ad:notify:*` events to macOS alert sounds and plays them
  * via the native `play-alert-sound` binary. Visual delivery is handled
- * elsewhere. When Pi runs inside Herdr, herdr-cast owns desktop notification
- * sounds so visual and audible delivery stay together and do not double-play.
+ * elsewhere. Inside Herdr or Rex, the terminal owns notification sounds so
+ * visual and audible delivery stay together and do not double-play.
  */
 
 import { fileURLToPath } from "node:url";
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { type AlertSound, playSoundFile } from "@harness/audio-player";
+import { isManagedTerminal } from "./host";
 import { selectAlertSound, setupSoundEvents } from "./sound-events";
 
 const LEGACY_SOUND_PATHS = {
@@ -48,8 +49,7 @@ export async function playSound(
  * one sound regardless of whether a visual banner is also produced.
  */
 export function setupSoundConsumer(pi: ExtensionAPI): () => void {
-  if (process.env.HERDR_ENV === "1") return () => {};
-  if (process.env.TERM_PROGRAM === "rex") return () => {};
+  if (isManagedTerminal(process.env)) return () => {};
 
   return setupSoundEvents(pi, [PLAY_ALERT_SOUND_BINARY]);
 }

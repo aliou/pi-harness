@@ -13,7 +13,13 @@ vi.mock("node:fs/promises", async () => {
   return fs.promises;
 });
 
+// Tests must not inherit the host terminal: running the suite inside Herdr
+// or Rex, or with PI_PROGRAM_STATUS set, would change what the notification
+// and program-status hooks write.
+const HOST_TERMINAL_ENV = ["HERDR_ENV", "PI_PROGRAM_STATUS", "REX_SESSION"];
+
 beforeEach(() => {
+  for (const name of HOST_TERMINAL_ENV) delete process.env[name];
   vol.reset();
   vol.mkdirSync(tmpdir(), { recursive: true });
 });
