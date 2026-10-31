@@ -2,7 +2,7 @@
  * Custom header showing the workspace identity line:
  * `pi [hostname] host:org/repo` (or the compact cwd when no remote exists).
  *
- * Metadata comes from the workspace-metadata hook: read from the session
+ * Metadata comes from pi-rig's workspace-metadata hook: read from the session
  * entries on session_start, updated live via ad:workspace-metadata:captured.
  */
 
