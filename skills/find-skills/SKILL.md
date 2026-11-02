@@ -15,7 +15,7 @@ Resolve `list-skills.mjs` against this skill's directory (the parent of this `SK
 node <this-skill-dir>/list-skills.mjs
 ```
 
-The script prints every skill, grouped by library and prefixed with the library's label, each with its description and the absolute path to its `SKILL.md`. It validates the config and exits non-zero with a clear message if a library entry is not an object with non-empty `path` and `label`.
+The script prints every skill, grouped by library and prefixed with the library's label, each with its description and the absolute path to its `SKILL.md`. Skills listed under the `[pin]` block come from the `pinned` config and shadow same-named skills in the roots, matching what pi resolves. It validates the config and exits non-zero with a clear message if a library entry is not an object with non-empty `path` and `label`.
 
 ## Read a skill
 
@@ -36,5 +36,15 @@ Each library is an object with two required fields:
 
 - `path` — directory containing skill folders. `~` is expanded to the home directory.
 - `label` — short name shown as a prefix on every skill from this library.
+
+Skills can also be pinned so they shadow same-named skills from every root. Each entry is a path to a single skill directory (containing `SKILL.md`); `~` is expanded:
+
+```json
+{
+  "pinned": ["~/.local/share/agents/skill-library/agent-browser"]
+}
+```
+
+Pinned paths that are not skill directories are silently skipped, and pinned skills win name collisions against all roots.
 
 Bare strings, missing `label`, or missing `path` are rejected.

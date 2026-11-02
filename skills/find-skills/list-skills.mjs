@@ -5,7 +5,9 @@
  * Reads the same completion config the `?` skill autocomplete uses
  * ($PI_CODING_AGENT_DIR/settings/completion.json, default ~/.pi/agent),
  * validates each library entry, and prints every skill grouped by library
- * with its description and the absolute path to its SKILL.md.
+ * with its description and the absolute path to its SKILL.md. Skills pinned
+ * via the `pinned` config are listed under a [pin] block and shadow
+ * same-named skills from the roots, matching the runtime resolution.
  *
  * Self-contained: no dependencies, no build step. Run with `node`.
  *
@@ -63,6 +65,23 @@ function parseSkillsRoots(value) {
     }
 
     return { path: path.trim(), label: label.trim() };
+  });
+}
+
+/**
+ * Parse and validate `pinned`. Every entry must be a non-empty string path;
+ * any other shape throws.
+ */
+function parsePinned(value) {
+  if (!Array.isArray(value)) {
+    throw new Error("pinned must be an array of skill directory paths");
+  }
+
+  return value.map((entry, index) => {
+    if (typeof entry !== "string" || entry.trim() === "") {
+      throw new Error(`pinned[${index}] must be a non-empty string path`);
+    }
+    return entry.trim();
   });
 }
 
@@ -182,6 +201,44 @@ function main() {
   }
 
   const blocks = [];
+  const claimed = new Set();
+
+  // Pinned skills load first and shadow same-named skills from the roots,
+  // matching hooks/skill-autocomplete. Paths that are not skill directories
+  // (no SKILL.md or missing) are silently skipped, as loadPinnedSkills does.
+  if (config.pinned !== undefined) {
+    let pinnedPaths;
+    try {
+      pinnedPaths = parsePinned(config.pinned);
+    } catch (error) {
+      process.stderr.write(
+        `Pinned skills disabled — invalid config in ${configPath}: ${error.message}\n`,
+      );
+      pinnedPaths = [];
+    }
+
+    const lines = ["[pin]"];
+    let found = 0;
+    for (const p of pinnedPaths) {
+      const absolute = expandHome(p);
+      const skillFile = join(absolute, "SKILL.md");
+      if (!existsSync(skillFile)) continue;
+      const fm = parseSkillFrontmatter(readFileSync(skillFile, "utf-8"));
+      const description =
+        typeof fm.description === "string"
+          ? fm.description.replace(/\s+/g, " ").trim()
+          : "";
+      const name =
+        typeof fm.name === "string" && fm.name ? fm.name : absolute.split("/").pop();
+      claimed.add(name);
+      const suffix = description ? ` — ${description}` : "";
+      lines.push(`  ${name}${suffix}`);
+      lines.push(`    ${skillFile}`);
+      found++;
+    }
+    if (found > 0) blocks.push(lines.join("\n"));
+  }
+
   for (const root of roots) {
     const absolute = expandHome(root.path);
     const header = `[${root.label}] ${collapseHome(absolute)}`;
@@ -193,7 +250,7 @@ function main() {
       continue;
     }
 
-    const skills = listSkills(absolute);
+    const skills = listSkills(absolute).filter((skill) => !claimed.has(skill.name));
     if (skills.length === 0) {
       lines.push("  (no skills)");
       blocks.push(lines.join("\n"));
@@ -204,6 +261,7 @@ function main() {
       const description = skill.description ? ` — ${skill.description}` : "";
       lines.push(`  ${skill.name}${description}`);
       lines.push(`    ${skill.path}`);
+      claimed.add(skill.name);
     }
     blocks.push(lines.join("\n"));
   }
