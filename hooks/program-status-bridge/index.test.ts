@@ -4,13 +4,13 @@ import {
 } from "@earendil-works/pi-coding-agent";
 import { AD_NOTIFY_ATTENTION_EVENT } from "@harness/events";
 import { beforeEach, describe, expect, it } from "vitest";
-import rexBridge from "./index";
+import programStatusBridge from "./index";
 
 type Handler = (event: unknown, ctx: unknown) => unknown;
 
-const REX_BLOCKED_EVENT = "rex:blocked";
-const REX_ACTIVITY_SPAWN_EVENT = "rex:activity:spawn";
-const REX_ACTIVITY_END_EVENT = "rex:activity:end";
+const PROGRAM_STATUS_BLOCKED_EVENT = "program-status:blocked";
+const PROGRAM_STATUS_ACTIVITY_SPAWN_EVENT = "program-status:activity:spawn";
+const PROGRAM_STATUS_ACTIVITY_END_EVENT = "program-status:activity:end";
 
 interface MockPi {
   api: ExtensionAPI;
@@ -42,24 +42,25 @@ function createMockPi(): MockPi {
     fire(event, payload = {}, ctx = {}) {
       for (const handler of handlers.get(event) ?? []) handler(payload, ctx);
     },
-    emissions: () => emitted.filter(([event]) => event.startsWith("rex:")),
+    emissions: () =>
+      emitted.filter(([event]) => event.startsWith("program-status:")),
   };
 }
 
 function lastBlocked(mock: MockPi) {
   const blocked = mock
     .emissions()
-    .filter(([event]) => event === REX_BLOCKED_EVENT)
+    .filter(([event]) => event === PROGRAM_STATUS_BLOCKED_EVENT)
     .map(([, data]) => data);
   return blocked.at(-1);
 }
 
-describe("rex bridge", () => {
+describe("program status bridge", () => {
   let mock: MockPi;
 
   beforeEach(() => {
     mock = createMockPi();
-    rexBridge(mock.api);
+    programStatusBridge(mock.api);
   });
 
   it("claims the ui-prompt slot on ask_user attention and clears on tool end", () => {
@@ -129,7 +130,7 @@ describe("rex bridge", () => {
       },
     });
     expect(mock.emissions()).toContainEqual([
-      REX_ACTIVITY_SPAWN_EVENT,
+      PROGRAM_STATUS_ACTIVITY_SPAWN_EVENT,
       { id: "proc1", title: "dev-server", app: "pi" },
     ]);
 
@@ -143,7 +144,7 @@ describe("rex bridge", () => {
       },
     });
     expect(mock.emissions()).toContainEqual([
-      REX_ACTIVITY_END_EVENT,
+      PROGRAM_STATUS_ACTIVITY_END_EVENT,
       { id: "proc1", state: "error", msg: "EADDRINUSE" },
     ]);
   });
@@ -168,7 +169,7 @@ describe("rex bridge", () => {
       },
     });
     expect(mock.emissions()).toContainEqual([
-      REX_ACTIVITY_END_EVENT,
+      PROGRAM_STATUS_ACTIVITY_END_EVENT,
       { id: "proc2", state: "done", msg: "exit 0" },
     ]);
   });

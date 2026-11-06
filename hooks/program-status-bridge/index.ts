@@ -1,7 +1,8 @@
 /**
- * Bridge from harness, guardrails, and pi-processes events to the pi-rex
- * contract (`rex:blocked`, `rex:activity:*`). Pi-rex renders those as OSC
- * 7501 child records; this hook only translates event shapes and holds no
+ * Bridge from harness, guardrails, and pi-processes events to the
+ * program-status contract (`program-status:blocked`,
+ * `program-status:activity:*`). The program-status extension renders those as
+ * OSC 7501 child records; this hook only translates event shapes and holds no
  * rendering state.
  *
  * Blocked reports use the reserved `ui-prompt` slot. Both ask_user and
@@ -19,9 +20,9 @@ import {
   type AdNotifyAttentionEvent,
 } from "@harness/events";
 
-const REX_BLOCKED_EVENT = "rex:blocked";
-const REX_ACTIVITY_SPAWN_EVENT = "rex:activity:spawn";
-const REX_ACTIVITY_END_EVENT = "rex:activity:end";
+const PROGRAM_STATUS_BLOCKED_EVENT = "program-status:blocked";
+const PROGRAM_STATUS_ACTIVITY_SPAWN_EVENT = "program-status:activity:spawn";
+const PROGRAM_STATUS_ACTIVITY_END_EVENT = "program-status:activity:end";
 
 const UI_PROMPT_SOURCE = "ui-prompt";
 const GUARDRAILS_PROMPT_OPENED_EVENT = "guardrails:prompt:opened";
@@ -29,20 +30,20 @@ const GUARDRAILS_PROMPT_CLOSED_EVENT = "guardrails:prompt:closed";
 const PROCESSES_STARTED_EVENT = "processes:started";
 const PROCESSES_ENDED_EVENT = "processes:ended";
 
-interface RexBlockedPayload {
+interface ProgramStatusBlockedPayload {
   active: boolean;
   kind?: "permission" | "question" | "auth";
   label?: string;
   source: string;
 }
 
-interface RexActivitySpawnPayload {
+interface ProgramStatusActivitySpawnPayload {
   id: string;
   title: string;
   app?: string;
 }
 
-interface RexActivityEndPayload {
+interface ProgramStatusActivityEndPayload {
   id: string;
   state: "done" | "error";
   msg?: string;
@@ -69,8 +70,8 @@ export default function (pi: ExtensionAPI): void {
   let askUserToolCallId: string | undefined;
   const guardrailsPromptIds = new Set<string>();
 
-  const emitBlocked = (payload: RexBlockedPayload): void => {
-    pi.events.emit(REX_BLOCKED_EVENT, payload);
+  const emitBlocked = (payload: ProgramStatusBlockedPayload): void => {
+    pi.events.emit(PROGRAM_STATUS_BLOCKED_EVENT, payload);
   };
 
   pi.on("session_start", () => {
@@ -123,11 +124,11 @@ export default function (pi: ExtensionAPI): void {
   pi.events.on(PROCESSES_STARTED_EVENT, (data) => {
     const event = data as { info?: ProcessInfoPayload } | undefined;
     if (!event?.info) return;
-    pi.events.emit(REX_ACTIVITY_SPAWN_EVENT, {
+    pi.events.emit(PROGRAM_STATUS_ACTIVITY_SPAWN_EVENT, {
       id: event.info.id,
       title: event.info.name,
       app: "pi",
-    } satisfies RexActivitySpawnPayload);
+    } satisfies ProgramStatusActivitySpawnPayload);
   });
 
   pi.events.on(PROCESSES_ENDED_EVENT, (data) => {
@@ -136,10 +137,10 @@ export default function (pi: ExtensionAPI): void {
     const { id, success, exitCode, errorMessage } = event.info;
     const msg =
       errorMessage ?? (exitCode !== null ? `exit ${exitCode}` : undefined);
-    pi.events.emit(REX_ACTIVITY_END_EVENT, {
+    pi.events.emit(PROGRAM_STATUS_ACTIVITY_END_EVENT, {
       id,
       state: success === false ? "error" : "done",
       ...(msg !== undefined ? { msg } : {}),
-    } satisfies RexActivityEndPayload);
+    } satisfies ProgramStatusActivityEndPayload);
   });
 }
