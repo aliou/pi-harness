@@ -19,7 +19,12 @@ export interface ExpandedSkillInvocation {
   xml: string;
 }
 
-/** Expand known inline skill references while retaining their names in prose. */
+/**
+ * Expand known inline skill references while retaining their names in prose.
+ * A single selected skill is embedded in the user message so pi renders it
+ * natively; multiple selected skills are returned for separate skill
+ * messages because pi's parser handles one skill block per user message.
+ */
 export function expandSkillReferences(
   text: string,
   skills: SkillInfo[],

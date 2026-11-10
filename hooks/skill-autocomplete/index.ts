@@ -4,8 +4,9 @@
  * On `?<token>` or `??` in the input editor (at a token boundary),
  * suggests skill directories from configurable root paths. `??` forces
  * the full list without a filter. Accepting a completion leaves a compact
- * inline reference. On submission, every known reference becomes a separate
- * skill context message while the skill name remains in the user's prose.
+ * inline reference. On submission, a single selected skill is embedded in
+ * the user message (rendered natively by pi); multiple selected skills
+ * become separate skill messages while the skill names remain in the prose.
  *
  * The root paths are configured in the completion config file
  * (`$PI_CODING_AGENT_DIR/settings/completion.json`):
@@ -88,6 +89,14 @@ export default async function (pi: ExtensionAPI) {
         listSkills(skillsRoots, pinnedSkills),
       );
       if (result.skills.length === 0) return { action: "continue" };
+
+      const [skill] = result.skills;
+      if (result.skills.length === 1 && skill) {
+        return {
+          action: "transform",
+          text: [skill.xml, result.prose.trim()].filter(Boolean).join("\n\n"),
+        };
+      }
 
       const deliveryOptions = event.streamingBehavior
         ? { deliverAs: event.streamingBehavior }
