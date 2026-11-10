@@ -1,14 +1,13 @@
-import { StringEnum } from "@earendil-works/pi-ai";
 import { type Static, Type } from "typebox";
 
-export const AdvisorStage = StringEnum([
-  "before_approach",
-  "stuck",
-  "change_of_approach",
-  "pre_completion",
-  "risk_review",
-  "general",
-] as const);
+export const AdvisorStage = Type.Union([
+  Type.Literal("before_approach"),
+  Type.Literal("stuck"),
+  Type.Literal("change_of_approach"),
+  Type.Literal("pre_completion"),
+  Type.Literal("risk_review"),
+  Type.Literal("general"),
+]);
 
 export const AdvisorParams = Type.Object({
   task: Type.String({

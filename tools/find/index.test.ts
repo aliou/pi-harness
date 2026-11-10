@@ -19,6 +19,7 @@ function setupFind(stdout: string) {
       stderr: "",
       code: 0,
       killed: false,
+      truncated: false,
     }),
   );
   findExtension({

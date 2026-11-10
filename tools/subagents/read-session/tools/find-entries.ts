@@ -1,4 +1,3 @@
-import { StringEnum } from "@earendil-works/pi-ai";
 import { defineTool, SessionManager } from "@earendil-works/pi-coding-agent";
 import {
   createSessionViewFromSession,
@@ -19,7 +18,7 @@ export const findEntries = defineTool({
   parameters: Type.Object({
     query: Type.String(),
     scope: Type.Optional(
-      StringEnum(["main_branch", "full_tree"] as const, {
+      Type.Union([Type.Literal("main_branch"), Type.Literal("full_tree")], {
         description: "Search scope. Defaults to the main branch.",
       }),
     ),
