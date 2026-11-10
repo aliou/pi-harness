@@ -1,4 +1,8 @@
-#!/usr/bin/env node
+#!/usr/bin/env nix-shell
+/*
+#!nix-shell -i node -p nodejs-slim
+*/
+
 /**
  * List skills from every configured skill library.
  *
