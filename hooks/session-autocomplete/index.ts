@@ -43,7 +43,10 @@ export default async function (pi: ExtensionAPI) {
     const refs = resolved.filter((ref): ref is SessionRef => ref != null);
     if (refs.length === 0) return;
 
-    appendGuidance(last, buildSessionRefsContent(refs));
+    const guidance = buildSessionRefsContent(refs);
+    if (messageText(last.content).includes(guidance)) return;
+
+    appendGuidance(last, guidance);
     return { messages: event.messages };
   });
 }
