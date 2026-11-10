@@ -186,6 +186,8 @@ export function injectLookAtGuidance(
   if (paths.length === 0) return false;
 
   const guidance = buildLookAtGuidance(paths);
+  if (userMessageText(last.content).includes(guidance)) return false;
+
   if (typeof last.content === "string") {
     last.content = `${last.content}\n\n${guidance}`;
   } else if (Array.isArray(last.content)) {
