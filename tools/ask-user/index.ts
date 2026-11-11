@@ -65,6 +65,7 @@ export const askUserTool = defineTool({
     }
 
     if (uiResult === null) {
+      ctx.abort();
       return cancelledResult(params.questions);
     }
 

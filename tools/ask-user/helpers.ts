@@ -9,11 +9,13 @@ export function answeredResult(result: ExecuteResult): AskUserResult {
   return { ...result, structuredContent: { questions, answers } };
 }
 
+/** Cancellation ends the run like an Escape abort: error result, abort signaled by the caller. */
 export function cancelledResult(questions: Question[]): AskUserResult {
   return {
     content: [{ type: "text", text: "User cancelled" }],
     details: { questions, answers: [], error: "cancelled" },
     structuredContent: { questions, answers: [], cancelled: true },
+    isError: true,
   };
 }
 

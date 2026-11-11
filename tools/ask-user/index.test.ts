@@ -54,16 +54,19 @@ describe("ask_user result contract", () => {
     });
   });
 
-  it("reports cancellation as data, not an error", async () => {
+  it("reports cancellation as an error that still carries data", async () => {
     const select = vi.fn(async () => undefined);
+    const abort = vi.fn();
 
     const result = await run({
       hasUI: true,
       mode: "rpc",
+      abort,
       ui: { select } as never,
     });
 
-    expect(result.isError).toBeUndefined();
+    expect(abort).toHaveBeenCalled();
+    expect(result.isError).toBe(true);
     expect(result.content).toEqual([{ type: "text", text: "User cancelled" }]);
     expectStructuredOutput(askUserTool, result);
     expect(result.structuredContent).toEqual({
