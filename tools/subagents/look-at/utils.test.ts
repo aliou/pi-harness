@@ -1,13 +1,7 @@
 import { join } from "node:path";
 import { vol } from "memfs";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import {
-  aliasVisionCapable,
-  detectSupportedImageMimeType,
-  lookAtGateAction,
-  referencesImageFiles,
-  visionGateAction,
-} from "./utils";
+import { detectSupportedImageMimeType, referencesImageFiles } from "./utils";
 
 vi.mock("node:os", () => ({
   homedir: () => "/home/user",
@@ -221,75 +215,5 @@ describe("detectSupportedImageMimeType", () => {
     ]);
 
     expect(detectSupportedImageMimeType(invalidPng)).toBeNull();
-  });
-});
-
-describe("lookAtGateAction", () => {
-  const visionModel = { input: ["text", "image"] };
-  const textModel = { input: ["text"] };
-
-  it("disables when the effective model is vision-capable and the tool is active", () => {
-    expect(lookAtGateAction(visionModel, true)).toBe("disable");
-  });
-
-  it("enables when the effective model is not vision-capable and the tool is hidden", () => {
-    expect(lookAtGateAction(textModel, false)).toBe("enable");
-  });
-
-  it("keeps the state when it already matches", () => {
-    expect(lookAtGateAction(visionModel, false)).toBe("keep");
-    expect(lookAtGateAction(textModel, true)).toBe("keep");
-  });
-
-  it("keeps the state when the model is unresolved (alias never answered)", () => {
-    expect(lookAtGateAction(undefined, true)).toBe("keep");
-    expect(lookAtGateAction(undefined, false)).toBe("keep");
-  });
-});
-
-describe("aliasVisionCapable", () => {
-  it("resolves aliases that pin a vision-capable family", () => {
-    for (const id of [
-      "gpt-sol",
-      "gpt-luna",
-      "gpt-astra",
-      "claude-opus",
-      "claude-fable",
-      "kimi",
-      "glm-flash",
-    ]) {
-      expect(aliasVisionCapable({ provider: "latest", id })).toBe(true);
-    }
-    expect(aliasVisionCapable({ provider: "fast", id: "gpt-sol" })).toBe(true);
-  });
-
-  it("leaves mixed families and non-aliases undecided", () => {
-    for (const id of ["glm", "deepseek-flash", "qwen-27b"]) {
-      expect(aliasVisionCapable({ provider: "latest", id })).toBeUndefined();
-    }
-    expect(
-      aliasVisionCapable({ provider: "agents", id: "advisor" }),
-    ).toBeUndefined();
-    expect(
-      aliasVisionCapable({ provider: "openai", id: "gpt-6.1-sol" }),
-    ).toBeUndefined();
-    expect(aliasVisionCapable(undefined)).toBeUndefined();
-  });
-});
-
-describe("visionGateAction", () => {
-  it("disables on known vision capability", () => {
-    expect(visionGateAction(true, true)).toBe("disable");
-    expect(visionGateAction(true, false)).toBe("keep");
-  });
-
-  it("enables on known text-only capability", () => {
-    expect(visionGateAction(false, false)).toBe("enable");
-    expect(visionGateAction(false, true)).toBe("keep");
-  });
-
-  it("keeps the state when capability is unknown", () => {
-    expect(visionGateAction(undefined, true)).toBe("keep");
-    expect(visionGateAction(undefined, false)).toBe("keep");
   });
 });

@@ -266,6 +266,7 @@ export function createSubagent<Params extends TSchema>(
     runWithParams,
     resumeWithParams,
     asTool,
+    asResumeTool,
     subscribe,
     register,
   };

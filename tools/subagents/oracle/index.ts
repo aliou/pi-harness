@@ -1,17 +1,11 @@
-import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
+import type {
+  ExtensionAPI,
+  ExtensionContext,
+} from "@earendil-works/pi-coding-agent";
 import { createSubagent, loadAgentsFilesFromCwd } from "@harness/agent-kit";
 import type { SubagentToolSpec } from "@harness/agent-kit/types";
-import {
-  type BranchEntryLike,
-  effectiveModelIdentity,
-  type ModelIdentity,
-} from "@harness/models";
-import { addTools, removeTools } from "../shared/active-tools";
 import { ADVISORY_DISCLAIMER } from "../shared/disclaimer";
-import {
-  aliasDisablesAdvisoryTools,
-  disablesAdvisoryTools,
-} from "../shared/family-gate";
+import { advisoryUnavailableReason } from "../shared/family-gate";
 import { buildPrompt, ORACLE_SYSTEM_PROMPT } from "./prompt";
 import {
   oracleToolRenderers,
@@ -44,18 +38,6 @@ const tools: SubagentToolSpec[] = [
 
 const extensionPaths = ["./tools", "npm:@aliou/pi-synthetic"];
 
-const TOOL_NAMES = ["oracle", "resume_oracle"];
-
-function enableTools(pi: ExtensionAPI): void {
-  const next = addTools(pi.getActiveTools(), TOOL_NAMES);
-  if (next) pi.setActiveTools(next);
-}
-
-function disableTools(pi: ExtensionAPI): void {
-  const next = removeTools(pi.getActiveTools(), TOOL_NAMES);
-  if (next) pi.setActiveTools(next);
-}
-
 export async function registerOracle(pi: ExtensionAPI): Promise<void> {
   const subagent = createSubagent(pi, {
     name: "oracle",
@@ -85,38 +67,32 @@ export async function registerOracle(pi: ExtensionAPI): Promise<void> {
     extensionPaths,
   });
 
-  subagent.register();
+  subagent.subscribe();
 
-  // Same pattern as the look_at tool: keep the oracle tools active unless
-  // the session model belongs to a family that should not use them. Under a
-  // virtual (alias) selection the family lives on the routed physical model;
-  // before the alias has routed on this branch, aliases whose id pins the
-  // family (`latest/*`/`fast/*` gpt aliases) decide immediately, so the tools
-  // are hidden from the first run. The gate is re-applied in the context
-  // handler too: agent_start only fires once per run, but an alias's routing
-  // state first appears mid-run (written when the alias answers), so within
-  // the very first run on an alias the context event is the only point that
-  // sees the routed model.
-  const syncTools = (
-    model: (ModelIdentity & { api?: string }) | undefined,
-    branch: readonly BranchEntryLike[],
-  ): void => {
-    const identity = effectiveModelIdentity(model, branch);
-    const disable = identity
-      ? disablesAdvisoryTools(identity)
-      : aliasDisablesAdvisoryTools(model);
-    disable ? disableTools(pi) : enableTools(pi);
-  };
-  pi.on("session_start", (_event, ctx) => {
-    syncTools(ctx.model, ctx.sessionManager.getBranch());
+  const tool = subagent.asTool();
+  const resumeTool = subagent.asResumeTool();
+
+  // The advisory tools stay registered for every model: a visibility gate
+  // under a virtual (alias) selection can apply only after the caller has
+  // already discovered the tool, so gated families (GPT-5.6, GPT-6) fail the
+  // call with an explanation instead of hiding the tool mid-run.
+  const unavailable = (ctx: ExtensionContext): string | undefined =>
+    advisoryUnavailableReason(ctx.model, ctx.sessionManager.getBranch());
+
+  pi.registerTool({
+    ...tool,
+    async execute(toolCallId, params, signal, onUpdate, ctx) {
+      const reason = unavailable(ctx);
+      if (reason) throw new Error(reason);
+      return tool.execute(toolCallId, params, signal, onUpdate, ctx);
+    },
   });
-  pi.on("agent_start", (_event, ctx) => {
-    syncTools(ctx.model, ctx.sessionManager.getBranch());
-  });
-  pi.on("model_select", (event, ctx) => {
-    syncTools(event.model, ctx.sessionManager.getBranch());
-  });
-  pi.on("context", (_event, ctx) => {
-    syncTools(ctx.model, ctx.sessionManager.getBranch());
+  pi.registerTool({
+    ...resumeTool,
+    async execute(toolCallId, params, signal, onUpdate, ctx) {
+      const reason = unavailable(ctx);
+      if (reason) throw new Error(reason);
+      return resumeTool.execute(toolCallId, params, signal, onUpdate, ctx);
+    },
   });
 }

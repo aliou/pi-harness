@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
-  aliasDisablesAdvisoryTools,
+  advisoryUnavailableReason,
   disablesAdvisoryTools,
 } from "./family-gate";
 
@@ -42,41 +42,25 @@ describe("disablesAdvisoryTools", () => {
   });
 });
 
-describe("aliasDisablesAdvisoryTools", () => {
-  it("disables for gpt aliases on latest and fast", () => {
-    expect(
-      aliasDisablesAdvisoryTools({ provider: "latest", id: "gpt-sol" }),
-    ).toBe(true);
-    expect(
-      aliasDisablesAdvisoryTools({ provider: "latest", id: "gpt-astra" }),
-    ).toBe(true);
-    expect(
-      aliasDisablesAdvisoryTools({ provider: "fast", id: "gpt-luna" }),
-    ).toBe(true);
+describe("advisoryUnavailableReason", () => {
+  const physical = (id: string) => ({ provider: "openai", id, api: "openai" });
+
+  it("explains unavailability for gated physical models", () => {
+    expect(advisoryUnavailableReason(physical("gpt-6.1-sol"), [])).toContain(
+      "advisor and oracle are not available for openai/gpt-6.1-sol",
+    );
   });
 
-  it("keeps tools for aliases that pin other families", () => {
-    for (const id of [
-      "claude-opus",
-      "kimi",
-      "glm",
-      "glm-flash",
-      "deepseek-flash",
-      "qwen-27b",
-    ]) {
-      expect(aliasDisablesAdvisoryTools({ provider: "latest", id })).toBe(
-        false,
-      );
-    }
+  it("is undefined for other physical models", () => {
+    expect(advisoryUnavailableReason(physical("claude-opus"), [])).toBe(
+      undefined,
+    );
   });
 
-  it("leaves mixed rosters and physical selections undecided", () => {
+  it("is undefined when no model is selected or the alias has not routed", () => {
+    expect(advisoryUnavailableReason(undefined, [])).toBeUndefined();
     expect(
-      aliasDisablesAdvisoryTools({ provider: "agents", id: "advisor" }),
+      advisoryUnavailableReason({ provider: "latest", id: "gpt-sol" }, []),
     ).toBeUndefined();
-    expect(
-      aliasDisablesAdvisoryTools({ provider: "openai", id: "gpt-6.1-sol" }),
-    ).toBeUndefined();
-    expect(aliasDisablesAdvisoryTools(undefined)).toBeUndefined();
   });
 });

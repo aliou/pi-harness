@@ -35,7 +35,18 @@ export function renderResult(
 
   if (details?.error) {
     if (details.error === "cancelled") {
-      return new Text(theme.fg("warning", "Cancelled"), 0, 0);
+      if (expanded && details.questions.length) {
+        let text = `${theme.fg("error", "✗")} Cancelled, no answer given. Questions asked:\n`;
+        details.questions.forEach((q, idx) => {
+          const prefix = idx === 0 ? "└ " : "  ";
+          text += `\n${prefix}${theme.fg("accent", `[${q.header}]`)} ${theme.fg("toolOutput", q.question)}`;
+          q.options.forEach((opt) => {
+            text += `\n${theme.fg("dim", "  ○ ")}${theme.fg("muted", opt.label)} ${theme.fg("dim", `— ${opt.description}`)}`;
+          });
+        });
+        return new Text(text, 0, 0);
+      }
+      return new Text(theme.fg("error", "Cancelled"), 0, 0);
     }
     return new Text(theme.fg("error", `Error: ${details.error}`), 0, 0);
   }
