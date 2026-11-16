@@ -10,6 +10,7 @@ Name rules:
 - No quotes.
 - No markdown.
 - No trailing punctuation.
+- Title Case: capitalize major words, but keep identifiers, paths, package names, acronyms, and code symbols exactly as written.
 
 When no current name is provided, create the best name for the exchange.
 
