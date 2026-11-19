@@ -18,11 +18,7 @@ vi.mock("../lib/git-status", () => ({
   },
 }));
 
-import {
-  FAST_STATUS_CHANGED_EVENT,
-  FAST_STATUS_REQUEST_EVENT,
-  type FastStatusRequest,
-} from "@harness/events";
+import { FAST_STATUS_CHANGED_EVENT } from "@harness/events";
 import { FAST_MARK } from "../lib/model";
 import { createCustomFooter } from "./footer";
 
@@ -50,6 +46,7 @@ interface Captured {
 interface Fixture {
   component: Captured;
   notify: (event: string, data: unknown) => void;
+  setFastEnabled: (enabled: boolean) => void;
   dispose: () => void;
 }
 
@@ -58,7 +55,12 @@ interface Fixture {
  * total cost $0.140, context 5% of a 200k window, model glm-5.2-short.
  */
 function createFixture(
-  options: { statuses?: Map<string, string>; fastAtSetup?: boolean } = {},
+  options: {
+    statuses?: Map<string, string>;
+    fastEntry?: { enabled: boolean; provider?: string; modelId?: string };
+    olderFastEntry?: boolean;
+    virtual?: boolean;
+  } = {},
 ): Fixture {
   // First assistant entry is the branch leaf; getBranch() returns it so
   // branchCost diverges from totalCost and the stats line carries the
@@ -87,7 +89,43 @@ function createFixture(
       usage: { input: 100, cacheRead: 0, cacheWrite: 0, cost: { total: 0.14 } },
     },
   };
-  const branchEntries = [branchEntry];
+  const fastData = {
+    enabled: options.fastEntry?.enabled ?? false,
+    provider: options.fastEntry?.provider ?? "zai",
+    modelId: options.fastEntry?.modelId ?? "glm-5.2-short",
+  };
+  const branchEntries = [
+    ...(options.olderFastEntry
+      ? [
+          {
+            type: "custom",
+            customType: "rig:fast",
+            data: {
+              enabled: !fastData.enabled,
+              provider: fastData.provider,
+              modelId: fastData.modelId,
+            },
+          },
+        ]
+      : []),
+    ...(options.fastEntry
+      ? [{ type: "custom", customType: "rig:fast", data: fastData }]
+      : []),
+    ...(options.virtual
+      ? [
+          {
+            type: "custom",
+            customType: "pi.virtual-model-state",
+            data: {
+              provider: "latest",
+              modelId: "glm",
+              state: { provider: "zai", modelId: "glm-5.2-short" },
+            },
+          },
+        ]
+      : []),
+    branchEntry,
+  ];
 
   const handlers = new Map<string, ((data: unknown) => void)[]>();
   const pi = {
@@ -97,12 +135,7 @@ function createFixture(
         list.push(handler);
         handlers.set(event, list);
       }),
-      emit: vi.fn((event: string, data: unknown) => {
-        // Mimic rig's synchronous reply to a fast-status request.
-        if (event === FAST_STATUS_REQUEST_EVENT && options.fastAtSetup) {
-          (data as FastStatusRequest).reply({ enabled: true });
-        }
-      }),
+      emit: vi.fn(),
     },
     getThinkingLevel: vi.fn(() => "off"),
   } as unknown as ExtensionAPI;
@@ -110,13 +143,15 @@ function createFixture(
   let captured: Captured | undefined;
   const ctx = createCommandContext({
     model: {
-      id: "glm-5.2-short",
-      provider: "zai",
+      id: options.virtual ? "glm" : "glm-5.2-short",
+      provider: options.virtual ? "latest" : "zai",
+      api: options.virtual ? "pi-virtual" : "openai-completions",
       contextWindow: 200_000,
       reasoning: false,
     } as never,
     entries: [branchEntry, totalEntry],
     branch: branchEntries,
+    modelRegistry: { getAvailable: () => [] } as never,
     getContextUsage: () => ({
       contextWindow: 200_000,
       percent: 5,
@@ -144,6 +179,9 @@ function createFixture(
 
   return {
     component,
+    setFastEnabled: (enabled: boolean) => {
+      fastData.enabled = enabled;
+    },
     notify: (event: string, data: unknown) => {
       for (const handler of handlers.get(event) ?? []) handler(data);
     },
@@ -179,33 +217,58 @@ describe("fast mode", () => {
   let fixture: Fixture;
   afterEach(() => fixture?.dispose());
 
-  it("shows a thunderbolt before the model while fast mode is on", () => {
-    fixture = createFixture();
-    fixture.notify(FAST_STATUS_CHANGED_EVENT, {
-      enabled: true,
-      provider: "anthropic",
-    });
+  it("shows a thunderbolt for an enabled entry matching the physical model", () => {
+    fixture = createFixture({ fastEntry: { enabled: true } });
     expect(fixture.component.render(120)[1]).toContain(
       `${FAST_MARK} zai/glm-5.2-short`,
     );
   });
 
-  it("drops the thunderbolt when fast mode turns off", () => {
-    fixture = createFixture();
+  it("rerenders from the latest entry after a status event", () => {
+    fixture = createFixture({ fastEntry: { enabled: false } });
+    fixture.setFastEnabled(true);
     fixture.notify(FAST_STATUS_CHANGED_EVENT, { enabled: true });
+    expect(fixture.component.render(120)[1]).toContain(FAST_MARK);
+
+    fixture.setFastEnabled(false);
     fixture.notify(FAST_STATUS_CHANGED_EVENT, { enabled: false });
     expect(fixture.component.render(120)[1]).not.toContain(FAST_MARK);
   });
 
-  it("picks up fast mode enabled before the footer was set up", () => {
-    fixture = createFixture({ fastAtSetup: true });
+  it("hides the thunderbolt for disabled and different-model entries", () => {
+    fixture = createFixture({ fastEntry: { enabled: false } });
+    expect(fixture.component.render(120)[1]).not.toContain(FAST_MARK);
+    fixture.dispose();
+
+    fixture = createFixture({
+      fastEntry: { enabled: true, modelId: "another-model" },
+    });
+    expect(fixture.component.render(120)[1]).not.toContain(FAST_MARK);
+  });
+
+  it("uses the latest entry matching the current model", () => {
+    fixture = createFixture({
+      fastEntry: { enabled: true },
+      olderFastEntry: true,
+    });
+    expect(fixture.component.render(120)[1]).toContain(FAST_MARK);
+
+    fixture.setFastEnabled(false);
+    expect(fixture.component.render(120)[1]).not.toContain(FAST_MARK);
+  });
+
+  it("matches a virtual selection through its routed physical identity", () => {
+    fixture = createFixture({
+      virtual: true,
+      fastEntry: { enabled: true, provider: "zai", modelId: "glm-5.2-short" },
+    });
     expect(fixture.component.render(120)[1]).toContain(FAST_MARK);
   });
 
-  it("ignores malformed status payloads", () => {
-    fixture = createFixture();
-    fixture.notify(FAST_STATUS_CHANGED_EVENT, "nope");
-    expect(fixture.component.render(120)[1]).not.toContain(FAST_MARK);
+  it("does not let status payloads override session state", () => {
+    fixture = createFixture({ fastEntry: { enabled: true } });
+    fixture.notify(FAST_STATUS_CHANGED_EVENT, { enabled: false });
+    expect(fixture.component.render(120)[1]).toContain(FAST_MARK);
   });
 });
 

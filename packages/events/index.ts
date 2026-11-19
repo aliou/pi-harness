@@ -50,23 +50,24 @@ export const NVIM_UNDO_REGISTER_TOOL_EVENT = "neovim:undo:register-tool";
 export const NVIM_UNDO_REQUEST_TOOLS_EVENT = "neovim:undo:request-tools";
 
 // pi-rig fast mode (`/fast`, code.378labs.dev/aliou/pi-rig `@rig/types`).
-// The status lives in memory in the rig extension and is broadcast over
-// `pi.events`; it is not written to the session. Vendored here so harness
-// extensions can reflect the toggle without a dependency on the rig repo.
+// Session entries are the display contract; status events request a redraw.
+// Vendored here so harness extensions do not depend on the rig repo.
 
+export const FAST_ENTRY_TYPE = "rig:fast";
 export const FAST_STATUS_CHANGED_EVENT = "rig:fast:status-changed";
-export const FAST_STATUS_REQUEST_EVENT = "rig:fast:status-request";
 
-export interface FastStatus {
+export interface FastEntry {
   enabled: boolean;
-  provider?: string;
+  provider: string;
+  modelId: string;
 }
 
-export interface FastStatusRequest {
-  reply: (status: FastStatus) => void;
-}
-
-export function isFastStatus(value: unknown): value is FastStatus {
+export function isFastEntry(value: unknown): value is FastEntry {
   if (typeof value !== "object" || value === null) return false;
-  return typeof (value as FastStatus).enabled === "boolean";
+  const entry = value as Partial<FastEntry>;
+  return (
+    typeof entry.enabled === "boolean" &&
+    typeof entry.provider === "string" &&
+    typeof entry.modelId === "string"
+  );
 }

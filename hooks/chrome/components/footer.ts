@@ -16,10 +16,11 @@ import { truncateToWidth, visibleWidth } from "@earendil-works/pi-tui";
 import {
   AD_EDITOR_STASH_CHANGED_EVENT,
   type AdEditorStashChangedEvent,
+  FAST_ENTRY_TYPE,
   FAST_STATUS_CHANGED_EVENT,
-  FAST_STATUS_REQUEST_EVENT,
-  isFastStatus,
+  isFastEntry,
 } from "@harness/events";
+import { effectiveModelIdentity } from "@harness/models";
 import { buildStatusLine } from "../lib/extension-status";
 import { GitStatusWatcher } from "../lib/git-status";
 import {
@@ -45,7 +46,6 @@ export function createCustomFooter(pi: ExtensionAPI) {
   let requestRender: (() => void) | undefined;
   let gitStatusWatcher: GitStatusWatcher | undefined;
   let stashHasContent = false;
-  let fastEnabled = false;
 
   pi.events.on(AD_EDITOR_STASH_CHANGED_EVENT, (data: unknown) => {
     const event = data as AdEditorStashChangedEvent;
@@ -54,9 +54,7 @@ export function createCustomFooter(pi: ExtensionAPI) {
     requestRender?.();
   });
 
-  pi.events.on(FAST_STATUS_CHANGED_EVENT, (data: unknown) => {
-    if (!isFastStatus(data)) return;
-    fastEnabled = data.enabled;
+  pi.events.on(FAST_STATUS_CHANGED_EVENT, () => {
     requestRender?.();
   });
 
@@ -69,10 +67,29 @@ export function createCustomFooter(pi: ExtensionAPI) {
 
     const branch = footer_data.getGitBranch();
     const sessionName = ctx.sessionManager.getSessionName();
+    const sessionBranch = ctx.sessionManager.getBranch();
+    const identity = effectiveModelIdentity(ctx.model, sessionBranch);
+    let fastEnabled = false;
+    if (identity) {
+      for (let index = sessionBranch.length - 1; index >= 0; index--) {
+        const entry = sessionBranch[index];
+        if (
+          entry?.type !== "custom" ||
+          entry.customType !== FAST_ENTRY_TYPE ||
+          !isFastEntry(entry.data) ||
+          entry.data.provider !== identity.provider ||
+          entry.data.modelId !== identity.id
+        ) {
+          continue;
+        }
+        fastEnabled = entry.data.enabled;
+        break;
+      }
+    }
 
     // An alias has no limits of its own. Until it answers after being
     // selected, Pi reports the window of the previous model, so hide it.
-    const routed = findRoutedModel(ctx.model, ctx.sessionManager.getBranch());
+    const routed = findRoutedModel(ctx.model, sessionBranch);
     const awaitingRoute = isVirtualModel(ctx.model) && !routed;
 
     const usage = getCumulativeUsage(ctx);
@@ -248,15 +265,6 @@ export function createCustomFooter(pi: ExtensionAPI) {
   return {
     setup: (context: ExtensionContext) => {
       ctx = context;
-
-      // Fast mode may have been toggled before this footer subscribed (or in
-      // a previous session of the same process); ask rig for the current
-      // status. The rig handler replies synchronously.
-      pi.events.emit(FAST_STATUS_REQUEST_EVENT, {
-        reply: (status: unknown) => {
-          if (isFastStatus(status)) fastEnabled = status.enabled;
-        },
-      });
 
       ctx.ui.setFooter((tui, theme, footerData) => {
         requestRender = () => tui.requestRender?.();
