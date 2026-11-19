@@ -9,6 +9,7 @@
  * - `?<token>` or `??<token>` (at least one filter character): shows filtered skills;
  *   pressing Enter replaces `?<token>` with a stable inline skill reference.
  * - `??`: shows every skill without requiring filter text.
+ * - `???<token>`: inserts the selected skill's SKILL.md path.
  * - `? ` does not show suggestions.
  */
 
@@ -99,7 +100,7 @@ export function createSkillAutocompleteProvider(
         if (skills.length === 0) return null;
 
         const items: AutocompleteItem[] = skills.map((skill) => ({
-          value: skill.name,
+          value: skillToken.trigger === "???" ? skill.fullPath : skill.name,
           label: skill.name,
           description: prefixDescription(
             skill.description ?? skill.directory,
@@ -124,6 +125,16 @@ export function createSkillAutocompleteProvider(
       item: AutocompleteItem,
       prefix: string,
     ) {
+      if (prefix.startsWith("???")) {
+        return replaceAutocompletePrefix(
+          lines,
+          cursorLine,
+          cursorCol,
+          prefix,
+          `${item.value} `,
+        );
+      }
+
       if (prefix.startsWith("?")) {
         return replaceAutocompletePrefix(
           lines,

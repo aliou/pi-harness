@@ -31,6 +31,10 @@ test("recognizes skill triggers with filter text", () => {
     trigger: "??",
     token: "vit",
   });
+  expect(extractSkillToken("???vit")).toEqual({
+    trigger: "???",
+    token: "vit",
+  });
 });
 
 test("shows nothing for bare ?", async () => {
@@ -121,6 +125,39 @@ test("shows filtered skills for ? token", async () => {
   expect(suggestions).toMatchObject({
     prefix: "?al",
     items: [{ label: "alpha", description: "[test] Alpha skill description" }],
+  });
+});
+
+test("shows skill paths for ??? completions", async () => {
+  const roots = addSkills({
+    alpha:
+      "---\nname: alpha\ndescription: Alpha skill description\n---\n\nalpha instructions",
+  });
+  const provider = createSkillAutocompleteProvider(current, roots);
+  const suggestions = await provider.getSuggestions(["???al"], 0, 5, {
+    signal: new AbortController().signal,
+  });
+
+  expect(suggestions).toMatchObject({
+    prefix: "???al",
+    items: [{ value: "/skills/alpha/SKILL.md", label: "alpha" }],
+  });
+});
+
+test("applies a skill path completion by replacing the ??? token", () => {
+  const provider = createSkillAutocompleteProvider(current, []);
+  const result = provider.applyCompletion(
+    ["read ???alp"],
+    0,
+    11,
+    { value: "/skills/alpha/SKILL.md", label: "alpha" },
+    "???alp",
+  );
+
+  expect(result).toEqual({
+    lines: ["read /skills/alpha/SKILL.md "],
+    cursorLine: 0,
+    cursorCol: 28,
   });
 });
 
